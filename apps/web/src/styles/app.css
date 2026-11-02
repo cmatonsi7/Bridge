@@ -1,0 +1,123 @@
+/* Production additions on top of the prototype styles (accessibility, states the prototype lacked). */
+
+:focus-visible {
+  outline: 3px solid #f5b900;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Field-level validation messages inside the prototype's .form-field blocks. */
+.form-field .field-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b42318;
+}
+.form-field input[aria-invalid='true'],
+.form-field select[aria-invalid='true'] {
+  border-color: #b42318;
+}
+.auth-success {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #e8f5ee;
+  color: #0a5c33;
+  font-size: 13px;
+  font-weight: 600;
+}
+.btn[disabled] {
+  opacity: 0.65;
+  cursor: progress;
+}
+.auth-inline-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+/* Full-screen loading state while Firebase restores the session. */
+.boot-screen {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  color: #006b35;
+  font-weight: 700;
+}
+
+/* Mobile navigation. The prototype hid the public nav links and Sign In below 700px with no
+   replacement; this adds a menu button that opens the same links in a panel. */
+.nav-menu-btn {
+  display: none;
+  border: 1px solid #dfe7e2;
+  background: #fff;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  color: #003d22;
+  cursor: pointer;
+}
+.nav-mobile-only {
+  display: none !important;
+}
+@media (max-width: 700px) {
+  .nav-menu-btn {
+    display: inline-flex;
+  }
+  .nav.menu-open .nav-inner {
+    flex-wrap: wrap;
+  }
+  .nav.menu-open .navlinks {
+    display: flex;
+    order: 3;
+    flex: 0 0 100%;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 8px 0 4px;
+    border-top: 1px solid #edf0f4;
+    margin-top: 10px;
+  }
+  .nav.menu-open .navlinks > button,
+  .nav.menu-open .nav-dropdown-btn {
+    text-align: left;
+    padding: 12px 2px;
+    font-size: 15px;
+    width: 100%;
+  }
+  .nav.menu-open .nav-dropdown-menu {
+    position: static;
+    box-shadow: none;
+    border: 0;
+    padding: 0 0 0 12px;
+  }
+  .nav.menu-open .nav-mobile-only {
+    display: block !important;
+  }
+}

@@ -1,0 +1,87 @@
+rules_version = '2';
+
+// SportBridge Firestore rules — Phase 1 (foundation and authentication).
+// Principle: deny by default. Roles, account status, minor status, memberships and links are written
+// only by the backend (Admin SDK bypasses these rules). Clients may edit a small set of their own fields.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function userDoc(uid) { return get(/databases/$(database)/documents/users/$(uid)).data; }
+    function isShortString(v, max) { return v is string && v.size() > 0 && v.size() <= max; }
+
+    // ---- users/{uid}: owner and admins can read; owner may only edit their name ----
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow create, delete: if false; // created by POST /api/onboarding
+      allow update: if isSelf(uid)
+        && changed().hasOnly(['firstName', 'surname', 'displayName', 'updatedAt'])
+        && isShortString(request.resource.data.firstName, 60)
+        && isShortString(request.resource.data.surname, 60)
+        && isShortString(request.resource.data.displayName, 121);
+
+      // Date of birth and mobile. Never public. Changing DOB would change minor status, so it is server-only.
+      match /private/{docId} {
+        allow read: if isSelf(uid) || isAdmin();
+        allow write: if false;
+      }
+    }
+
+    // ---- Role profiles. Phase 2 extends read access according to each profile's visibility. ----
+    function profileUpdateAllowed(uid) {
+      return isSelf(uid)
+        && !changed().hasAny(['uid', 'createdAt'])
+        // A minor cannot make their own profile more visible; a verified guardian does that (Phase 2).
+        && (!changed().hasAny(['visibility']) || userDoc(uid).isMinor == false)
+        && (!('visibility' in request.resource.data) || request.resource.data.visibility in ['private', 'members', 'public']);
+    }
+
+    match /athleteProfiles/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow create, delete: if false;
+      allow update: if profileUpdateAllowed(uid);
+    }
+    match /coachProfiles/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow create, delete: if false;
+      allow update: if profileUpdateAllowed(uid);
+    }
+    match /guardianProfiles/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow create, delete: if false;
+      allow update: if profileUpdateAllowed(uid);
+    }
+
+    // ---- Organisations: one owner in the MVP. Ownership and verification are server-controlled. ----
+    match /organisations/{orgId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow create, delete: if false;
+      allow update: if signedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && !changed().hasAny(['ownerUid', 'verified', 'createdAt'])
+        && isShortString(request.resource.data.name, 120);
+    }
+
+    // ---- Guardian links: visible to the athlete it concerns, the linked guardian, and admins. Server-written. ----
+    match /guardianLinks/{linkId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.athleteUid == request.auth.uid)
+        || (signedIn() && resource.data.guardianUid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // ---- Audit log: append-only from the server, readable by admins. ----
+    match /auditLogs/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Everything else is denied until its phase defines rules.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

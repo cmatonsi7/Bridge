@@ -1,0 +1,32 @@
+{
+  "name": "sportbridge",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/shared",
+    "apps/web",
+    "apps/api"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev:web": "npm run dev -w apps/web",
+    "dev:api": "npm run dev -w apps/api",
+    "build": "npm run build -w packages/shared && npm run build -w apps/web && npm run build -w apps/api",
+    "start": "node apps/api/dist/index.js",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-sportbridge \"vitest run --root firebase\"",
+    "emulators": "firebase emulators:start --only auth,firestore,storage --project demo-sportbridge",
+    "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes,storage",
+    "format": "prettier --write \"apps/*/src/**/*.{ts,tsx}\" \"packages/*/src/**/*.ts\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.2",
+    "firebase-tools": "^13.29.1",
+    "prettier": "^3.3.3",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,10 @@
+rules_version = '2';
+
+// Phase 1: no uploads yet. Phase 2 adds profile images and documents with type and size validation.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

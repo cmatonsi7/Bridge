@@ -1,0 +1,76 @@
+import express from 'express';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import fs from 'node:fs';
+import path from 'node:path';
+import type { AuthPort, UserRepoPort } from './services/ports.js';
+import { onboardingRouter } from './routes/onboarding.js';
+import { errorHandler, notFound } from './middleware/errors.js';
+
+export interface AppDeps {
+  auth: AuthPort;
+  users: UserRepoPort;
+  webDistDir?: string;
+  trustProxyHops?: number;
+}
+
+export function createApp(deps: AppDeps) {
+  const app = express();
+  app.disable('x-powered-by');
+  app.set('trust proxy', deps.trustProxyHops ?? 1);
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'blob:', 'https://firebasestorage.googleapis.com'],
+          fontSrc: ["'self'", 'data:'],
+          connectSrc: [
+            "'self'",
+            'https://*.googleapis.com',
+            'https://*.firebaseio.com',
+            'wss://*.firebaseio.com',
+            'https://*.firebaseapp.com',
+          ],
+          frameSrc: ['https://*.firebaseapp.com'],
+          objectSrc: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+          frameAncestors: ["'none'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+
+  // ---- API ----
+  const api = express.Router();
+  api.use(express.json({ limit: '50kb' }));
+  api.use(
+    rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false }),
+  );
+  api.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+  api.use(onboardingRouter(deps));
+  api.use(notFound);
+  app.use('/api', api);
+
+  // ---- Web app (single Railway service) ----
+  const dist = deps.webDistDir;
+  if (dist && fs.existsSync(path.join(dist, 'index.html'))) {
+    app.use(
+      '/assets',
+      express.static(path.join(dist, 'assets'), { immutable: true, maxAge: '1y', fallthrough: true }),
+    );
+    app.use(express.static(dist, { index: false, maxAge: '1h' }));
+    app.get('*', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache');
+      res.sendFile(path.join(dist, 'index.html'));
+    });
+  }
+
+  app.use(errorHandler);
+  return app;
+}

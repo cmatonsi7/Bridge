@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+# Firebase service accounts and emulator data must never be committed
+*service-account*.json
+*-firebase-adminsdk-*.json
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
+coverage/
