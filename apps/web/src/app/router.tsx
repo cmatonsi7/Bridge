@@ -16,7 +16,7 @@ const page = (load: () => Promise<{ default: React.ComponentType }>) => {
   );
 };
 
-const DiscoverPage = () => page(() => import('../pages/public/DiscoverPage'));
+const discoverElement = page(() => import('../pages/public/DiscoverPage'));
 const RegisterFinish = lazy(() => import('../pages/auth/RegisterPage'));
 const SectionPlaceholder = lazy(() => import('../pages/app/SectionPlaceholder'));
 
@@ -25,7 +25,7 @@ const router = createBrowserRouter([
     element: <PublicLayout />,
     children: [
       { path: '/', element: <HomePage /> },
-      { path: '/discover', element: <DiscoverPage /> },
+      { path: '/discover', element: discoverElement },      
       { path: '/features', element: page(() => import('../pages/public/FeaturesPage')) },
       { path: '/features/athletes', element: page(() => import('../pages/public/FeatureAthletesPage')) },
       { path: '/features/coaches', element: page(() => import('../pages/public/FeatureCoachesPage')) },

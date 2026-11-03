@@ -60,13 +60,24 @@ export function createApp(deps: AppDeps) {
   // ---- Web app (single Railway service) ----
   const dist = deps.webDistDir;
   if (dist && fs.existsSync(path.join(dist, 'index.html'))) {
+    // Hashed build assets, cached hard since their names change on every build.
     app.use(
       '/assets',
       express.static(path.join(dist, 'assets'), { immutable: true, maxAge: '1y', fallthrough: true }),
     );
-    app.use(express.static(dist, { index: false, maxAge: '1h' }));
+    // Other static files (images, favicon).
+    app.use(express.static(dist, { index: false, maxAge: '1h', fallthrough: true }));
+    // Anything that still looks like a file gets a real 404 rather than the SPA shell below.
+    // This matters after a redeploy: a browser holding a stale index.html asks for chunk
+    // filenames that no longer exist. Falling through would answer with index.html at status 200,
+    // so the browser would execute HTML as JavaScript — the cause of a "n is not a function"
+    // crash on every page until a hard refresh. Failing loudly here keeps that impossible.
+    app.get(/\.[a-zA-Z0-9]+$/, (_req, res) => {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Not found' } });
+    });
+    // Real SPA routes: always serve the current index.html, never cached.
     app.get('*', (_req, res) => {
-      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.join(dist, 'index.html'));
     });
   }
