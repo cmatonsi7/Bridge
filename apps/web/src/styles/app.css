@@ -202,3 +202,42 @@ button.sb-switch {
   padding: 5px 9px;
   font-size: 9px;
 }
+
+/* Sidebar links are <a> elements (React Router NavLink), but the prototype styles .sb-nav button.
+   Give links the same look so they don't render with browser link colours and sizes. */
+.sb-nav a {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  text-align: left;
+  padding: 11px 12px;
+  border-radius: 8px;
+  margin: 2px 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgb(215, 229, 222);
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.sb-nav a:hover,
+.sb-nav a.active {
+  background: rgb(8, 123, 67);
+  color: #fff;
+}
+.sb-nav a .ico {
+  width: 18px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 18px;
+}
+.sb-nav a .ico .icon {
+  width: 16px;
+  height: 16px;
+}
+.sb-nav a:focus-visible,
+.sb-nav button:focus-visible {
+  outline: 3px solid #f5b900;
+  outline-offset: 2px;
+}
