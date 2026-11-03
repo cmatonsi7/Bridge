@@ -21,21 +21,27 @@ export function createApp(deps: AppDeps) {
 
   app.use(
     helmet({
-      contentSecurityPolicy: {
+           contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'", 'https://apis.google.com', 'https://www.gstatic.com'],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://www.gstatic.com'],
           imgSrc: ["'self'", 'data:', 'blob:', 'https://firebasestorage.googleapis.com'],
           fontSrc: ["'self'", 'data:'],
           connectSrc: [
             "'self'",
             'https://*.googleapis.com',
+            'https://apis.google.com',
             'https://*.firebaseio.com',
             'wss://*.firebaseio.com',
             'https://*.firebaseapp.com',
           ],
-          frameSrc: ['https://*.firebaseapp.com'],
+          frameSrc: [
+            'https://*.firebaseapp.com',
+            'https://apis.google.com',
+            'https://www.google.com',
+            'https://www.gstatic.com',
+          ],
           objectSrc: ["'none'"],
           baseUri: ["'self'"],
           formAction: ["'self'"],
