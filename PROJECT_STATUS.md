@@ -1,6 +1,6 @@
 # PROJECT_STATUS — SportBridge
 
-_Last updated: 2026-11-03 · **Phase 2a (Athlete dashboard) code complete on branch `phase-2-athlete-dashboard`, awaiting client review.** Phase 1 accepted. Live at https://bridge-ekz6.onrender.com (Render, not Railway — see D). Registration tested end-to-end against the real Firebase project (sportbridge-4861e) by the client, including the production bug chase documented in E2._
+_Last updated: 2026-11-03 · **Phase 2a (Athlete dashboard) accepted.** Phase 1 accepted. Live at https://bridge-ekz6.onrender.com (Render, not Railway — see D)._
 
 ## A. Project overview
 - **Purpose:** turn the approved HTML prototype (`SportBridge_UI_Fixed.html` + assets) into a production platform connecting athletes, parents/guardians, coaches, organisations and administrators. South African launch; minors are users.
@@ -11,7 +11,7 @@ _Last updated: 2026-11-03 · **Phase 2a (Athlete dashboard) code complete on bra
 | Phase | Status |
 |---|---|
 | 1 Foundation & authentication | **Accepted.** Live, tested end-to-end by the client against real Firebase |
-| 2a Athlete dashboard | **Code complete, awaiting review** (branch `phase-2-athlete-dashboard`) |
+| 2a Athlete dashboard | **Accepted.** Tested on the live site against real Firebase |
 | 2b Parent / Guardian · 2c Coach · 2d Organisation | Not started |
 | 3 Core features | Not started |
 | 4 Membership & payments | Not started (blocked on client pricing) |
@@ -88,12 +88,12 @@ _Last updated: 2026-11-03 · **Phase 2a (Athlete dashboard) code complete on bra
 | API tests (auth, onboarding, minors, orgs, idempotency, claim repair, errors) | 12/12 pass |
 | Typecheck (shared, web, api) | pass |
 | Production build (`npm run build`) | pass |
-| Firestore rules deployed to sportbridge-4861e | done — Storage rules written, not yet deployed (needs Blaze) |
+| Firestore rules deployed to sportbridge-4861e | done, including the Phase 2a athlete rules. Storage rules written, not yet deployed (needs Blaze) |
 | Firestore/Storage rules tests (22, incl. 5 for athlete fields, achievements, mobile) | written, not yet run (needs Java + emulators) |
-| Athlete pages against real Firebase | **not yet tested** — needs `npm run deploy:rules` then a live check |
+| Athlete pages against real Firebase | **done, confirmed working on the live site** (profile view and edit, progress, achievements, settings, privacy) |
 | Registration → verify → dashboard, real Firebase, real device | **done — confirmed working by the client** |
 | Deployment | **Live on Render**: https://bridge-ekz6.onrender.com |
 
 **Environment variable names:** `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`, `VITE_USE_FIREBASE_EMULATORS`, `FIREBASE_SERVICE_ACCOUNT_BASE64`, `FIREBASE_PROJECT_ID`, `NODE_ENV`, `TRUST_PROXY_HOPS`, `PORT` (set by the host automatically).
 
-**Secrets handling note:** keep the Firebase service-account key file outside the project directory entirely (not just gitignored) to avoid any risk of accidental commit.
+**Secrets handling note:** keep the Firebase service-account key file outside the project directory entirely (not just gitignored). On 2026-11-03 a key file was accidentally committed and pushed. The key was replaced in Firebase and Render and the old one deleted, but the old key remains in Git history on `phase-1-foundation` and `phase-2-athlete-dashboard`. It is harmless now that it is revoked.
