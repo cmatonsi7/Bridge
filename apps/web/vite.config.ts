@@ -14,9 +14,9 @@ export default defineConfig({
     // real source files/lines instead of minified chunk positions.
     sourcemap: true,
     chunkSizeWarningLimit: 900,
-    // No manual chunk splitting: forcing React into its own vendor chunk alongside lazy-loaded
-    // routes caused a production-only crash ("n is not a function" inside the React scheduler) —
-    // a known failure mode when manualChunks and React.lazy() interact badly. Rollup's automatic
-    // chunking is slightly less size-optimal but far more reliable; the bundle is still small.
+    // No manual chunk splitting. This was briefly suspected as the cause of a production
+    // crash, but the real cause was an unguarded window.scrollTo call in PublicLayout's
+    // navigation effect (see layouts/PublicLayout.tsx). Left reverted anyway since automatic
+    // chunking is simpler and the bundle size difference is negligible.
   },
 });
