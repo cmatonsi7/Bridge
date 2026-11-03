@@ -13,3 +13,6 @@ firestore-debug.log
 ui-debug.log
 .firebase/
 coverage/
+
+servicekey*
+*.b64
