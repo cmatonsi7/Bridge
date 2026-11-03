@@ -26,7 +26,12 @@ service cloud.firestore {
       // Date of birth and mobile. Never public. Changing DOB would change minor status, so it is server-only.
       match /private/{docId} {
         allow read: if isSelf(uid) || isAdmin();
-        allow write: if false;
+        allow create, delete: if false;
+        // The owner may change their mobile number (Settings). DOB stays server-only, since it decides minor status.
+        allow update: if isSelf(uid)
+          && changed().hasOnly(['mobile'])
+          && request.resource.data.mobile is string
+          && request.resource.data.mobile.matches('^\\+?[0-9]{9,15}$');
       }
     }
 
@@ -39,10 +44,61 @@ service cloud.firestore {
         && (!('visibility' in request.resource.data) || request.resource.data.visibility in ['private', 'members', 'public']);
     }
 
+    // ---- Athlete profiles (Phase 2a). Lists must match packages/shared/src/athlete.ts exactly. ----
+    function sports() {
+      return ['Football', 'Rugby', 'Cricket', 'Netball', 'Athletics', 'Swimming', 'Hockey', 'Basketball',
+              'Tennis', 'Golf', 'Boxing', 'Volleyball', 'Gymnastics', 'Cycling', 'Rowing', 'Squash'];
+    }
+    function skills() {
+      return ['Teamwork', 'Leadership', 'Discipline', 'Communication', 'Technical Ability',
+              'Game Intelligence', 'Fitness & Conditioning', 'Coachability', 'Resilience', 'Time Management'];
+    }
+    function interests() {
+      return sports().concat(['Strength & Conditioning', 'Sports Science', 'Coaching', 'Sports Media', 'Event Management']);
+    }
+    function provinces() {
+      return ['Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal', 'Limpopo', 'Mpumalanga',
+              'Northern Cape', 'North West', 'Western Cape'];
+    }
+    function optText(d, k, max) { return !(k in d) || d[k] == null || (d[k] is string && d[k].size() <= max); }
+    function validAthleteProfile(d) {
+      return (!('sport' in d) || d.sport == null || d.sport in sports())
+        && (!('province' in d) || d.province == null || d.province in provinces())
+        && optText(d, 'position', 40) && optText(d, 'city', 60) && optText(d, 'club', 80)
+        && optText(d, 'school', 80) && optText(d, 'bio', 600)
+        && (!('experienceYears' in d) || d.experienceYears == null
+            || (d.experienceYears is int && d.experienceYears >= 0 && d.experienceYears <= 40))
+        && (!('skills' in d) || (d.skills is list && d.skills.size() <= 10 && d.skills.hasOnly(skills())))
+        && (!('interests' in d) || (d.interests is list && d.interests.size() <= 12 && d.interests.hasOnly(interests())))
+        && (!('privacy' in d) || (d.privacy is map
+            && d.privacy.keys().hasOnly(['discoverable', 'showAchievements', 'allowEnquiries'])
+            && d.privacy.discoverable is bool && d.privacy.showAchievements is bool && d.privacy.allowEnquiries is bool))
+        && d.updatedAt is string;
+    }
+
     match /athleteProfiles/{uid} {
       allow read: if isSelf(uid) || isAdmin();
       allow create, delete: if false;
-      allow update: if profileUpdateAllowed(uid);
+      allow update: if profileUpdateAllowed(uid)
+        && changed().hasOnly(['sport', 'position', 'city', 'province', 'club', 'school', 'experienceYears',
+                              'bio', 'skills', 'interests', 'privacy', 'visibility', 'displayName', 'updatedAt'])
+        && validAthleteProfile(request.resource.data);
+
+      // Achievements: the athlete manages their own list.
+      match /achievements/{achievementId} {
+        function validAchievement(d) {
+          return d.keys().hasOnly(['title', 'year', 'organisation', 'detail', 'createdAt', 'updatedAt'])
+            && d.title is string && d.title.size() >= 2 && d.title.size() <= 100
+            && d.year is int && d.year >= 1950 && d.year <= 2100
+            && optText(d, 'organisation', 80) && optText(d, 'detail', 200)
+            && d.createdAt is string && d.updatedAt is string;
+        }
+        allow read: if isSelf(uid) || isAdmin();
+        allow create: if isSelf(uid) && validAchievement(request.resource.data);
+        allow update: if isSelf(uid) && validAchievement(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if isSelf(uid);
+      }
     }
     match /coachProfiles/{uid} {
       allow read: if isSelf(uid) || isAdmin();

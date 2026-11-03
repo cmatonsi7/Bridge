@@ -121,3 +121,84 @@
     display: block !important;
   }
 }
+
+/* ---- Phase 2a: athlete profile editing ---- */
+/* Selectable pills for fixed-list fields (skills, interests). Matches .sb-pill visually. */
+.sb-chip {
+  font-size: 9px;
+  border: 1px solid #dde6e0;
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px 9px;
+  color: #53645a;
+  cursor: pointer;
+}
+.sb-chip[aria-pressed='true'] {
+  background: #e7f4eb;
+  border-color: #006b35;
+  color: #006b35;
+  font-weight: 800;
+}
+.sb-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.sb-field .field-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #b42318;
+}
+.sb-field [aria-invalid='true'] {
+  border-color: #b42318;
+}
+.sb-field input[readonly] {
+  background: #f4f6f5;
+  color: #6b7a71;
+}
+.sb-field-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+  color: #6b7a71;
+}
+/* The prototype's .sb-switch was a span; ours is a real button for keyboard/screen-reader use. */
+button.sb-switch {
+  border: 0;
+  padding: 0;
+  flex: 0 0 34px;
+}
+.sb-form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+.sb-form-status {
+  font-size: 10px;
+  font-weight: 700;
+  margin-right: auto;
+  align-self: center;
+}
+.sb-form-status.ok {
+  color: #0a5c33;
+}
+.sb-form-status.err {
+  color: #b42318;
+}
+.sb-empty {
+  padding: 22px;
+  text-align: center;
+  font-size: 10px;
+  color: #6b7a71;
+}
+.sb-achievement-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sb-achievement-actions .sb-btn {
+  padding: 5px 9px;
+  font-size: 9px;
+}

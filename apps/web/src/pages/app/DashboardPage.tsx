@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Hand } from 'lucide-react';
 import { ROLE_LABELS } from '@sportbridge/shared';
 import { effectiveRole, useAuth } from '../../features/auth/AuthProvider';
+import { AthleteDashboardProgress } from '../../features/athlete/AthleteDashboardProgress';
 
 const COPY = {
   athlete:
@@ -62,18 +63,22 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="sb-card role-dashboard-shortcut" style={{ marginTop: 18 }}>
-        <div className="role-dashboard-shortcut-main">
-          <div>
-            <div className="sb-kicker">YOUR DASHBOARD</div>
-            <h3>{ROLE_LABELS[role]} dashboard</h3>
-            <p className="sb-meta">
-              Your account is set up. Your full {ROLE_LABELS[role].toLowerCase()} dashboard, with your
-              profile, connections and activity, is being added next.
-            </p>
+      {role === 'athlete' ? (
+        <AthleteDashboardProgress uid={state.user.uid} />
+      ) : (
+        <div className="sb-card role-dashboard-shortcut" style={{ marginTop: 18 }}>
+          <div className="role-dashboard-shortcut-main">
+            <div>
+              <div className="sb-kicker">YOUR DASHBOARD</div>
+              <h3>{ROLE_LABELS[role]} dashboard</h3>
+              <p className="sb-meta">
+                Your account is set up. Your full {ROLE_LABELS[role].toLowerCase()} dashboard, with your
+                profile, connections and activity, is being added next.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }
