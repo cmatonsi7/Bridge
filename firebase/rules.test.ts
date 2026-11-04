@@ -193,3 +193,32 @@ describe('guardians (Phase 2b)', () => {
     await assertFails(getDoc(doc(as('dad', { role: 'guardian' }), 'athleteProfiles/teen2')));
   });
 });
+
+describe('coach profiles (Phase 2c)', () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users/coach1'), user('coach1', { role: 'coach' }));
+      await setDoc(doc(db, 'coachProfiles/coach1'), { uid: 'coach1', displayName: 'C', visibility: 'members', createdAt: now, updatedAt: now });
+    });
+  });
+  const coach = () => as('coach1', { role: 'coach' });
+  it('accepts values from the fixed lists', async () => {
+    await assertSucceeds(updateDoc(doc(coach(), 'coachProfiles/coach1'), {
+      sports: ['Football'], coachingLevel: 'Club', province: 'Gauteng', experienceYears: 8,
+      specialisations: ['Youth Development'], services: ['Group Sessions'], ageGroups: ['Under 16'], updatedAt: now,
+    }));
+  });
+  it('rejects values outside the lists and unknown fields', async () => {
+    await assertFails(updateDoc(doc(coach(), 'coachProfiles/coach1'), { coachingLevel: 'Galactic', updatedAt: now }));
+    await assertFails(updateDoc(doc(coach(), 'coachProfiles/coach1'), { services: ['Babysitting'], updatedAt: now }));
+    await assertFails(updateDoc(doc(coach(), 'coachProfiles/coach1'), { verified: true, updatedAt: now }));
+  });
+  it('lets the coach manage their own qualifications, nobody else', async () => {
+    const q = { title: 'SAFA C Licence', issuer: 'SAFA', year: 2022, createdAt: now, updatedAt: now };
+    await assertSucceeds(setDoc(doc(coach(), 'coachProfiles/coach1/qualifications/q1'), q));
+    await assertFails(setDoc(doc(as('alice'), 'coachProfiles/coach1/qualifications/q2'), q));
+    await assertFails(setDoc(doc(coach(), 'coachProfiles/coach1/qualifications/q3'), { ...q, verified: true }));
+    await assertFails(getDoc(doc(as('alice'), 'coachProfiles/coach1/qualifications/q1')));
+  });
+});

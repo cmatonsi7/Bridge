@@ -1,79 +1,52 @@
-# SportBridge
+# PROJECT_STATUS — SportBridge
 
-Sports ecosystem platform connecting athletes, parents/guardians, coaches and organisations.
-React + Vite + TypeScript frontend, Node/Express API, Firebase (Auth, Firestore, Storage), hosted on Railway.
+_Last updated: 2026-11-04 · Phases 1, 2a and 2b accepted. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
 
-Project status and decisions: see [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+## Phase progress
+| Phase | Status |
+|---|---|
+| 1 Foundation & authentication | Accepted |
+| 2a Athlete dashboard | Accepted |
+| 2b Parent / Guardian dashboard | Accepted (match-on-sign-up linking) |
+| 2c Coach dashboard | Not started |
+| 2d Organisation dashboard | Not started |
+| 3 Core features (opportunities, applications, discovery, connections) | Not started |
+| 4 Membership & payments | Blocked on client pricing |
+| 5 Messaging & admin dashboard | Not started |
+| 6 Production readiness | Not started |
 
-## Repository layout
+## Key decisions
+- **Host:** Render (Railway had sign-ups disabled during its October incident). Same code runs on either.
+- **Database:** Firebase, region africa-south1. Firestore rules deployed; Storage not yet (needs Blaze plan).
+- **Fixed lists** (sports, skills, interests, provinces) live in `packages/shared/src/athlete.ts`. The Firestore rules repeat them, so change both together.
+- **Guardian linking:** match on sign-up. Parents see requests addressed to their verified email. No email service yet.
+- **Consent:** server-side confirm, decline and withdraw, each audited.
+- **Minors:** under-18 accounts start restricted until a parent confirms.
 
-```
-apps/web          React app (public site, auth, signed-in app shell)
-apps/api          Express API (onboarding, privileged operations); serves the built web app in production
-packages/shared   Roles, validation schemas, data models shared by web and API
-firebase/         Firestore + Storage security rules and their tests
-tools/            One-time prototype migration script
-```
+## Open client decisions
+- Membership plan names, prices and benefits (the prototype's public and in-app prices disagree).
+- Legal documents: privacy policy, terms, POPIA notice. Terms version is `2026-11-draft` until these arrive.
+- Confirm age rules: minimum self-registration age 13; under-18s may only be athletes.
+- Coach qualification verification: self-declared, or verified by SportBridge staff?
+- Whether public listings show real data or sample cards until Phase 3.
 
-## Local development
+## Known gaps
+- Firestore and Storage rules tests (26) are written but not run locally (needs Java and emulators).
+- Storage uploads (photos, documents, media) are deferred until the Blaze plan.
+- Guardians cannot yet control what others see about their child (needs Phase 3 discovery).
+- Older test accounts created before the name-on-request change show "A SportBridge athlete".
+- Parent notification: parents are not emailed. They must sign up with the address the child gave.
 
-Requires Node 22 (see `.nvmrc`). For rules tests and emulators you also need Java 17+.
+## Architecture
+- `apps/web`: React, Vite, Tailwind, React Router. Role dashboards under `pages/app`, data services under `features/`.
+- `apps/api`: Express. Onboarding and guardian routes. Serves the built app on the same origin.
+- `packages/shared`: schemas, fixed lists, models shared by web and API.
+- `firebase/`: Firestore and Storage rules and their tests.
 
-```bash
-npm install
-cp .env.example .env          # fill in values (see Firebase setup below)
-npm run build -w packages/shared
-npm run dev:api               # API on http://localhost:8080
-npm run dev:web               # Web on http://localhost:5173 (proxies /api to the API)
-```
+## Incident log (2026-11-02 to 2026-11-03)
+The "n is not a function" crash took five fixes. The real cause was an unguarded `window.scrollTo` in `PublicLayout.tsx`'s navigation effect, found by resolving the production sourcemap. Earlier fixes (asset 404s, CSP for Firebase Auth, translate="no", chunking) were real but not the cause, and all are kept. A regression test covers the actual cause.
 
-Checks:
+**Lesson:** when a generic minified error appears across many conditions, resolve the sourcemap against the full component stack first.
 
-```bash
-npm test             # shared + API unit tests
-npm run typecheck
-npm run test:rules   # Firestore/Storage security rules against the emulators (needs Java)
-npm run build        # production build of everything
-```
-
-To run against local emulators instead of the real project: `npm run emulators`, then set
-`VITE_USE_FIREBASE_EMULATORS=true` and, for the API, `FIRESTORE_EMULATOR_HOST=127.0.0.1:8081` and
-`FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099` in `.env`.
-
-## Firebase setup (one time)
-
-1. Go to <https://console.firebase.google.com> → **Create a project** → name it `sportbridge` (Google Analytics is optional; you can switch it off).
-2. **Upgrade to Blaze** (bottom-left plan badge → Upgrade) and link a billing account. Cloud Storage requires Blaze; normal low usage stays within the no-cost allowance. Then in Google Cloud console → **Billing → Budgets & alerts**, create a monthly budget alert.
-3. **Build → Authentication → Get started → Sign-in method → Email/Password → Enable** (leave "Email link" off). Under **Settings → User actions**, keep **Email enumeration protection** on.
-4. **Authentication → Templates**: set the sender name to *SportBridge* on the verification and password-reset emails.
-5. **Build → Firestore Database → Create database** → *Start in production mode* → location **africa-south1 (Johannesburg)**. The location cannot be changed later.
-6. **Build → Storage → Get started** → production mode → **africa-south1**.
-7. **Project settings (gear) → General → Your apps → Web (`</>`)** → nickname `sportbridge-web`, leave Firebase Hosting unticked → copy the `firebaseConfig` values into the `VITE_FIREBASE_*` variables in `.env`.
-8. **Project settings → Service accounts → Generate new private key**. Convert the downloaded file to base64 (commands in `.env.example`) and put it in `FIREBASE_SERVICE_ACCOUNT_BASE64` in `.env` and in Railway. Set `FIREBASE_PROJECT_ID`. Then delete the downloaded JSON. Never commit it, email it or paste it into a chat.
-9. Deploy the security rules from your machine:
-   ```bash
-   npx firebase login
-   npx firebase use --add        # pick the sportbridge project, alias "default"
-   npm run deploy:rules
-   ```
-
-## Railway deployment (one service)
-
-Express serves both `/api/*` and the built React app on one domain, so no CORS setup is needed.
-
-1. Push this repository to a **private** GitHub repo.
-2. <https://railway.com> → sign in with GitHub → **New Project → Deploy from GitHub repo** → choose the repo. In the service's **Settings → Source**, select the branch to deploy.
-3. **Variables**: add every name from `.env.example` with real values and `NODE_ENV=production`. Do not set `PORT` (Railway provides it). The `VITE_*` values are baked in at build time, so add them **before** the first build, or redeploy after adding them.
-4. Build and start commands come from `railway.json` (`npm ci && npm run build`, `npm start`), with a health check on `/api/health`.
-5. **Settings → Networking → Generate Domain**. Add that domain in Firebase **Authentication → Settings → Authorized domains**.
-6. Open `https://<your-domain>/api/health`. It should return `{"status":"ok"}`.
-
-## Administrators
-
-Admins are never self-registered. After the person has created an ordinary account, a trusted staff member runs, with `.env` holding the service-account key:
-
-```bash
-npm run grant-admin -w apps/api -- person@example.com
-npm run grant-admin -w apps/api -- person@example.com --revoke
-```
-The person must sign in again afterwards.
+## Secrets
+The Firebase service-account key was once committed to the repo. It was rotated in Firebase and Render, the old key deleted, and the file removed. The old key remains in Git history but is revoked. Keep key files outside the project folder.
