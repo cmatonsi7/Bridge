@@ -160,3 +160,36 @@ describe('athlete profile fields (Phase 2a)', () => {
     await assertFails(updateDoc(doc(db(), 'users/alice/private/details'), { dateOfBirth: '2015-01-01' }));
   });
 });
+
+describe('guardians (Phase 2b)', () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'guardianLinks/l2'), { athleteUid: 'teen', athleteName: 'T', guardianEmail: 'dad@example.com', guardianUid: null, status: 'pending' });
+      await setDoc(doc(db, 'users/teen2'), user('teen2', { isMinor: true, guardianUids: ['mom'] }));
+      await setDoc(doc(db, 'athleteProfiles/teen2'), { uid: 'teen2', displayName: 'T2', visibility: 'private', createdAt: now, updatedAt: now });
+      await setDoc(doc(db, 'athleteProfiles/teen2/achievements/a1'), { title: 'Champs', year: 2025, organisation: null, detail: null, createdAt: now, updatedAt: now });
+    });
+  });
+  const dad = (verified: boolean) => as('dad', { role: 'guardian', email: 'Dad@Example.com', email_verified: verified });
+
+  it('a parent sees requests addressed to their verified email only', async () => {
+    await assertSucceeds(getDoc(doc(dad(true), 'guardianLinks/l2')));
+    await assertFails(getDoc(doc(dad(false), 'guardianLinks/l2')));
+    await assertFails(getDoc(doc(as('x', { role: 'guardian', email: 'x@example.com', email_verified: true }), 'guardianLinks/l2')));
+  });
+  it('a parent cannot answer a request from the browser', async () => {
+    await assertFails(updateDoc(doc(dad(true), 'guardianLinks/l2'), { status: 'verified', guardianUid: 'dad' }));
+  });
+  it('a verified guardian can read the child profile and achievements but not edit them', async () => {
+    const mom = as('mom', { role: 'guardian' });
+    await assertSucceeds(getDoc(doc(mom, 'users/teen2')));
+    await assertSucceeds(getDoc(doc(mom, 'athleteProfiles/teen2')));
+    await assertSucceeds(getDoc(doc(mom, 'athleteProfiles/teen2/achievements/a1')));
+    await assertFails(updateDoc(doc(mom, 'athleteProfiles/teen2'), { bio: 'x', updatedAt: now }));
+    await assertFails(getDoc(doc(mom, 'users/teen2/private/details')));
+  });
+  it('an unlinked guardian cannot read the child', async () => {
+    await assertFails(getDoc(doc(as('dad', { role: 'guardian' }), 'athleteProfiles/teen2')));
+  });
+});

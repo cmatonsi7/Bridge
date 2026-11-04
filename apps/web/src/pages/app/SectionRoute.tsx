@@ -8,6 +8,7 @@ import SectionPlaceholder from './SectionPlaceholder';
 const AthleteProfilePage = lazy(() => import('./athlete/AthleteProfilePage'));
 const AthleteProgressPage = lazy(() => import('./athlete/AthleteProgressPage'));
 const AthleteSettingsPage = lazy(() => import('./athlete/AthleteSettingsPage'));
+const GuardianSettingsPage = lazy(() => import('./guardian/GuardianSettingsPage'));
 
 /** Pages that are built for a role. Anything not listed falls back to the "not available yet" placeholder. */
 const BUILT: Partial<Record<Role, Partial<Record<AppSection, ComponentType>>>> = {
@@ -15,6 +16,10 @@ const BUILT: Partial<Record<Role, Partial<Record<AppSection, ComponentType>>>> =
     profile: AthleteProfilePage,
     progress: AthleteProgressPage,
     settings: AthleteSettingsPage,
+  },
+  guardian: {
+    profile: GuardianSettingsPage,
+    settings: GuardianSettingsPage,
   },
 };
 

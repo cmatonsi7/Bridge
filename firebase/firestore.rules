@@ -12,10 +12,14 @@ service cloud.firestore {
     function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
     function userDoc(uid) { return get(/databases/$(database)/documents/users/$(uid)).data; }
     function isShortString(v, max) { return v is string && v.size() > 0 && v.size() <= max; }
+    // A verified parent/guardian of this athlete (server adds them when they confirm a request).
+    function isGuardianOf(uid) {
+      return signedIn() && request.auth.uid in userDoc(uid).get('guardianUids', []);
+    }
 
     // ---- users/{uid}: owner and admins can read; owner may only edit their name ----
     match /users/{uid} {
-      allow read: if isSelf(uid) || isAdmin();
+      allow read: if isSelf(uid) || isAdmin() || isGuardianOf(uid);
       allow create, delete: if false; // created by POST /api/onboarding
       allow update: if isSelf(uid)
         && changed().hasOnly(['firstName', 'surname', 'displayName', 'updatedAt'])
@@ -77,7 +81,7 @@ service cloud.firestore {
     }
 
     match /athleteProfiles/{uid} {
-      allow read: if isSelf(uid) || isAdmin();
+      allow read: if isSelf(uid) || isAdmin() || isGuardianOf(uid);
       allow create, delete: if false;
       allow update: if profileUpdateAllowed(uid)
         && changed().hasOnly(['sport', 'position', 'city', 'province', 'club', 'school', 'experienceYears',
@@ -93,7 +97,7 @@ service cloud.firestore {
             && optText(d, 'organisation', 80) && optText(d, 'detail', 200)
             && d.createdAt is string && d.updatedAt is string;
         }
-        allow read: if isSelf(uid) || isAdmin();
+        allow read: if isSelf(uid) || isAdmin() || isGuardianOf(uid);
         allow create: if isSelf(uid) && validAchievement(request.resource.data);
         allow update: if isSelf(uid) && validAchievement(request.resource.data)
           && request.resource.data.createdAt == resource.data.createdAt;
@@ -125,7 +129,11 @@ service cloud.firestore {
     match /guardianLinks/{linkId} {
       allow read: if isAdmin()
         || (signedIn() && resource.data.athleteUid == request.auth.uid)
-        || (signedIn() && resource.data.guardianUid == request.auth.uid);
+        || (signedIn() && resource.data.guardianUid == request.auth.uid)
+        // A parent sees requests addressed to their own verified email (match-on-sign-up).
+        || (signedIn() && request.auth.token.email_verified == true
+            && request.auth.token.email != null
+            && resource.data.guardianEmail == request.auth.token.email.lower());
       allow write: if false;
     }
 

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { effectiveRole, useAuth } from '../features/auth/AuthProvider';
 import { canAccess, type AppSection } from '../config/navigation';
+import type { Role } from '@sportbridge/shared';
 
 export function BootScreen({ label = 'Loading SportBridge…' }: { label?: string }) {
   return (
@@ -55,5 +56,12 @@ export function RequireSection({ section, children }: { section: AppSection; chi
   const { state } = useAuth();
   const role = state.status === 'signedIn' ? effectiveRole(state.claims) : undefined;
   if (!canAccess(role, section)) return <Navigate to="/app" replace />;
+  return <>{children}</>;
+}
+
+export function RequireRole({ role, children }: { role: Role; children: ReactNode }) {
+  const { state } = useAuth();
+  const r = state.status === 'signedIn' ? effectiveRole(state.claims) : undefined;
+  if (r !== role) return <Navigate to="/app" replace />;
   return <>{children}</>;
 }

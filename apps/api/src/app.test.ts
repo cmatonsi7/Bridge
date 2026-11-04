@@ -4,6 +4,8 @@ import type { DecodedIdToken } from 'firebase-admin/auth';
 import type { UserDoc } from '@sportbridge/shared';
 import { createApp } from './app.js';
 import type { AuthPort, OnboardingWrite, UserRepoPort } from './services/ports.js';
+import type { GuardianRepoPort } from './services/guardian.js';
+import type { GuardianLinkDoc } from '@sportbridge/shared';
 
 type Token = Partial<DecodedIdToken> & { uid: string; role?: string; admin?: boolean };
 
@@ -39,6 +41,19 @@ function fakes() {
       writes.push(w);
     },
   };
+  const links = new Map<string, GuardianLinkDoc>();
+  const athletes = new Map<string, { guardianUids: string[]; status: string }>();
+  const audits: Record<string, unknown>[] = [];
+  const guardians: GuardianRepoPort = {
+    async mutateLink(id, decide) {
+      const link = links.get(id) ?? null;
+      const a = link ? (athletes.get(link.athleteUid) ?? { guardianUids: [], status: 'restricted' }) : null;
+      const r = decide(link ? { ...link } : null, a ? [...a.guardianUids] : []);
+      links.set(id, { ...link!, ...r.link } as GuardianLinkDoc);
+      if (r.athlete && link) athletes.set(link.athleteUid, { status: a!.status, ...r.athlete });
+      audits.push(r.audit);
+    },
+  };
   return {
     tokens,
     claims,
@@ -46,6 +61,10 @@ function fakes() {
     writes,
     auth,
     repo,
+    guardians,
+    links,
+    athletes,
+    audits,
     failClaims: () => {
       failClaimsOnce = true;
     },
@@ -72,7 +91,7 @@ describe('API', () => {
   let app: ReturnType<typeof createApp>;
   beforeEach(() => {
     f = fakes();
-    app = createApp({ auth: f.auth, users: f.repo });
+    app = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians });
     f.tokens.set('t-jordan', { uid: 'u1', email: 'Jordan@Example.com', email_verified: false });
     f.tokens.set('t-teen', { uid: 'u2', email: 'teen@example.com' });
     f.tokens.set('t-admin', { uid: 'u3', email: 'admin@example.com', role: 'admin', admin: true });
@@ -219,5 +238,150 @@ describe('API', () => {
       .set('Content-Type', 'application/json')
       .send('{bad');
     expect(r.status).toBe(400);
+  });
+});
+
+describe('static asset serving (stale-cache protection)', () => {
+  // Regression test for the production crash where a browser holding a stale index.html
+  // requested a chunk that no longer existed, got index.html back with status 200, and
+  // executed HTML as JavaScript ("n is not a function" on every page until a hard refresh).
+  const fs = require('node:fs') as typeof import('node:fs');
+  const os = require('node:os') as typeof import('node:os');
+  const pathMod = require('node:path') as typeof import('node:path');
+
+  const dist = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'sbdist-'));
+  fs.mkdirSync(pathMod.join(dist, 'assets'), { recursive: true });
+  fs.writeFileSync(pathMod.join(dist, 'index.html'), '<!doctype html><title>SportBridge</title>');
+  fs.writeFileSync(pathMod.join(dist, 'assets', 'index-REAL.js'), 'export const ok = 1;');
+
+  const f = fakes();
+  const appWithDist = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians, webDistDir: dist });
+
+  it('serves an existing hashed asset as JavaScript', async () => {
+    const r = await request(appWithDist).get('/assets/index-REAL.js');
+    expect(r.status).toBe(200);
+    expect(r.headers['content-type']).toMatch(/javascript/);
+  });
+
+  it('404s a missing asset instead of serving the SPA shell', async () => {
+    const r = await request(appWithDist).get('/assets/index-STALEHASH.js');
+    expect(r.status).toBe(404);
+    expect(r.text).not.toMatch(/<!doctype html>/i);
+  });
+
+  it('404s any missing file-like path rather than returning HTML', async () => {
+    for (const p of ['/old-chunk.js', '/missing.css', '/nope.webp']) {
+      const r = await request(appWithDist).get(p);
+      expect(r.status).toBe(404);
+      expect(r.text).not.toMatch(/<!doctype html>/i);
+    }
+  });
+
+  it('still serves index.html for real SPA routes, uncached', async () => {
+    const r = await request(appWithDist).get('/discover');
+    expect(r.status).toBe(200);
+    expect(r.text).toMatch(/SportBridge/);
+    expect(r.headers['cache-control']).toMatch(/no-store|no-cache/);
+  });
+});
+
+describe('Content-Security-Policy allows what Firebase Auth actually needs', () => {
+  // Regression test: our CSP originally allowed scripts only from 'self'. Firebase Auth loads
+  // https://apis.google.com/js/api.js itself (for its sign-up abuse-protection / reCAPTCHA
+  // check) even when the app only uses email/password — not a Google Sign-In feature we chose.
+  // The browser silently blocked that script, which surfaced as "TypeError: n is not a
+  // function" the first time a user interacted with Auth (e.g. on /register). This pins the
+  // CSP header so the policy can't quietly regress to blocking it again.
+  it('includes apis.google.com in script-src', async () => {
+    const f = fakes();
+    const app = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians });
+    const r = await request(app).get('/api/health');
+    const csp = r.headers['content-security-policy'] as string;
+    expect(csp).toBeTruthy();
+    expect(csp).toMatch(/script-src[^;]*'self'[^;]*apis\.google\.com/);
+    expect(csp).toMatch(/connect-src[^;]*apis\.google\.com/);
+  });
+});
+
+describe('guardian links', () => {
+  let f: ReturnType<typeof fakes>;
+  let app: ReturnType<typeof createApp>;
+  const pending: GuardianLinkDoc = {
+    athleteUid: 'kid',
+    athleteName: 'Thabo Mokoena',
+    guardianEmail: 'mom@example.com',
+    guardianUid: null,
+    relationship: 'parent',
+    status: 'pending',
+    requestedAt: 't',
+    verifiedAt: null,
+    consentVersion: null,
+  };
+  beforeEach(() => {
+    f = fakes();
+    app = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians });
+    f.links.set('L1', { ...pending });
+    f.athletes.set('kid', { guardianUids: [], status: 'restricted' });
+    f.tokens.set('t-mom', { uid: 'mom', email: 'Mom@Example.com', email_verified: true, role: 'guardian' });
+    f.tokens.set('t-mom-unverified', {
+      uid: 'mom',
+      email: 'mom@example.com',
+      email_verified: false,
+      role: 'guardian',
+    });
+    f.tokens.set('t-stranger', { uid: 'x', email: 'x@example.com', email_verified: true, role: 'guardian' });
+    f.tokens.set('t-athlete', { uid: 'a', email: 'mom@example.com', email_verified: true, role: 'athlete' });
+  });
+  const post = (path: string, token: string) =>
+    request(app).post(path).set('Authorization', `Bearer ${token}`);
+
+  it('confirms a request addressed to the parent (email match is case-insensitive)', async () => {
+    const r = await post('/api/guardian/links/L1/confirm', 't-mom');
+    expect(r.status).toBe(200);
+    expect(f.links.get('L1')).toMatchObject({ status: 'verified', guardianUid: 'mom' });
+    expect(f.links.get('L1')!.consentVersion).toBeTruthy();
+    expect(f.athletes.get('kid')).toEqual({ guardianUids: ['mom'], status: 'active' });
+    expect(f.audits[0]).toMatchObject({ type: 'guardian.confirmed', athleteUid: 'kid', guardianUid: 'mom' });
+  });
+
+  it('refuses unverified emails, non-guardians and other parents', async () => {
+    expect((await post('/api/guardian/links/L1/confirm', 't-mom-unverified')).status).toBe(403);
+    expect((await post('/api/guardian/links/L1/confirm', 't-athlete')).status).toBe(403);
+    expect((await post('/api/guardian/links/L1/confirm', 't-stranger')).status).toBe(404);
+    expect((await post('/api/guardian/links/NOPE/confirm', 't-mom')).status).toBe(404);
+    expect(f.links.get('L1')!.status).toBe('pending');
+    expect(f.athletes.get('kid')!.status).toBe('restricted');
+  });
+
+  it('declines without granting access', async () => {
+    expect((await post('/api/guardian/links/L1/decline', 't-mom')).status).toBe(200);
+    expect(f.links.get('L1')!.status).toBe('declined');
+    expect(f.athletes.get('kid')).toEqual({ guardianUids: [], status: 'restricted' });
+  });
+
+  it('cannot answer a request twice', async () => {
+    await post('/api/guardian/links/L1/confirm', 't-mom');
+    expect((await post('/api/guardian/links/L1/decline', 't-mom')).status).toBe(409);
+    expect((await post('/api/guardian/links/L1/confirm', 't-mom')).status).toBe(409);
+  });
+
+  it('withdrawing consent restricts the child again, and only the linked parent can do it', async () => {
+    await post('/api/guardian/links/L1/confirm', 't-mom');
+    expect((await post('/api/guardian/links/L1/revoke', 't-stranger')).status).toBe(404);
+    expect((await post('/api/guardian/links/L1/revoke', 't-mom')).status).toBe(200);
+    expect(f.links.get('L1')!.status).toBe('revoked');
+    expect(f.athletes.get('kid')).toEqual({ guardianUids: [], status: 'restricted' });
+  });
+
+  it('keeps the child active if another verified guardian remains', async () => {
+    f.athletes.set('kid', { guardianUids: ['dad'], status: 'active' });
+    await post('/api/guardian/links/L1/confirm', 't-mom');
+    await post('/api/guardian/links/L1/revoke', 't-mom');
+    expect(f.athletes.get('kid')).toEqual({ guardianUids: ['dad'], status: 'active' });
+  });
+
+  it('rejects malformed ids and unauthenticated calls', async () => {
+    expect((await post('/api/guardian/links/bad$id/confirm', 't-mom')).status).toBe(400);
+    expect((await request(app).post('/api/guardian/links/L1/confirm')).status).toBe(401);
   });
 });

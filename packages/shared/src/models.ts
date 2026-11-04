@@ -27,6 +27,8 @@ export interface UserDoc {
   isMinor: boolean; // server-computed from DOB
   onboardingComplete: boolean; // server-written
   organisationId?: string; // server-written for organisation owners
+  /** Verified guardians of a minor athlete (server-written when a parent confirms a link). */
+  guardianUids?: string[];
   termsVersion: string;
   termsAcceptedAt: IsoDateTime;
   createdAt: IsoDateTime;
@@ -39,11 +41,13 @@ export interface PrivateDetailsDoc {
   mobile: string;
 }
 
-export type GuardianLinkStatus = 'pending' | 'verified' | 'revoked';
+export type GuardianLinkStatus = 'pending' | 'verified' | 'declined' | 'revoked';
 
 /** guardianLinks/{linkId} — server-written only. */
 export interface GuardianLinkDoc {
   athleteUid: string;
+  /** Child's display name, so the parent recognises the request before any access is granted. */
+  athleteName?: string;
   guardianEmail: string;
   guardianUid: string | null; // set when the guardian accepts (Phase 2)
   relationship: GuardianRelationship;
@@ -51,6 +55,8 @@ export interface GuardianLinkDoc {
   requestedAt: IsoDateTime;
   verifiedAt: IsoDateTime | null;
   consentVersion: string | null;
+  /** Set when the parent declines or later withdraws consent. */
+  closedAt?: IsoDateTime | null;
 }
 
 export interface OrganisationDoc {

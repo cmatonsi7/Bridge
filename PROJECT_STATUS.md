@@ -1,6 +1,6 @@
 # PROJECT_STATUS — SportBridge
 
-_Last updated: 2026-11-03 · **Phase 2a (Athlete dashboard) accepted.** Phase 1 accepted. Live at https://bridge-ekz6.onrender.com (Render, not Railway — see D)._
+_Last updated: 2026-11-03 · **Phase 2b (Parent / Guardian) code complete on branch `phase-2-parent-dashboard`, awaiting review.** Phase 2a accepted. Phase 1 accepted. Live at https://bridge-ekz6.onrender.com (Render, not Railway — see D)._
 
 ## A. Project overview
 - **Purpose:** turn the approved HTML prototype (`SportBridge_UI_Fixed.html` + assets) into a production platform connecting athletes, parents/guardians, coaches, organisations and administrators. South African launch; minors are users.
@@ -12,7 +12,8 @@ _Last updated: 2026-11-03 · **Phase 2a (Athlete dashboard) accepted.** Phase 1 
 |---|---|
 | 1 Foundation & authentication | **Accepted.** Live, tested end-to-end by the client against real Firebase |
 | 2a Athlete dashboard | **Accepted.** Tested on the live site against real Firebase |
-| 2b Parent / Guardian · 2c Coach · 2d Organisation | Not started |
+| 2b Parent / Guardian | **Code complete, awaiting review** (branch `phase-2-parent-dashboard`) |
+| 2c Coach · 2d Organisation | Not started |
 | 3 Core features | Not started |
 | 4 Membership & payments | Not started (blocked on client pricing) |
 | 5 Messaging & admin | Not started |
@@ -35,6 +36,15 @@ _Last updated: 2026-11-03 · **Phase 2a (Athlete dashboard) accepted.** Phase 1 
 - Dashboard: athletes see a real "Your Progress" card with the next step, replacing the placeholder.
 - Fixed lists in `packages/shared/src/athlete.ts`: 16 sports, 10 skills, 5 adjacent interests, 9 provinces. **Firestore rules repeat these lists — change both together.** Position is free text by decision (per-sport lists later if wanted).
 - Deliberately deferred: Media & Videos and Documents tabs (need Storage/Blaze — show "coming soon"), Calendar (needs Phase 3 opportunity data), Development focus (needs a connected coach — shows an explanation), Notifications/Membership/Connected Accounts settings tabs.
+
+**Implemented in Phase 2b (Parent / Guardian)** — linking by **match on sign-up** (no email service, client decision 2026-11-03)
+- Restricted (under-18) athletes see which email their parent must register with; declined / withdrawn requests are explained.
+- Parent dashboard (prototype "Family Sporting Hub"): pending requests addressed to the parent's **verified** email, each with a consent checkbox, **Confirm & give consent** and **This is not my child**; confirmed children as cards with sport, position and real profile completion; instructions for connecting another child.
+- Child profile (`/app/children/:childUid`, guardians only): read-only profile, completion, achievements, consent record (date + terms version) and **Withdraw consent**.
+- Parent settings / profile: read-only email, phone, name.
+- Server API `POST /api/guardian/links/:id/{confirm|decline|revoke}`: guardian role + verified email required; request must be addressed to the caller's email (case-insensitive); can't be answered twice; atomic transaction updates the link, the child's `users.guardianUids` and `status` (`active` on confirm; back to `restricted` when the last guardian withdraws) and writes an audit entry.
+- Rules: parents read links addressed to their verified email; verified guardians read the child's `users` doc, athlete profile and achievements (read-only; never private details); links stay server-write only. `guardianLinks` now store `athleteName` (new sign-ups only; older pending links show "A SportBridge athlete").
+- Deferred: guardian-controlled visibility of the child's profile (needs Discovery, Phase 3); guardians adding under-13 children themselves; email invites to parents (can be added later without rework).
 
 **Not yet implemented (by design, later phases):** role dashboards, profiles, uploads, opportunities/applications/saved/directory/sponsorship, guardian invite email + acceptance, memberships/payments, messaging, admin UI, top-bar search and notifications.
 
@@ -84,12 +94,13 @@ _Last updated: 2026-11-03 · **Phase 2a (Athlete dashboard) accepted.** Phase 1 
 |---|---|
 | Shared unit tests (age, validation) | 8/8 pass |
 | Shared unit tests (athlete lists, schemas, completion) | 9 more, 17/17 total pass |
-| Web tests (dashboard, PublicLayout crash repro, athlete Profile/Progress/Settings pages) | 13/13 pass |
-| API tests (auth, onboarding, minors, orgs, idempotency, claim repair, errors) | 12/12 pass |
+| Web tests (dashboard, PublicLayout crash repro, athlete pages, parent dashboard/child page/athlete notice) | 21/21 pass |
+| API tests (onboarding, guardian confirm/decline/revoke, static serving, CSP) | 24/24 pass |
 | Typecheck (shared, web, api) | pass |
 | Production build (`npm run build`) | pass |
 | Firestore rules deployed to sportbridge-4861e | done, including the Phase 2a athlete rules. Storage rules written, not yet deployed (needs Blaze) |
-| Firestore/Storage rules tests (22, incl. 5 for athlete fields, achievements, mobile) | written, not yet run (needs Java + emulators) |
+| Firestore/Storage rules tests (26, incl. athlete and guardian access) | written, not yet run (needs Java + emulators) |
+| Parent flow against real Firebase | **not yet tested** — needs rules deploy and a live check with two accounts |
 | Athlete pages against real Firebase | **done, confirmed working on the live site** (profile view and edit, progress, achievements, settings, privacy) |
 | Registration → verify → dashboard, real Firebase, real device | **done — confirmed working by the client** |
 | Deployment | **Live on Render**: https://bridge-ekz6.onrender.com |

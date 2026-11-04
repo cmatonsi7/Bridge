@@ -5,6 +5,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { loadEnv } from './config/env.js';
 import { initFirebaseAdmin } from './config/firebaseAdmin.js';
 import { firebaseAuthPort, firestoreUserRepo } from './services/firebasePorts.js';
+import { firestoreGuardianRepo } from './services/firebaseGuardianRepo.js';
 import { createApp } from './app.js';
 
 const env = loadEnv();
@@ -15,6 +16,7 @@ const webDistDir = env.WEB_DIST_DIR ?? path.resolve(here, '../../web/dist');
 const app = createApp({
   auth: firebaseAuthPort(getAuth(firebaseApp)),
   users: firestoreUserRepo(getFirestore(firebaseApp)),
+  guardians: firestoreGuardianRepo(getFirestore(firebaseApp)),
   webDistDir,
   trustProxyHops: env.TRUST_PROXY_HOPS,
 });

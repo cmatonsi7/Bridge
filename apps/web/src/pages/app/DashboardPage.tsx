@@ -3,6 +3,8 @@ import { Hand } from 'lucide-react';
 import { ROLE_LABELS } from '@sportbridge/shared';
 import { effectiveRole, useAuth } from '../../features/auth/AuthProvider';
 import { AthleteDashboardProgress } from '../../features/athlete/AthleteDashboardProgress';
+import { AthleteGuardianNotice } from '../../features/guardian/AthleteGuardianNotice';
+import { GuardianDashboard } from '../../features/guardian/GuardianDashboard';
 
 const COPY = {
   athlete:
@@ -23,6 +25,10 @@ export default function DashboardPage() {
   const profile = typeof state.profile === 'object' ? state.profile : null;
   const firstName = profile?.firstName ?? state.user.displayName?.split(' ')[0] ?? '';
   const restricted = profile?.status === 'restricted';
+
+  if (role === 'guardian') {
+    return <GuardianDashboard uid={state.user.uid} email={state.user.email ?? ''} firstName={firstName} />;
+  }
 
   return (
     <section className="sb-page active" id="sb-page-dashboard">
@@ -50,18 +56,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {restricted && (
-        <div className="sb-member-notice" style={{ marginTop: 18 }} role="status">
-          <div>
-            <strong>Waiting for your parent or guardian</strong>
-            <span>
-              Because you are under 18, a parent or guardian must confirm your account before your profile can
-              be seen by others or you can connect with coaches and organisations. You can still explore
-              opportunities.
-            </span>
-          </div>
-        </div>
-      )}
+      {restricted && <AthleteGuardianNotice uid={state.user.uid} />}
 
       {role === 'athlete' ? (
         <AthleteDashboardProgress uid={state.user.uid} />

@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
 import { PublicLayout } from '../layouts/PublicLayout';
 import { AppShell } from '../layouts/AppShell';
-import { BootScreen, GuestOnly, RequireAccount, RequireSection, SignedInOnly } from './guards';
+import { BootScreen, GuestOnly, RequireAccount, RequireRole, RequireSection, SignedInOnly } from './guards';
 import { NAV_ITEMS } from '../config/navigation';
 import HomePage from '../pages/public/HomePage';
 import NotFoundPage from '../pages/NotFoundPage';
@@ -87,6 +87,14 @@ const router = createBrowserRouter([
     errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: page(() => import('../pages/app/DashboardPage')) },
+      {
+        path: 'children/:childUid',
+        element: (
+          <RequireRole role="guardian">
+            {page(() => import('../pages/app/guardian/ChildProfilePage'))}
+          </RequireRole>
+        ),
+      },
       ...NAV_ITEMS.filter((i) => i.section !== 'dashboard').map((item) => ({
         path: item.section,
         element: (
