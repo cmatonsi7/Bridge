@@ -32,7 +32,7 @@ export function PrivacySwitches<T extends Record<string, boolean>>({ rows, value
 
   return (
     <div>
-      <h3 style={{ fontSize: 12, marginBottom: 5 }}>Privacy &amp; visibility</h3>
+      <h3 style={{ fontSize: 14.5, marginBottom: 5 }}>Privacy &amp; visibility</h3>
       {note && (
         <p className="sb-field-hint" style={{ marginBottom: 8 }}>
           {note}

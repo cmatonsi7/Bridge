@@ -55,6 +55,10 @@ _Last updated: 2026-11-04 · Phases 1, 2a, 2b and 2c accepted. Phase 2d (Organis
 - Rules: organisation field whitelist and validation (email, phone, http/https website, fixed lists); owner can never set `verified` or change `ownerUid`.
 - Deferred: team members and permissions, opportunities and programmes (Phase 3), verification (Phase 5), logo uploads (Blaze).
 
+## Signed-in styling notes
+- The prototype styles the signed-in area at 9–12px, which is hard to read. `apps/web/src/styles/signed-in-scale.css` is **generated** from `legacy.css`: type up to 14px is scaled ~20% (larger ~10%), icons ~25%, hierarchy preserved. Regenerate rather than hand-edit if `legacy.css` changes. New signed-in text sizes in `app.css` and inline styles follow the same scale.
+- Parent, coach and organisation dashboards use the prototype's `role-dashboard-page` class on their section; without it their cards lose padding and spacing.
+
 ## Architecture
 - `apps/web`: React, Vite, Tailwind, React Router. Role dashboards under `pages/app`, data services under `features/`.
 - `apps/api`: Express. Onboarding and guardian routes. Serves the built app on the same origin.

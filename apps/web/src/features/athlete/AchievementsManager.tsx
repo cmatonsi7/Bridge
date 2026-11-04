@@ -168,7 +168,7 @@ export function AchievementsManager({
             ) : (
               <div className="sb-card" style={{ padding: 16 }} key={a.id}>
                 <span className="sb-tag">{a.year}</span>
-                <h3 style={{ fontSize: 12, margin: '10px 0 4px' }}>{a.title}</h3>
+                <h3 style={{ fontSize: 14.5, margin: '10px 0 4px' }}>{a.title}</h3>
                 <p className="sb-meta">
                   {[a.organisation, a.detail].filter(Boolean).join(' · ') || '\u00a0'}
                 </p>

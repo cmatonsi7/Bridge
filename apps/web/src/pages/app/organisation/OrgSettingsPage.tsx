@@ -54,8 +54,8 @@ export default function OrgSettingsPage() {
         <div className="sb-card sb-form-card">
           {tab === 'Account' && (
             <>
-              <h2 style={{ fontSize: 15, margin: '0 0 4px' }}>Your account</h2>
-              <p style={{ fontSize: 9, color: 'var(--sb-muted)', margin: '0 0 18px' }}>
+              <h2 style={{ fontSize: 16.5, margin: '0 0 4px' }}>Your account</h2>
+              <p style={{ fontSize: 11, color: 'var(--sb-muted)', margin: '0 0 18px' }}>
                 You are the owner of {org.data.name} on SportBridge.
               </p>
               <ContactDetails uid={me.uid} email={me.email} mobile={priv.data?.mobile ?? ''} />

@@ -1,0 +1,122 @@
+/* GENERATED from legacy.css by scaling type ~20% (sizes up to 14px) and ~10% (larger) and icons ~25%.
+ * The prototype used 9–12px text throughout the signed-in area, which is too small to read comfortably.
+ * Hierarchy is preserved. Regenerate rather than hand-edit if legacy.css changes. */
+.dashboard-context { font-size: 13px; }
+.dashboard-role-switch .sb-btn { font-size: 12px; }
+.risk-pill { font-size: 12px; }
+.v-badge { font-size: 12px; }
+#sbApp .sb-extra-field { font-size: 13px; }
+#sbApp .sb-extra-pill { font-size: 12px; }
+#sbApp .sb-extra-muted { font-size: 13px; }
+#sbApp .sb-extra-close { font-size: 22px; }
+#sbApp .sb-extra-status { font-size: 12px; }
+.sb-sport-showcase-card span { font-size: 12px; }
+.sb-sport-showcase-card h3 { font-size: 24px; }
+.sb-sport-showcase-card p { font-size: 14.5px; }
+.sb-sport-chips span { font-size: 13px; }
+.sb-support-cta p { font-size: 17px; }
+.sb-support-dialog h2 { font-size: 27.5px; }
+.sb-support-dialog p { font-size: 15.5px; }
+.sb-support-form-grid label { font-size: 14.5px; }
+.sb-sponsor-badge { font-size: 12px; }
+.sb-extra-sport-card h3 { font-size: 17.5px; }
+.sb-extra-sport-card p { font-size: 14.5px; }
+#sbOrgPipeline .sb-org-metrics h2 { font-size: 27.5px; }
+#sb-page-admin .sb-admin-main .sb-admin-page[data-admin-page="applications"] .sb-admin-row, #sb-page-admin .sb-admin-main .sb-admin-page[data-admin-page="memberships"] .sb-admin-row { font-size: 13px; }
+.sb-brand-mark { font-size: 21px; }
+.sb-brand strong { font-size: 18.5px; }
+.sb-brand small { font-size: 9.5px; }
+.sb-nav-label { font-size: 11px; }
+.sb-nav button { font-size: 14.5px; }
+.sb-nav button .ico { font-size: 17px; }
+.sb-badge { font-size: 11px; }
+.sb-mobile-menu { font-size: 24px; }
+.sb-search { font-size: 13px; }
+.sb-user-text b { font-size: 13px; }
+.sb-user-text span { font-size: 11px; }
+.sb-kicker { font-size: 11px; }
+.sb-page h1 { font-size: 32px; }
+.sb-page-head p { font-size: 14.5px; }
+.sb-btn { font-size: 13px; }
+.sb-section-title h2 { font-size: 17.5px; }
+.sb-section-title a { font-size: 12px; }
+.sb-tag { font-size: 9.5px; }
+.sb-op-body h3 { font-size: 15.5px; }
+.sb-meta { font-size: 12px; }
+.sb-chip { font-size: 9.5px; }
+.sb-link { font-size: 11px; }
+.sb-ring span { font-size: 23px; }
+.sb-check { font-size: 12px; }
+.sb-check i { font-size: 11px; width: 20px; height: 20px; }
+.sb-date { font-size: 11px; }
+.sb-event b { font-size: 13px; }
+.sb-event span { font-size: 11px; }
+.sb-hero h2 { font-size: 28.5px; }
+.sb-hero p { font-size: 13px; }
+.sb-mini-card b { font-size: 24px; }
+.sb-mini-card span { font-size: 11px; }
+.sb-input, .sb-select { font-size: 12px; }
+.sb-filter-group h4 { font-size: 12px; }
+.sb-checkbox { font-size: 11px; }
+.sb-profile-nav button { font-size: 12px; }
+.sb-profile-top h2 { font-size: 22px; }
+.sb-profile-top p { font-size: 12px; }
+.sb-verified { font-size: 11px; }
+.sb-detail h4 { font-size: 12px; }
+.sb-detail p { font-size: 12px; }
+.sb-pill { font-size: 9.5px; }
+.sb-chat-search input { font-size: 12px; }
+.sb-convo-main b { font-size: 12px; }
+.sb-convo-main span { font-size: 11px; }
+.sb-convo-time { font-size: 9.5px; }
+.sb-chat-head b { font-size: 13px; }
+.sb-chat-head span { font-size: 9.5px; }
+.sb-msg { font-size: 12px; }
+.sb-msg small { font-size: 8.5px; }
+.sb-chat-compose input { font-size: 12px; }
+.sb-popular-label { font-size: 9.5px; }
+.sb-plan h3 { font-size: 17.5px; }
+.sb-plan .desc { font-size: 12px; }
+.sb-price { font-size: 32px; }
+.sb-price span { font-size: 12px; }
+.sb-plan li { font-size: 11px; }
+.sb-membership-banner b { font-size: 14.5px; }
+.sb-membership-banner p { font-size: 11px; }
+.sb-calendar-head b { font-size: 17px; }
+.sb-cal-cell { font-size: 11px; }
+.sb-cal-event { font-size: 8.5px; }
+.sb-settings-nav button { font-size: 12px; }
+.sb-field label { font-size: 11px; }
+.sb-field input, .sb-field select, .sb-field textarea { font-size: 12px; }
+.sb-switch-row { font-size: 12px; }
+.sb-admin-side b { font-size: 14.5px; }
+.sb-admin-side button { font-size: 11px; }
+.sb-tr { font-size: 11px; }
+.sb-status { font-size: 8.5px; }
+.sb-toast { font-size: 12px; }
+.plan-icon .icon, .sb-plan > div:first-child .icon { width: 26px; height: 26px; }
+.sb-search > .icon { width: 17px; height: 17px; }
+.sb-nav button .ico .icon { width: 20px; height: 20px; }
+.sb-icon-btn .icon { width: 20px; height: 20px; }
+.sb-bookmark .icon { width: 19px; height: 19px; }
+.sb-check i .icon, .verified .icon { width: 12px; height: 12px; }
+.sb-status { font-size: 11px; }
+#sb-page-admin .sb-admin-side b { font-size: 11px; }
+#sb-page-admin .sb-admin-side button { font-size: 13px; }
+#sb-page-admin .sb-admin-card p, #sb-page-admin .sb-admin-card .sb-meta { font-size: 12px; }
+#sb-page-admin .sb-admin-row, #sb-page-sessions .sb-admin-row { font-size: 14.5px; }
+#sb-page-admin .sb-admin-row small, #sb-page-sessions .sb-admin-row small { font-size: 12px; }
+#sb-page-admin .sb-admin-row.head, #sb-page-sessions .sb-admin-row.head { font-size: 11px; }
+#sb-page-admin .sb-switch-row { font-size: 14.5px; }
+#sb-page-applications .sb-admin-row.head { font-size: 11px; }
+.sb-deadline-expired { font-size: 11px; }
+.sb-deadline-current { font-size: 11px; }
+.sb-membership-lock-card h2 { font-size: 25.5px; }
+.sb-membership-lock-card p { font-size: 15.5px; }
+.sb-member-notice { font-size: 14.5px; }
+.sb-subscription-overview table { font-size: 14.5px; }
+#sb-page-opportunities .sb-sport-tile b { font-size: 17px; }
+.sb-account-prompt-card p { font-size: 17px; }
+.sb-account-prompt-card label { font-size: 15.5px; }
+.sb-account-close { font-size: 29.5px; }
+.sb-account-hint { font-size: 14.5px; }

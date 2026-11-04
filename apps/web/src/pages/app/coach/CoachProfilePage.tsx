@@ -86,7 +86,7 @@ export default function CoachProfilePage() {
         <div className="sb-card sb-profile-card">
           {editing ? (
             <>
-              <h2 style={{ fontSize: 15, margin: '0 0 14px' }}>Edit profile</h2>
+              <h2 style={{ fontSize: 16.5, margin: '0 0 14px' }}>Edit profile</h2>
               <CoachProfileForm
                 uid={ctx.uid}
                 firstName={ctx.user.firstName}
@@ -137,11 +137,11 @@ export default function CoachProfilePage() {
                     </p>
                     <div style={{ marginTop: 11, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
                       <div>
-                        <b style={{ fontSize: 8 }}>Organisation</b>
+                        <b style={{ fontSize: 9.5 }}>Organisation</b>
                         <p>{p?.organisation || <Muted>—</Muted>}</p>
                       </div>
                       <div>
-                        <b style={{ fontSize: 8 }}>Experience</b>
+                        <b style={{ fontSize: 9.5 }}>Experience</b>
                         <p>
                           {p?.experienceYears != null ? (
                             `${p.experienceYears} year${p.experienceYears === 1 ? '' : 's'}`

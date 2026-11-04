@@ -20,7 +20,7 @@ export function GuardianDashboard({
   const loadError = pending.status === 'error' || children.status === 'error';
 
   return (
-    <section className="sb-page active" id="sb-page-dashboard">
+    <section className="sb-page role-dashboard-page active" id="sb-page-dashboard">
       <div className="sb-page-head">
         <div>
           <div className="sb-kicker">PARENT DASHBOARD</div>

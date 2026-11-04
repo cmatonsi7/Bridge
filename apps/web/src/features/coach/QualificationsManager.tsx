@@ -162,7 +162,7 @@ export function QualificationsManager({ uid, items }: { uid: string; items: Qual
             ) : (
               <div className="sb-card" style={{ padding: 16 }} key={q.id}>
                 <span className="v-badge pending">Self-declared</span>
-                <h3 style={{ fontSize: 12, margin: '10px 0 4px' }}>{q.title}</h3>
+                <h3 style={{ fontSize: 14.5, margin: '10px 0 4px' }}>{q.title}</h3>
                 <p className="sb-meta">{[q.issuer, q.year].filter(Boolean).join(' · ') || '\u00a0'}</p>
                 <div className="sb-achievement-actions">
                   <button type="button" className="sb-btn" onClick={() => setEditing(q.id)}>

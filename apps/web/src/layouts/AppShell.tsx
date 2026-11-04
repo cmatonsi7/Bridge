@@ -167,7 +167,7 @@ export function AppShell() {
                   background: '#006B35',
                   color: '#fff',
                   fontWeight: 800,
-                  fontSize: 12,
+                  fontSize: 14.5,
                 }}
               >
                 {initials}

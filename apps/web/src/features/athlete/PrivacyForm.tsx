@@ -41,7 +41,7 @@ export function PrivacyForm({
 
   return (
     <div>
-      <h3 style={{ fontSize: 12, marginBottom: 5 }}>Privacy &amp; visibility</h3>
+      <h3 style={{ fontSize: 14.5, marginBottom: 5 }}>Privacy &amp; visibility</h3>
       {isMinor && (
         <p className="sb-field-hint" style={{ marginBottom: 8 }}>
           Your profile stays private until a parent or guardian confirms your account. These preferences will

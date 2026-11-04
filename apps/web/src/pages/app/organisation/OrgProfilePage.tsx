@@ -89,7 +89,7 @@ export default function OrgProfilePage() {
         <div className="sb-card sb-profile-card">
           {editing ? (
             <>
-              <h2 style={{ fontSize: 15, margin: '0 0 14px' }}>Edit organisation</h2>
+              <h2 style={{ fontSize: 16.5, margin: '0 0 14px' }}>Edit organisation</h2>
               <OrgProfileForm
                 orgId={orgId}
                 org={o}

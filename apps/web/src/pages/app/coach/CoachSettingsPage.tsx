@@ -51,7 +51,7 @@ export default function CoachSettingsPage() {
         <div className="sb-card sb-form-card">
           {tab === 'Account' && (
             <>
-              <h2 style={{ fontSize: 15, margin: '0 0 18px' }}>Account Settings</h2>
+              <h2 style={{ fontSize: 16.5, margin: '0 0 18px' }}>Account Settings</h2>
               <ContactDetails uid={ctx.uid} email={ctx.email} mobile={priv.data?.mobile ?? ''} />
               <CoachProfileForm
                 uid={ctx.uid}
