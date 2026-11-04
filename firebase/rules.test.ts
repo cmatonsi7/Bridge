@@ -67,8 +67,10 @@ describe('users', () => {
     const db = as('alice', { role: 'athlete' });
     await assertSucceeds(updateDoc(doc(db, 'users/alice'), { firstName: 'Ali', displayName: 'Ali B', updatedAt: now }));
     await assertFails(updateDoc(doc(db, 'users/alice'), { role: 'organisation' }));
-    await assertFails(updateDoc(doc(db, 'users/alice'), { status: 'active' }));
-    await assertFails(updateDoc(doc(as('teen', { role: 'athlete' }), 'users/teen'), { isMinor: false }));
+    // A real change is needed here: alice is already 'active', so writing 'active' would change nothing.
+    await assertFails(updateDoc(doc(db, 'users/alice'), { status: 'suspended' }));
+    // A restricted child must not be able to lift their own restriction (only a confirming parent can, server-side).
+    await assertFails(updateDoc(doc(as('teen', { role: 'athlete' }), 'users/teen'), { status: 'active' }));    await assertFails(updateDoc(doc(as('teen', { role: 'athlete' }), 'users/teen'), { isMinor: false }));
     await assertFails(updateDoc(doc(db, 'users/alice'), { firstName: '' }));
   });
   it('nobody can delete a user doc from the client', async () => {
