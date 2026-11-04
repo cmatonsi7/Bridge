@@ -1,6 +1,6 @@
 # PROJECT_STATUS — SportBridge
 
-_Last updated: 2026-11-04 · Phases 1, 2a, 2b and 2c accepted. Phase 2d (Organisation) code complete on `phase-2-organisation-dashboard`, awaiting review. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
+_Last updated: 2026-11-04 · Phases 1 and 2 (all four role dashboards) accepted. Phase 3a (Listings) code complete on `phase-3-listings`, awaiting review. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
 
 ## Phase progress
 | Phase | Status |
@@ -9,8 +9,11 @@ _Last updated: 2026-11-04 · Phases 1, 2a, 2b and 2c accepted. Phase 2d (Organis
 | 2a Athlete dashboard | Accepted |
 | 2b Parent / Guardian dashboard | Accepted (match-on-sign-up linking) |
 | 2c Coach dashboard | Accepted (credentials self-declared) |
-| 2d Organisation dashboard | Code complete, awaiting review (branch `phase-2-organisation-dashboard`) |
-| 3 Core features (opportunities, applications, discovery, connections) | Not started |
+| 2d Organisation dashboard | Accepted |
+| 3a Listings (opportunities, programmes, saved) | Code complete, awaiting review (branch `phase-3-listings`) |
+| 3b Applications | Not started |
+| 3c Directory & connections | Not started |
+| 3d Sponsorship & calendar | Not started |
 | 4 Membership & payments | Blocked on client pricing |
 | 5 Messaging & admin dashboard | Not started |
 | 6 Production readiness | Not started |
@@ -32,14 +35,32 @@ _Last updated: 2026-11-04 · Phases 1, 2a, 2b and 2c accepted. Phase 2d (Organis
 - Legal documents: privacy policy, terms, POPIA notice. Terms version is `2026-11-draft` until these arrive.
 - Confirm age rules: minimum self-registration age 13; under-18s may only be athletes.
 - Whether public listings show real data or sample cards until Phase 3.
-- Whether unverified organisations may post opportunities in Phase 3.
 
 ## Known gaps
-- Firestore and Storage rules tests (32) are written but not run locally (needs Java and emulators).
+- Firestore and Storage rules tests (34 cases) are written but not run locally (needs Java and emulators).
 - Storage uploads (photos, documents, media) are deferred until the Blaze plan.
 - Guardians cannot yet control what others see about their child (needs Phase 3 discovery).
 - Older test accounts created before the name-on-request change show "A SportBridge athlete".
 - Parent notification: parents are not emailed. They must sign up with the address the child gave.
+
+## Phase 3 decisions (approved 2026-11-04)
+1. Listing types: Trial, Scholarship, Bursary, Programme, Talent ID, High Performance, Event. Opportunities and programmes share one `listings` collection with a `kind` field.
+2. Unverified organisations may publish; their listings show "Organisation not yet verified" until admin verification (Phase 5). **Client to confirm.**
+3. Adults and parent-confirmed children may apply (3b). Restricted children can browse and save only. Membership gating comes in Phase 4.
+4. Under-18 athletes never appear in the directory or search. Organisations see a child only after the child applies to their listing.
+5. Applications: optional note plus a profile snapshot; applicants can withdraw; organisations see applicants only for their own listings.
+6. Notifications: in-app only.
+7. Sponsorship: request and express interest only; SportBridge handles no money. **Client to confirm.**
+
+## Phase 3a (Listings) summary
+- Organisations: Opportunities and Programmes sections list their own listings (draft / published / closed) with create, edit, close, and delete-draft. Form validates before saving.
+- Members (athlete, parent, coach): browse open listings with search and filters (sport, type, province, age band, cost), detail page, save / unsave, Saved page (handles removed listings).
+- Public site: Opportunities and Programmes pages show real published listings (sample cards removed there); public detail page at `/listings/:id` with sign-up / sign-in prompts.
+- Rules: published listings readable by anyone; drafts only by the owner; only an organisation owner can create for their own organisation; `orgName` / `orgVerified` must match the organisation record (no faked badges); only drafts can be deleted; saved shortlist owner-only.
+- Search: filtering happens on the device over up to 300 published listings per kind (Firestore has no free-text search). Revisit with a search service if listings grow past a few hundred.
+- Images: stock photo per sport until organisations can upload images (Blaze).
+- Apply / express interest buttons show "opening soon" until 3b.
+- Known follow-up: when an organisation's name or verification changes, existing listings update only when next edited or closed. The Phase 5 admin verification should also update that organisation's listings.
 
 ## Phase 2c (Coach) summary
 - My Profile: sports coached (up to 5), coaching level, experience, organisation, location, bio, specialisations, services, age groups; Qualifications tab (add / edit / delete, self-declared); Privacy tab.

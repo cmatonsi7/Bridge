@@ -252,3 +252,64 @@ button.sb-switch {
 #sbApp .sb-card > .v-badge {
   display: inline-block;
 }
+
+/* ---- Phase 3a: listings ---- */
+/* The prototype gives .sb-input a 220px minimum, wider than the 200px filter panel. */
+.sb-filters .sb-input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.sb-op-layout > * {
+  min-width: 0;
+}
+/* Page-level search. The topbar's .sb-search is hidden on phones, so this has its own class. */
+.sb-page-search {
+  flex: 1 1 260px;
+  height: 44px;
+  background: #fff;
+  border: 1px solid rgb(228, 234, 230);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 13px;
+  color: rgb(107, 122, 113);
+}
+.sb-page-search input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 14px;
+  color: var(--sb-ink);
+}
+.sb-page-search .icon {
+  width: 17px;
+  height: 17px;
+}
+/* Filters fold away on phones so results aren't pushed off the first screen. */
+.sb-filters > summary {
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 14px;
+  list-style: none;
+}
+.sb-filters > summary::-webkit-details-marker {
+  display: none;
+}
+.sb-filters[open] > summary {
+  margin-bottom: 12px;
+}
+@media (min-width: 901px) {
+  .sb-filters > summary {
+    display: none;
+  }
+}
+/* Disabled app buttons should look disabled. */
+#sbApp .sb-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

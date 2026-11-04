@@ -48,6 +48,10 @@ const router = createBrowserRouter([
       { path: '/coaches', element: page(() => import('../pages/public/CoachesPage')) },
       { path: '/clubs', element: page(() => import('../pages/public/ClubsPage')) },
       { path: '/resources', element: page(() => import('../pages/public/ResourcesPage')) },
+      {
+        path: '/listings/:listingId',
+        element: page(() => import('../pages/public/PublicListingDetailPage')),
+      },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
@@ -87,6 +91,23 @@ const router = createBrowserRouter([
     errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: page(() => import('../pages/app/DashboardPage')) },
+      {
+        path: 'listings/new',
+        element: (
+          <RequireRole role="organisation">
+            {page(() => import('../pages/app/listings/ListingEditorPage'))}
+          </RequireRole>
+        ),
+      },
+      {
+        path: 'listings/:listingId/edit',
+        element: (
+          <RequireRole role="organisation">
+            {page(() => import('../pages/app/listings/ListingEditorPage'))}
+          </RequireRole>
+        ),
+      },
+      { path: 'listings/:listingId', element: page(() => import('../pages/app/listings/ListingDetailPage')) },
       {
         path: 'children/:childUid',
         element: (
