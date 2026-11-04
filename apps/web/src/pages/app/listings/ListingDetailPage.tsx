@@ -3,6 +3,7 @@ import { isOpen } from '@sportbridge/shared';
 import { useListing } from '../../../features/listings/listingsService';
 import { ListingDetails } from '../../../features/listings/ListingDetails';
 import { useSaveToggle } from '../../../features/listings/useSaveToggle';
+import { ApplyPanel } from '../../../features/applications/ApplyPanel';
 import { useSignedInUser } from '../../../features/account/useSignedInUser';
 import { BootScreen } from '../../../app/guards';
 
@@ -51,14 +52,18 @@ export default function ListingDetailPage() {
             </button>
           ) : (
             <>
-              <button
-                type="button"
-                className="sb-btn primary"
-                disabled
-                title="Applications open in the next update"
-              >
-                {l.kind === 'programme' ? 'Express interest' : 'Apply'} — opening soon
-              </button>
+              {me?.user.role === 'athlete' ? (
+                <ApplyPanel listing={l} uid={me.uid} isMinor={!!me.user.isMinor} restricted={restricted} />
+              ) : me?.user.role === 'guardian' ? (
+                <p className="sb-field-hint" style={{ width: '100%' }}>
+                  Your child can apply from their own athlete account. You’ll see their applications on their
+                  page.
+                </p>
+              ) : !open ? (
+                <p className="sb-field-hint" style={{ width: '100%' }}>
+                  This listing is closed.
+                </p>
+              ) : null}
               <button
                 type="button"
                 className="sb-btn"
@@ -67,13 +72,6 @@ export default function ListingDetailPage() {
               >
                 {ids.has(l.id) ? 'Saved ✓' : 'Save'}
               </button>
-              <p className="sb-field-hint" style={{ width: '100%' }}>
-                {!open
-                  ? 'This listing is closed.'
-                  : restricted
-                    ? 'You can save this now. Applying needs a parent or guardian to confirm your account first.'
-                    : 'Applying through SportBridge is coming in the next update. Save it so you don’t lose it.'}
-              </p>
             </>
           )
         }

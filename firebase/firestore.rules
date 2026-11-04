@@ -27,6 +27,13 @@ service cloud.firestore {
         && isShortString(request.resource.data.surname, 60)
         && isShortString(request.resource.data.displayName, 121);
 
+      // In-app notifications (Phase 3b): written by the server; the owner may mark them read or delete them.
+      match /notifications/{notificationId} {
+        allow read, delete: if isSelf(uid);
+        allow create: if false;
+        allow update: if isSelf(uid) && changed().hasOnly(['read']) && request.resource.data.read is bool;
+      }
+
       // A member's shortlist of saved listings (Phase 3a).
       match /saved/{listingId} {
         allow read, delete: if isSelf(uid);
@@ -262,6 +269,15 @@ service cloud.firestore {
         && !changed().hasAny(['orgId', 'ownerUid', 'createdAt']);
       // Only drafts can be deleted; published listings are closed instead, so applicants keep a record.
       allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid && resource.data.status == 'draft';
+    }
+
+    // ---- Applications (Phase 3b). Created and changed only by the server, which applies the safeguarding checks.
+    match /applications/{applicationId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.applicantUid == request.auth.uid)
+        || (signedIn() && resource.data.ownerUid == request.auth.uid)
+        || isGuardianOf(resource.data.applicantUid);
+      allow write: if false;
     }
 
     // ---- Guardian links: visible to the athlete it concerns, the linked guardian, and admins. Server-written. ----

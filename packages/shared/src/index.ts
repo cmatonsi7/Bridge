@@ -6,3 +6,4 @@ export * from './athlete.js';
 export * from './coach.js';
 export * from './organisation.js';
 export * from './listings.js';
+export * from './applications.js';

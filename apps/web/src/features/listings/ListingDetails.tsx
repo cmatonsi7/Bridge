@@ -36,6 +36,7 @@ export function ListingDetails({
           </span>
         </p>
         <div
+          className="sb-listing-facts"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',

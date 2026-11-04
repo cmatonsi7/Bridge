@@ -6,6 +6,7 @@ import { loadEnv } from './config/env.js';
 import { initFirebaseAdmin } from './config/firebaseAdmin.js';
 import { firebaseAuthPort, firestoreUserRepo } from './services/firebasePorts.js';
 import { firestoreGuardianRepo } from './services/firebaseGuardianRepo.js';
+import { firestoreApplicationsRepo } from './services/firebaseApplicationsRepo.js';
 import { createApp } from './app.js';
 
 const env = loadEnv();
@@ -17,6 +18,7 @@ const app = createApp({
   auth: firebaseAuthPort(getAuth(firebaseApp)),
   users: firestoreUserRepo(getFirestore(firebaseApp)),
   guardians: firestoreGuardianRepo(getFirestore(firebaseApp)),
+  applications: firestoreApplicationsRepo(getFirestore(firebaseApp)),
   webDistDir,
   trustProxyHops: env.TRUST_PROXY_HOPS,
 });

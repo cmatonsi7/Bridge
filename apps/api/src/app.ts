@@ -6,6 +6,8 @@ import path from 'node:path';
 import type { AuthPort, UserRepoPort } from './services/ports.js';
 import { onboardingRouter } from './routes/onboarding.js';
 import { guardianRouter } from './routes/guardian.js';
+import { applicationsRouter } from './routes/applications.js';
+import type { ApplicationsRepoPort } from './services/applications.js';
 import type { GuardianRepoPort } from './services/guardian.js';
 import { errorHandler, notFound } from './middleware/errors.js';
 
@@ -13,6 +15,7 @@ export interface AppDeps {
   auth: AuthPort;
   users: UserRepoPort;
   guardians: GuardianRepoPort;
+  applications: ApplicationsRepoPort;
   webDistDir?: string;
   trustProxyHops?: number;
 }
@@ -70,6 +73,7 @@ export function createApp(deps: AppDeps) {
   api.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
   api.use(onboardingRouter(deps));
   api.use(guardianRouter(deps));
+  api.use(applicationsRouter(deps));
   api.use(notFound);
   app.use('/api', api);
 
