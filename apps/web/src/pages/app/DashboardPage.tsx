@@ -5,6 +5,7 @@ import { effectiveRole, useAuth } from '../../features/auth/AuthProvider';
 import { AthleteDashboardProgress } from '../../features/athlete/AthleteDashboardProgress';
 import { AthleteGuardianNotice } from '../../features/guardian/AthleteGuardianNotice';
 import { GuardianDashboard } from '../../features/guardian/GuardianDashboard';
+import { CoachDashboard } from '../../features/coach/CoachDashboard';
 
 const COPY = {
   athlete:
@@ -25,6 +26,10 @@ export default function DashboardPage() {
   const profile = typeof state.profile === 'object' ? state.profile : null;
   const firstName = profile?.firstName ?? state.user.displayName?.split(' ')[0] ?? '';
   const restricted = profile?.status === 'restricted';
+
+  if (role === 'coach') {
+    return <CoachDashboard uid={state.user.uid} firstName={firstName} />;
+  }
 
   if (role === 'guardian') {
     return <GuardianDashboard uid={state.user.uid} email={state.user.email ?? ''} firstName={firstName} />;

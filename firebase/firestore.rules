@@ -104,10 +104,55 @@ service cloud.firestore {
         allow delete: if isSelf(uid);
       }
     }
+    // ---- Coach profiles (Phase 2c). Lists must match packages/shared/src/coach.ts exactly. ----
+    function coachingLevels() { return ['Community', 'School', 'Club', 'Academy', 'Provincial', 'National', 'Professional']; }
+    function coachSpecialisations() {
+      return ['Technical Skills', 'Tactical Development', 'Strength & Conditioning', 'Speed & Agility',
+              'Goalkeeping', 'Mental Performance', 'Injury Prevention', 'Youth Development', 'Talent Identification'];
+    }
+    function coachServices() {
+      return ['One-on-One Coaching', 'Group Sessions', 'Team Coaching', 'Holiday Camps', 'Online Coaching', 'Trials Preparation'];
+    }
+    function ageGroups() { return ['Under 10', 'Under 13', 'Under 16', 'Under 19', 'Adults']; }
+    function validCoachProfile(d) {
+      return (!('sports' in d) || (d.sports is list && d.sports.size() <= 5 && d.sports.hasOnly(sports())))
+        && (!('coachingLevel' in d) || d.coachingLevel == null || d.coachingLevel in coachingLevels())
+        && (!('province' in d) || d.province == null || d.province in provinces())
+        && (!('experienceYears' in d) || d.experienceYears == null
+            || (d.experienceYears is int && d.experienceYears >= 0 && d.experienceYears <= 60))
+        && optText(d, 'organisation', 80) && optText(d, 'city', 60) && optText(d, 'bio', 800)
+        && (!('specialisations' in d) || (d.specialisations is list && d.specialisations.hasOnly(coachSpecialisations())))
+        && (!('services' in d) || (d.services is list && d.services.hasOnly(coachServices())))
+        && (!('ageGroups' in d) || (d.ageGroups is list && d.ageGroups.hasOnly(ageGroups())))
+        && (!('privacy' in d) || (d.privacy is map
+            && d.privacy.keys().hasOnly(['discoverable', 'showQualifications', 'allowEnquiries'])
+            && d.privacy.discoverable is bool && d.privacy.showQualifications is bool && d.privacy.allowEnquiries is bool))
+        && d.updatedAt is string;
+    }
+
     match /coachProfiles/{uid} {
       allow read: if isSelf(uid) || isAdmin();
       allow create, delete: if false;
-      allow update: if profileUpdateAllowed(uid);
+      allow update: if profileUpdateAllowed(uid)
+        && changed().hasOnly(['sports', 'coachingLevel', 'experienceYears', 'organisation', 'city', 'province', 'bio',
+                              'specialisations', 'services', 'ageGroups', 'privacy', 'visibility', 'displayName', 'updatedAt'])
+        && validCoachProfile(request.resource.data);
+
+      // Self-declared qualifications. Verification fields will be server-written (Phase 5).
+      match /qualifications/{qualificationId} {
+        function validQualification(d) {
+          return d.keys().hasOnly(['title', 'issuer', 'year', 'createdAt', 'updatedAt'])
+            && d.title is string && d.title.size() >= 2 && d.title.size() <= 100
+            && optText(d, 'issuer', 80)
+            && (!('year' in d) || d.year == null || (d.year is int && d.year >= 1950 && d.year <= 2100))
+            && d.createdAt is string && d.updatedAt is string;
+        }
+        allow read: if isSelf(uid) || isAdmin();
+        allow create: if isSelf(uid) && validQualification(request.resource.data);
+        allow update: if isSelf(uid) && validQualification(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if isSelf(uid);
+      }
     }
     match /guardianProfiles/{uid} {
       allow read: if isSelf(uid) || isAdmin();
