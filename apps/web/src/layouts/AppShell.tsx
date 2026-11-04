@@ -1,7 +1,6 @@
 import { useEffect, useState, type ComponentType } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Bell,
   Calendar,
   CircleUser,
   ClipboardCheck,
@@ -23,6 +22,7 @@ import {
   type LucideProps,
 } from 'lucide-react';
 import { ROLE_LABELS } from '@sportbridge/shared';
+import { NotificationsBell } from '../features/applications/NotificationsBell';
 import { effectiveRole, useAuth } from '../features/auth/AuthProvider';
 import { navFor } from '../config/navigation';
 
@@ -149,9 +149,7 @@ export function AppShell() {
             />
           </div>
           <div className="sb-top-actions">
-            <button className="sb-icon-btn" type="button" aria-label="Notifications" disabled>
-              <Bell className="icon" aria-hidden="true" />
-            </button>
+            <NotificationsBell uid={state.user.uid} />
             <button
               className="sb-user"
               type="button"

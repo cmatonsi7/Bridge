@@ -86,6 +86,11 @@ vi.mock('../features/listings/listingsService', () => ({
   deleteDraft: vi.fn(async () => {}),
 }));
 
+vi.mock('../features/applications/applicationsService', () => ({
+  useApplicationsBy: () => ({ status: 'ready', data: [] }),
+  applyTo: vi.fn(async () => ({ id: 'x' })),
+}));
+
 const at = (path: string, el: JSX.Element, route = path) =>
   render(
     <MemoryRouter initialEntries={[path]}>
@@ -135,7 +140,7 @@ describe('ListingDetailPage', () => {
     st.status = 'restricted';
     st.published = [L('a')];
     at('/app/listings/a', <ListingDetailPage />, '/app/listings/:listingId');
-    expect(screen.getByText(/needs a parent or guardian to confirm/)).toBeTruthy();
+    expect(screen.getByText(/parent or guardian needs to confirm your account/)).toBeTruthy();
   });
   it('shows the unverified organisation badge and an edit button only to the owner', () => {
     st.uid = 'o1';

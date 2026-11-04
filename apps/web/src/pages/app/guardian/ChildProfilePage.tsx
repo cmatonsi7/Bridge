@@ -7,6 +7,7 @@ import { useAchievements, useAthleteProfile } from '../../../features/athlete/at
 import { useMyChildren, withdrawConsent } from '../../../features/guardian/guardianService';
 import { ApiError } from '../../../lib/apiClient';
 import { BootScreen } from '../../../app/guards';
+import { ChildApplications } from '../../../features/applications/ChildApplications';
 
 const Muted = ({ children }: { children: string }) => <span style={{ color: '#8a978f' }}>{children}</span>;
 
@@ -137,6 +138,13 @@ export default function ChildProfilePage() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="sb-section-title">
+        <h2>Applications</h2>
+      </div>
+      <div style={{ marginBottom: 20 }}>
+        <ChildApplications childUid={childUid!} childName={name} />
       </div>
 
       <div className="sb-section-title">

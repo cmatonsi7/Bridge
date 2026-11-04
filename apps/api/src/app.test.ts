@@ -5,7 +5,8 @@ import type { UserDoc } from '@sportbridge/shared';
 import { createApp } from './app.js';
 import type { AuthPort, OnboardingWrite, UserRepoPort } from './services/ports.js';
 import type { GuardianRepoPort } from './services/guardian.js';
-import type { GuardianLinkDoc } from '@sportbridge/shared';
+import type { ApplicationsRepoPort, ApplicantRecords, Outbox } from './services/applications.js';
+import type { ApplicationDoc, GuardianLinkDoc, ListingDoc } from '@sportbridge/shared';
 
 type Token = Partial<DecodedIdToken> & { uid: string; role?: string; admin?: boolean };
 
@@ -54,6 +55,32 @@ function fakes() {
       audits.push(r.audit);
     },
   };
+  const listings = new Map<string, ListingDoc>();
+  const applicants = new Map<string, ApplicantRecords>();
+  const apps = new Map<string, ApplicationDoc>();
+  const sent: Outbox = [];
+  const applications: ApplicationsRepoPort = {
+    async getListing(id) {
+      return listings.get(id) ?? null;
+    },
+    async getApplicant(uid) {
+      return applicants.get(uid) ?? null;
+    },
+    async createApplication(id, doc, outbox, audit) {
+      if (apps.has(id)) throw new Error('ALREADY_APPLIED');
+      apps.set(id, doc);
+      sent.push(...outbox);
+      audits.push(audit);
+    },
+    async mutateApplication(id, decide) {
+      const app = apps.get(id) ?? null;
+      const g = app ? (applicants.get(app.applicantUid)?.user.guardianUids ?? []) : [];
+      const r = decide(app ? structuredClone(app) : null, g);
+      apps.set(id, { ...app!, ...r.changes });
+      sent.push(...r.outbox);
+      audits.push(r.audit);
+    },
+  };
   return {
     tokens,
     claims,
@@ -62,6 +89,11 @@ function fakes() {
     auth,
     repo,
     guardians,
+    applications,
+    listings,
+    applicants,
+    apps,
+    sent,
     links,
     athletes,
     audits,
@@ -91,7 +123,7 @@ describe('API', () => {
   let app: ReturnType<typeof createApp>;
   beforeEach(() => {
     f = fakes();
-    app = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians });
+    app = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians, applications: f.applications });
     f.tokens.set('t-jordan', { uid: 'u1', email: 'Jordan@Example.com', email_verified: false });
     f.tokens.set('t-teen', { uid: 'u2', email: 'teen@example.com' });
     f.tokens.set('t-admin', { uid: 'u3', email: 'admin@example.com', role: 'admin', admin: true });
@@ -255,7 +287,13 @@ describe('static asset serving (stale-cache protection)', () => {
   fs.writeFileSync(pathMod.join(dist, 'assets', 'index-REAL.js'), 'export const ok = 1;');
 
   const f = fakes();
-  const appWithDist = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians, webDistDir: dist });
+  const appWithDist = createApp({
+    auth: f.auth,
+    users: f.repo,
+    guardians: f.guardians,
+    applications: f.applications,
+    webDistDir: dist,
+  });
 
   it('serves an existing hashed asset as JavaScript', async () => {
     const r = await request(appWithDist).get('/assets/index-REAL.js');
@@ -294,7 +332,12 @@ describe('Content-Security-Policy allows what Firebase Auth actually needs', () 
   // CSP header so the policy can't quietly regress to blocking it again.
   it('includes apis.google.com in script-src', async () => {
     const f = fakes();
-    const app = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians });
+    const app = createApp({
+      auth: f.auth,
+      users: f.repo,
+      guardians: f.guardians,
+      applications: f.applications,
+    });
     const r = await request(app).get('/api/health');
     const csp = r.headers['content-security-policy'] as string;
     expect(csp).toBeTruthy();
@@ -319,7 +362,7 @@ describe('guardian links', () => {
   };
   beforeEach(() => {
     f = fakes();
-    app = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians });
+    app = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians, applications: f.applications });
     f.links.set('L1', { ...pending });
     f.athletes.set('kid', { guardianUids: [], status: 'restricted' });
     f.tokens.set('t-mom', { uid: 'mom', email: 'Mom@Example.com', email_verified: true, role: 'guardian' });
@@ -383,5 +426,197 @@ describe('guardian links', () => {
   it('rejects malformed ids and unauthenticated calls', async () => {
     expect((await post('/api/guardian/links/bad$id/confirm', 't-mom')).status).toBe(400);
     expect((await request(app).post('/api/guardian/links/L1/confirm')).status).toBe(401);
+  });
+});
+
+describe('applications', () => {
+  let f: ReturnType<typeof fakes>;
+  let app: ReturnType<typeof createApp>;
+  const yearsAgo = (n: number) => {
+    const d = new Date();
+    return new Date(Date.UTC(d.getUTCFullYear() - n, d.getUTCMonth(), d.getUTCDate()))
+      .toISOString()
+      .slice(0, 10);
+  };
+  const future = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+  const listing: ListingDoc = {
+    kind: 'opportunity',
+    type: 'Trial',
+    title: 'U17 Trials',
+    description: 'Open trials for the U17 squad.',
+    sports: ['Football'],
+    province: 'Gauteng',
+    city: 'Soweto',
+    ageMin: 14,
+    ageMax: 30,
+    deadline: future,
+    startDate: null,
+    endDate: null,
+    isFree: true,
+    priceZar: null,
+    inclusions: [],
+    status: 'published',
+    orgId: 'org1',
+    ownerUid: 'org-owner',
+    orgName: 'Soweto FC',
+    orgVerified: false,
+    createdAt: 't',
+    updatedAt: 't',
+    publishedAt: 't',
+  };
+  const records = (uid: string, over: Partial<ApplicantRecords['user']>, dob: string): ApplicantRecords => ({
+    user: {
+      uid,
+      email: `${uid}@example.com`,
+      firstName: 'A',
+      surname: 'B',
+      displayName: `${uid} B`,
+      role: 'athlete',
+      status: 'active',
+      isMinor: false,
+      onboardingComplete: true,
+      termsVersion: 'v',
+      termsAcceptedAt: 't',
+      createdAt: 't',
+      updatedAt: 't',
+      ...over,
+    },
+    profile: {
+      uid,
+      displayName: `${uid} B`,
+      visibility: 'members',
+      createdAt: 't',
+      updatedAt: 't',
+      sport: 'Football',
+      position: 'Wing',
+      skills: ['Teamwork'],
+    },
+    details: { dateOfBirth: dob, mobile: '0821234567' },
+  });
+  beforeEach(() => {
+    f = fakes();
+    app = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians, applications: f.applications });
+    f.listings.set('L1', { ...listing });
+    f.listings.set('LD', { ...listing, status: 'draft' });
+    f.listings.set('LC', { ...listing, status: 'closed' });
+    f.listings.set('LA', { ...listing, ageMin: 19, ageMax: 30 });
+    f.applicants.set('adult', records('adult', {}, yearsAgo(25)));
+    f.applicants.set('kid', records('kid', { isMinor: true, guardianUids: ['mom'] }, yearsAgo(15)));
+    f.applicants.set(
+      'restricted',
+      records('restricted', { isMinor: true, status: 'restricted' }, yearsAgo(15)),
+    );
+    for (const [t, uid, role] of [
+      ['t-adult', 'adult', 'athlete'],
+      ['t-kid', 'kid', 'athlete'],
+      ['t-restricted', 'restricted', 'athlete'],
+      ['t-org', 'org-owner', 'organisation'],
+      ['t-other-org', 'other-owner', 'organisation'],
+      ['t-mom', 'mom', 'guardian'],
+      ['t-stranger', 'stranger', 'guardian'],
+      ['t-coach', 'coach', 'coach'],
+    ] as const) {
+      f.tokens.set(t, { uid, email: `${uid}@example.com`, email_verified: true, role });
+    }
+  });
+  const post = (path: string, token: string, body: unknown = {}) =>
+    request(app)
+      .post(path)
+      .set('Authorization', `Bearer ${token}`)
+      .send(body as object);
+
+  it('an adult applies; the organisation gets their contact details and a notification', async () => {
+    const r = await post('/api/applications', 't-adult', { listingId: 'L1', note: 'Keen to trial' });
+    expect(r.status).toBe(201);
+    const a = f.apps.get('L1_adult')!;
+    expect(a).toMatchObject({
+      status: 'submitted',
+      ownerUid: 'org-owner',
+      applicantIsMinor: false,
+      note: 'Keen to trial',
+    });
+    expect(a.snapshot).toMatchObject({
+      age: 25,
+      email: 'adult@example.com',
+      phone: '0821234567',
+      sport: 'Football',
+    });
+    expect(f.sent.map((s) => s.uid)).toEqual(['org-owner']);
+  });
+
+  it('a child application never carries contact details, and their parent is told', async () => {
+    expect((await post('/api/applications', 't-kid', { listingId: 'L1' })).status).toBe(201);
+    const a = f.apps.get('L1_kid')!;
+    expect(a.applicantIsMinor).toBe(true);
+    expect(a.snapshot.email).toBeNull();
+    expect(a.snapshot.phone).toBeNull();
+    expect(a.snapshot.age).toBe(15);
+    expect(f.sent.map((s) => s.uid).sort()).toEqual(['mom', 'org-owner']);
+  });
+
+  it('blocks restricted children, non-athletes, drafts, closed listings and wrong ages', async () => {
+    expect((await post('/api/applications', 't-restricted', { listingId: 'L1' })).body.error.code).toBe(
+      'GUARDIAN_REQUIRED',
+    );
+    expect((await post('/api/applications', 't-coach', { listingId: 'L1' })).status).toBe(403);
+    expect((await post('/api/applications', 't-adult', { listingId: 'LD' })).status).toBe(404);
+    expect((await post('/api/applications', 't-adult', { listingId: 'LC' })).status).toBe(409);
+    expect((await post('/api/applications', 't-kid', { listingId: 'LA' })).body.error.code).toBe(
+      'AGE_OUT_OF_RANGE',
+    );
+    expect(f.apps.size).toBe(0);
+  });
+
+  it('allows one application per person per listing', async () => {
+    await post('/api/applications', 't-adult', { listingId: 'L1' });
+    const again = await post('/api/applications', 't-adult', { listingId: 'L1' });
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('ALREADY_APPLIED');
+  });
+
+  it("only the listing's organisation reviews it, through allowed steps only", async () => {
+    await post('/api/applications', 't-kid', { listingId: 'L1' });
+    expect(
+      (await post('/api/applications/L1_kid/status', 't-other-org', { status: 'accepted' })).status,
+    ).toBe(404);
+    expect((await post('/api/applications/L1_kid/status', 't-adult', { status: 'accepted' })).status).toBe(
+      403,
+    );
+    expect((await post('/api/applications/L1_kid/status', 't-org', { status: 'shortlisted' })).status).toBe(
+      200,
+    );
+    expect(
+      (
+        await post('/api/applications/L1_kid/status', 't-org', {
+          status: 'accepted',
+          message: 'See you Saturday',
+        })
+      ).status,
+    ).toBe(200);
+    expect((await post('/api/applications/L1_kid/status', 't-org', { status: 'declined' })).status).toBe(409);
+    const a = f.apps.get('L1_kid')!;
+    expect(a.status).toBe('accepted');
+    expect(a.orgMessage).toBe('See you Saturday');
+    expect(a.history.map((h) => h.status)).toEqual(['submitted', 'shortlisted', 'accepted']);
+    // the child and the parent both hear about the decision
+    expect(f.sent.filter((s) => s.notification.type === 'application.status').map((s) => s.uid)).toContain(
+      'mom',
+    );
+  });
+
+  it("a verified parent can withdraw their child's application; strangers cannot", async () => {
+    await post('/api/applications', 't-kid', { listingId: 'L1' });
+    expect((await post('/api/applications/L1_kid/withdraw', 't-stranger')).status).toBe(404);
+    expect((await post('/api/applications/L1_kid/withdraw', 't-mom')).status).toBe(200);
+    const a = f.apps.get('L1_kid')!;
+    expect(a.status).toBe('withdrawn');
+    expect(a.history.at(-1)!.by).toBe('guardian');
+    expect((await post('/api/applications/L1_kid/withdraw', 't-kid')).status).toBe(409);
+  });
+
+  it('rejects malformed ids and signed-out calls', async () => {
+    expect((await post('/api/applications/../x/withdraw', 't-adult')).status).toBe(404);
+    expect((await post('/api/applications/bad$id/withdraw', 't-adult')).status).toBe(400);
+    expect((await request(app).post('/api/applications').send({ listingId: 'L1' })).status).toBe(401);
   });
 });

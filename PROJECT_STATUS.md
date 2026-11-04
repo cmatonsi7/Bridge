@@ -1,6 +1,6 @@
 # PROJECT_STATUS — SportBridge
 
-_Last updated: 2026-11-04 · Phases 1 and 2 (all four role dashboards) accepted. Phase 3a (Listings) code complete on `phase-3-listings`, awaiting review. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
+_Last updated: 2026-11-04 · Phases 1, 2 and 3a accepted. Phase 3b (Applications) code complete on `phase-3-applications`, awaiting review. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
 
 ## Phase progress
 | Phase | Status |
@@ -10,8 +10,8 @@ _Last updated: 2026-11-04 · Phases 1 and 2 (all four role dashboards) accepted.
 | 2b Parent / Guardian dashboard | Accepted (match-on-sign-up linking) |
 | 2c Coach dashboard | Accepted (credentials self-declared) |
 | 2d Organisation dashboard | Accepted |
-| 3a Listings (opportunities, programmes, saved) | Code complete, awaiting review (branch `phase-3-listings`) |
-| 3b Applications | Not started |
+| 3a Listings (opportunities, programmes, saved) | Accepted |
+| 3b Applications | Code complete, awaiting review (branch `phase-3-applications`) |
 | 3c Directory & connections | Not started |
 | 3d Sponsorship & calendar | Not started |
 | 4 Membership & payments | Blocked on client pricing |
@@ -37,7 +37,7 @@ _Last updated: 2026-11-04 · Phases 1 and 2 (all four role dashboards) accepted.
 - Whether public listings show real data or sample cards until Phase 3.
 
 ## Known gaps
-- Firestore and Storage rules tests (34 cases) are written but not run locally (needs Java and emulators).
+- Firestore and Storage rules tests run against the Firebase emulator with `npm run test:rules` (needs Java; installed via `conda install -c conda-forge openjdk=21`). All 34 passed on 2026-11-04; Phase 3b adds 4 more (38). Run them before every deploy of `firestore.rules`.
 - Storage uploads (photos, documents, media) are deferred until the Blaze plan.
 - Guardians cannot yet control what others see about their child (needs Phase 3 discovery).
 - Older test accounts created before the name-on-request change show "A SportBridge athlete".
@@ -51,6 +51,17 @@ _Last updated: 2026-11-04 · Phases 1 and 2 (all four role dashboards) accepted.
 5. Applications: optional note plus a profile snapshot; applicants can withdraw; organisations see applicants only for their own listings.
 6. Notifications: in-app only.
 7. Sponsorship: request and express interest only; SportBridge handles no money. **Client to confirm.**
+
+## Phase 3b (Applications) summary
+- Athletes apply (opportunities) or express interest (programmes) from the listing page with an optional note. The panel says exactly what the organisation will see. One application per person per listing (id `{listingId}_{applicantUid}`).
+- All application changes run on the server (`POST /api/applications`, `/:id/status`, `/:id/withdraw`): it checks the athlete role and verified email, that the account is active (a child needs a confirmed parent), that the listing is open, and the listing's age range; it builds the applicant snapshot itself from the real records.
+- **Safeguarding:** organisations see name, age (never date of birth), sport, position, location, bio and skills. Email and phone only for adults; never for under-18s, who are marked "Under 18" and reached through SportBridge.
+- Statuses: Submitted → Shortlisted → Accepted / Not successful; Withdrawn by the applicant or a verified parent. Final states can't be changed. Organisations can add a short message.
+- My Applications (athlete), Applications received (organisation, filter by listing and status), Children's applications (parent) plus an Applications section on each child's page.
+- In-app notifications (bell): new application (organisation), child applied (parent), status change (applicant, and parent for children), withdrawn. Written only by the server; people can mark read or clear their own.
+- Rules: applications readable by the applicant, the listing's organisation, the applicant's verified parents and admins; nobody writes from the browser. Notifications owner-only (mark read / delete).
+- Deferred: two-way messaging (Phase 5), email notifications (no email service), membership limits on applications (Phase 4), calendar entries for accepted applications (3d).
+- Client: the parent consent text should mention that a child's profile is shared with organisations they apply to (legal documents).
 
 ## Phase 3a (Listings) summary
 - Organisations: Opportunities and Programmes sections list their own listings (draft / published / closed) with create, edit, close, and delete-draft. Form validates before saving.

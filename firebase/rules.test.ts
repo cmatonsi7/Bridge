@@ -6,18 +6,42 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import {
-  assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment,
+  assertFails,
+  assertSucceeds,
+  initializeTestEnvironment,
+  type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+} from 'firebase/firestore';
 import { ref, uploadString } from 'firebase/storage';
 
 let env: RulesTestEnvironment;
 
 const now = '2026-11-02T00:00:00.000Z';
 const user = (uid: string, extra: Record<string, unknown> = {}) => ({
-  uid, email: `${uid}@example.com`, firstName: 'A', surname: 'B', displayName: 'A B', role: 'athlete',
-  status: 'active', isMinor: false, onboardingComplete: true, termsVersion: 'v', termsAcceptedAt: now,
-  createdAt: now, updatedAt: now, ...extra,
+  uid,
+  email: `${uid}@example.com`,
+  firstName: 'A',
+  surname: 'B',
+  displayName: 'A B',
+  role: 'athlete',
+  status: 'active',
+  isMinor: false,
+  onboardingComplete: true,
+  termsVersion: 'v',
+  termsAcceptedAt: now,
+  createdAt: now,
+  updatedAt: now,
+  ...extra,
 });
 
 beforeAll(async () => {
@@ -37,15 +61,40 @@ beforeEach(async () => {
     await setDoc(doc(db, 'users/alice/private/details'), { dateOfBirth: '2000-01-01', mobile: '0820000000' });
     await setDoc(doc(db, 'users/teen'), user('teen', { isMinor: true, status: 'restricted' }));
     await setDoc(doc(db, 'users/bob'), user('bob', { role: 'coach' }));
-    await setDoc(doc(db, 'athleteProfiles/alice'), { uid: 'alice', displayName: 'A B', visibility: 'members', createdAt: now, updatedAt: now });
-    await setDoc(doc(db, 'athleteProfiles/teen'), { uid: 'teen', displayName: 'T', visibility: 'private', createdAt: now, updatedAt: now });
-    await setDoc(doc(db, 'organisations/org1'), { name: 'Soweto FC', type: 'club', ownerUid: 'bob', verified: false, createdAt: now, updatedAt: now });
-    await setDoc(doc(db, 'guardianLinks/l1'), { athleteUid: 'teen', guardianEmail: 'mom@example.com', guardianUid: null, status: 'pending' });
+    await setDoc(doc(db, 'athleteProfiles/alice'), {
+      uid: 'alice',
+      displayName: 'A B',
+      visibility: 'members',
+      createdAt: now,
+      updatedAt: now,
+    });
+    await setDoc(doc(db, 'athleteProfiles/teen'), {
+      uid: 'teen',
+      displayName: 'T',
+      visibility: 'private',
+      createdAt: now,
+      updatedAt: now,
+    });
+    await setDoc(doc(db, 'organisations/org1'), {
+      name: 'Soweto FC',
+      type: 'club',
+      ownerUid: 'bob',
+      verified: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await setDoc(doc(db, 'guardianLinks/l1'), {
+      athleteUid: 'teen',
+      guardianEmail: 'mom@example.com',
+      guardianUid: null,
+      status: 'pending',
+    });
     await setDoc(doc(db, 'auditLogs/a1'), { type: 'x' });
   });
 });
 
-const as = (uid: string, claims: Record<string, unknown> = {}) => env.authenticatedContext(uid, claims).firestore();
+const as = (uid: string, claims: Record<string, unknown> = {}) =>
+  env.authenticatedContext(uid, claims).firestore();
 const anon = () => env.unauthenticatedContext().firestore();
 
 describe('users', () => {
@@ -65,12 +114,15 @@ describe('users', () => {
   });
   it('owner may edit their name only', async () => {
     const db = as('alice', { role: 'athlete' });
-    await assertSucceeds(updateDoc(doc(db, 'users/alice'), { firstName: 'Ali', displayName: 'Ali B', updatedAt: now }));
+    await assertSucceeds(
+      updateDoc(doc(db, 'users/alice'), { firstName: 'Ali', displayName: 'Ali B', updatedAt: now }),
+    );
     await assertFails(updateDoc(doc(db, 'users/alice'), { role: 'organisation' }));
     // A real change is needed here: alice is already 'active', so writing 'active' would change nothing.
     await assertFails(updateDoc(doc(db, 'users/alice'), { status: 'suspended' }));
     // A restricted child must not be able to lift their own restriction (only a confirming parent can, server-side).
-    await assertFails(updateDoc(doc(as('teen', { role: 'athlete' }), 'users/teen'), { status: 'active' }));    await assertFails(updateDoc(doc(as('teen', { role: 'athlete' }), 'users/teen'), { isMinor: false }));
+    await assertFails(updateDoc(doc(as('teen', { role: 'athlete' }), 'users/teen'), { status: 'active' }));
+    await assertFails(updateDoc(doc(as('teen', { role: 'athlete' }), 'users/teen'), { isMinor: false }));
     await assertFails(updateDoc(doc(db, 'users/alice'), { firstName: '' }));
   });
   it('nobody can delete a user doc from the client', async () => {
@@ -79,7 +131,9 @@ describe('users', () => {
   it('private details are owner/admin read-only', async () => {
     await assertSucceeds(getDoc(doc(as('alice'), 'users/alice/private/details')));
     await assertFails(getDoc(doc(as('bob'), 'users/alice/private/details')));
-    await assertFails(setDoc(doc(as('alice'), 'users/alice/private/details'), { dateOfBirth: '2015-01-01', mobile: '1' }));
+    await assertFails(
+      setDoc(doc(as('alice'), 'users/alice/private/details'), { dateOfBirth: '2015-01-01', mobile: '1' }),
+    );
   });
 });
 
@@ -88,7 +142,7 @@ describe('role profiles', () => {
     await assertSucceeds(updateDoc(doc(as('alice'), 'athleteProfiles/alice'), { visibility: 'public' }));
     await assertFails(updateDoc(doc(as('teen'), 'athleteProfiles/teen'), { visibility: 'public' }));
   });
-  it('cannot write another user\'s profile or change uid', async () => {
+  it("cannot write another user's profile or change uid", async () => {
     await assertFails(updateDoc(doc(as('bob'), 'athleteProfiles/alice'), { displayName: 'x' }));
     await assertFails(updateDoc(doc(as('alice'), 'athleteProfiles/alice'), { uid: 'bob' }));
   });
@@ -130,24 +184,46 @@ describe('storage', () => {
 describe('athlete profile fields (Phase 2a)', () => {
   const db = () => as('alice', { role: 'athlete' });
   it('accepts values from the fixed lists', async () => {
-    await assertSucceeds(updateDoc(doc(db(), 'athleteProfiles/alice'), {
-      sport: 'Football', position: 'Midfielder', province: 'Gauteng', experienceYears: 4,
-      skills: ['Teamwork', 'Leadership'], interests: ['Football', 'Sports Science'],
-      privacy: { discoverable: true, showAchievements: false, allowEnquiries: false }, updatedAt: now,
-    }));
+    await assertSucceeds(
+      updateDoc(doc(db(), 'athleteProfiles/alice'), {
+        sport: 'Football',
+        position: 'Midfielder',
+        province: 'Gauteng',
+        experienceYears: 4,
+        skills: ['Teamwork', 'Leadership'],
+        interests: ['Football', 'Sports Science'],
+        privacy: { discoverable: true, showAchievements: false, allowEnquiries: false },
+        updatedAt: now,
+      }),
+    );
   });
   it('rejects values outside the fixed lists', async () => {
     await assertFails(updateDoc(doc(db(), 'athleteProfiles/alice'), { sport: 'Quidditch', updatedAt: now }));
-    await assertFails(updateDoc(doc(db(), 'athleteProfiles/alice'), { skills: ['Juggling'], updatedAt: now }));
-    await assertFails(updateDoc(doc(db(), 'athleteProfiles/alice'), { province: 'Atlantis', updatedAt: now }));
+    await assertFails(
+      updateDoc(doc(db(), 'athleteProfiles/alice'), { skills: ['Juggling'], updatedAt: now }),
+    );
+    await assertFails(
+      updateDoc(doc(db(), 'athleteProfiles/alice'), { province: 'Atlantis', updatedAt: now }),
+    );
   });
   it('rejects unknown fields and bad types', async () => {
     await assertFails(updateDoc(doc(db(), 'athleteProfiles/alice'), { verified: true, updatedAt: now }));
-    await assertFails(updateDoc(doc(db(), 'athleteProfiles/alice'), { experienceYears: 'four', updatedAt: now }));
-    await assertFails(updateDoc(doc(db(), 'athleteProfiles/alice'), { bio: 'x'.repeat(601), updatedAt: now }));
+    await assertFails(
+      updateDoc(doc(db(), 'athleteProfiles/alice'), { experienceYears: 'four', updatedAt: now }),
+    );
+    await assertFails(
+      updateDoc(doc(db(), 'athleteProfiles/alice'), { bio: 'x'.repeat(601), updatedAt: now }),
+    );
   });
   it('lets the owner manage achievements, nobody else', async () => {
-    const a = { title: 'District Champions', year: 2025, organisation: 'Soweto FC', detail: null, createdAt: now, updatedAt: now };
+    const a = {
+      title: 'District Champions',
+      year: 2025,
+      organisation: 'Soweto FC',
+      detail: null,
+      createdAt: now,
+      updatedAt: now,
+    };
     await assertSucceeds(setDoc(doc(db(), 'athleteProfiles/alice/achievements/a1'), a));
     await assertSucceeds(getDoc(doc(db(), 'athleteProfiles/alice/achievements/a1')));
     await assertFails(getDoc(doc(as('bob'), 'athleteProfiles/alice/achievements/a1')));
@@ -167,21 +243,47 @@ describe('guardians (Phase 2b)', () => {
   beforeEach(async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore();
-      await setDoc(doc(db, 'guardianLinks/l2'), { athleteUid: 'teen', athleteName: 'T', guardianEmail: 'dad@example.com', guardianUid: null, status: 'pending' });
+      await setDoc(doc(db, 'guardianLinks/l2'), {
+        athleteUid: 'teen',
+        athleteName: 'T',
+        guardianEmail: 'dad@example.com',
+        guardianUid: null,
+        status: 'pending',
+      });
       await setDoc(doc(db, 'users/teen2'), user('teen2', { isMinor: true, guardianUids: ['mom'] }));
-      await setDoc(doc(db, 'athleteProfiles/teen2'), { uid: 'teen2', displayName: 'T2', visibility: 'private', createdAt: now, updatedAt: now });
-      await setDoc(doc(db, 'athleteProfiles/teen2/achievements/a1'), { title: 'Champs', year: 2025, organisation: null, detail: null, createdAt: now, updatedAt: now });
+      await setDoc(doc(db, 'athleteProfiles/teen2'), {
+        uid: 'teen2',
+        displayName: 'T2',
+        visibility: 'private',
+        createdAt: now,
+        updatedAt: now,
+      });
+      await setDoc(doc(db, 'athleteProfiles/teen2/achievements/a1'), {
+        title: 'Champs',
+        year: 2025,
+        organisation: null,
+        detail: null,
+        createdAt: now,
+        updatedAt: now,
+      });
     });
   });
-  const dad = (verified: boolean) => as('dad', { role: 'guardian', email: 'Dad@Example.com', email_verified: verified });
+  const dad = (verified: boolean) =>
+    as('dad', { role: 'guardian', email: 'Dad@Example.com', email_verified: verified });
 
   it('a parent sees requests addressed to their verified email only', async () => {
     await assertSucceeds(getDoc(doc(dad(true), 'guardianLinks/l2')));
     await assertFails(getDoc(doc(dad(false), 'guardianLinks/l2')));
-    await assertFails(getDoc(doc(as('x', { role: 'guardian', email: 'x@example.com', email_verified: true }), 'guardianLinks/l2')));
+    await assertFails(
+      getDoc(
+        doc(as('x', { role: 'guardian', email: 'x@example.com', email_verified: true }), 'guardianLinks/l2'),
+      ),
+    );
   });
   it('a parent cannot answer a request from the browser', async () => {
-    await assertFails(updateDoc(doc(dad(true), 'guardianLinks/l2'), { status: 'verified', guardianUid: 'dad' }));
+    await assertFails(
+      updateDoc(doc(dad(true), 'guardianLinks/l2'), { status: 'verified', guardianUid: 'dad' }),
+    );
   });
   it('a verified guardian can read the child profile and achievements but not edit them', async () => {
     const mom = as('mom', { role: 'guardian' });
@@ -201,26 +303,46 @@ describe('coach profiles (Phase 2c)', () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore();
       await setDoc(doc(db, 'users/coach1'), user('coach1', { role: 'coach' }));
-      await setDoc(doc(db, 'coachProfiles/coach1'), { uid: 'coach1', displayName: 'C', visibility: 'members', createdAt: now, updatedAt: now });
+      await setDoc(doc(db, 'coachProfiles/coach1'), {
+        uid: 'coach1',
+        displayName: 'C',
+        visibility: 'members',
+        createdAt: now,
+        updatedAt: now,
+      });
     });
   });
   const coach = () => as('coach1', { role: 'coach' });
   it('accepts values from the fixed lists', async () => {
-    await assertSucceeds(updateDoc(doc(coach(), 'coachProfiles/coach1'), {
-      sports: ['Football'], coachingLevel: 'Club', province: 'Gauteng', experienceYears: 8,
-      specialisations: ['Youth Development'], services: ['Group Sessions'], ageGroups: ['Under 16'], updatedAt: now,
-    }));
+    await assertSucceeds(
+      updateDoc(doc(coach(), 'coachProfiles/coach1'), {
+        sports: ['Football'],
+        coachingLevel: 'Club',
+        province: 'Gauteng',
+        experienceYears: 8,
+        specialisations: ['Youth Development'],
+        services: ['Group Sessions'],
+        ageGroups: ['Under 16'],
+        updatedAt: now,
+      }),
+    );
   });
   it('rejects values outside the lists and unknown fields', async () => {
-    await assertFails(updateDoc(doc(coach(), 'coachProfiles/coach1'), { coachingLevel: 'Galactic', updatedAt: now }));
-    await assertFails(updateDoc(doc(coach(), 'coachProfiles/coach1'), { services: ['Babysitting'], updatedAt: now }));
+    await assertFails(
+      updateDoc(doc(coach(), 'coachProfiles/coach1'), { coachingLevel: 'Galactic', updatedAt: now }),
+    );
+    await assertFails(
+      updateDoc(doc(coach(), 'coachProfiles/coach1'), { services: ['Babysitting'], updatedAt: now }),
+    );
     await assertFails(updateDoc(doc(coach(), 'coachProfiles/coach1'), { verified: true, updatedAt: now }));
   });
   it('lets the coach manage their own qualifications, nobody else', async () => {
     const q = { title: 'SAFA C Licence', issuer: 'SAFA', year: 2022, createdAt: now, updatedAt: now };
     await assertSucceeds(setDoc(doc(coach(), 'coachProfiles/coach1/qualifications/q1'), q));
     await assertFails(setDoc(doc(as('alice'), 'coachProfiles/coach1/qualifications/q2'), q));
-    await assertFails(setDoc(doc(coach(), 'coachProfiles/coach1/qualifications/q3'), { ...q, verified: true }));
+    await assertFails(
+      setDoc(doc(coach(), 'coachProfiles/coach1/qualifications/q3'), { ...q, verified: true }),
+    );
     await assertFails(getDoc(doc(as('alice'), 'coachProfiles/coach1/qualifications/q1')));
   });
 });
@@ -228,17 +350,32 @@ describe('coach profiles (Phase 2c)', () => {
 describe('organisation profiles (Phase 2d)', () => {
   const owner = () => as('bob', { role: 'organisation' });
   it('accepts a valid profile from the fixed lists', async () => {
-    await assertSucceeds(updateDoc(doc(owner(), 'organisations/org1'), {
-      description: 'Community football club.', contactEmail: 'info@sowetofc.co.za', contactPhone: '0111234567',
-      website: 'https://sowetofc.co.za', province: 'Gauteng', sports: ['Football'], ageGroups: ['Under 16'],
-      offerings: ['Trials'], facilities: ['Grass Field'],
-      privacy: { listed: true, showContactDetails: false, acceptEnquiries: true }, updatedAt: now,
-    }));
+    await assertSucceeds(
+      updateDoc(doc(owner(), 'organisations/org1'), {
+        description: 'Community football club.',
+        contactEmail: 'info@sowetofc.co.za',
+        contactPhone: '0111234567',
+        website: 'https://sowetofc.co.za',
+        province: 'Gauteng',
+        sports: ['Football'],
+        ageGroups: ['Under 16'],
+        offerings: ['Trials'],
+        facilities: ['Grass Field'],
+        privacy: { listed: true, showContactDetails: false, acceptEnquiries: true },
+        updatedAt: now,
+      }),
+    );
   });
   it('rejects bad contact details and values outside the lists', async () => {
-    await assertFails(updateDoc(doc(owner(), 'organisations/org1'), { contactEmail: 'nope', updatedAt: now }));
-    await assertFails(updateDoc(doc(owner(), 'organisations/org1'), { website: 'javascript:alert(1)', updatedAt: now }));
-    await assertFails(updateDoc(doc(owner(), 'organisations/org1'), { facilities: ['Helipad'], updatedAt: now }));
+    await assertFails(
+      updateDoc(doc(owner(), 'organisations/org1'), { contactEmail: 'nope', updatedAt: now }),
+    );
+    await assertFails(
+      updateDoc(doc(owner(), 'organisations/org1'), { website: 'javascript:alert(1)', updatedAt: now }),
+    );
+    await assertFails(
+      updateDoc(doc(owner(), 'organisations/org1'), { facilities: ['Helipad'], updatedAt: now }),
+    );
     await assertFails(updateDoc(doc(owner(), 'organisations/org1'), { type: 'cartel', updatedAt: now }));
   });
   it('never lets the owner verify themselves or hand over ownership', async () => {
@@ -249,10 +386,29 @@ describe('organisation profiles (Phase 2d)', () => {
 
 describe('listings (Phase 3a)', () => {
   const listing = (over: Record<string, unknown> = {}) => ({
-    kind: 'opportunity', type: 'Trial', title: 'U17 Trials', description: 'Open trials for the U17 provincial squad.',
-    sports: ['Football'], province: 'Gauteng', city: 'Soweto', ageMin: 14, ageMax: 17, deadline: '2030-01-31',
-    startDate: null, endDate: null, isFree: true, priceZar: null, inclusions: [], status: 'published',
-    orgId: 'org1', ownerUid: 'bob', orgName: 'Soweto FC', orgVerified: false, createdAt: now, updatedAt: now, publishedAt: now,
+    kind: 'opportunity',
+    type: 'Trial',
+    title: 'U17 Trials',
+    description: 'Open trials for the U17 provincial squad.',
+    sports: ['Football'],
+    province: 'Gauteng',
+    city: 'Soweto',
+    ageMin: 14,
+    ageMax: 17,
+    deadline: '2030-01-31',
+    startDate: null,
+    endDate: null,
+    isFree: true,
+    priceZar: null,
+    inclusions: [],
+    status: 'published',
+    orgId: 'org1',
+    ownerUid: 'bob',
+    orgName: 'Soweto FC',
+    orgVerified: false,
+    createdAt: now,
+    updatedAt: now,
+    publishedAt: now,
     ...over,
   });
   beforeEach(async () => {
@@ -278,7 +434,9 @@ describe('listings (Phase 3a)', () => {
     await assertFails(setDoc(doc(owner(), 'listings/n2'), listing({ orgVerified: true })));
     await assertFails(setDoc(doc(owner(), 'listings/n3'), listing({ orgName: 'Kaizer Chiefs' })));
     await assertFails(setDoc(doc(owner(), 'listings/n4'), listing({ orgId: 'someone-else' })));
-    await assertFails(setDoc(doc(as('alice', { role: 'athlete' }), 'listings/n5'), listing({ ownerUid: 'alice' })));
+    await assertFails(
+      setDoc(doc(as('alice', { role: 'athlete' }), 'listings/n5'), listing({ ownerUid: 'alice' })),
+    );
     await assertFails(setDoc(doc(owner(), 'listings/n6'), listing({ ageMin: 18, ageMax: 10 })));
     await assertFails(setDoc(doc(owner(), 'listings/n7'), listing({ isFree: false, priceZar: null })));
     await assertFails(setDoc(doc(owner(), 'listings/n8'), listing({ type: 'Raffle' })));
@@ -297,5 +455,97 @@ describe('listings (Phase 3a)', () => {
     await assertFails(getDoc(doc(as('bob'), 'users/alice/saved/pub')));
     await assertFails(setDoc(doc(as('bob'), 'users/alice/saved/x'), { ...saved, listingId: 'x' }));
     await assertSucceeds(deleteDoc(doc(as('alice'), 'users/alice/saved/pub')));
+  });
+});
+
+describe('applications and notifications (Phase 3b)', () => {
+  const application = {
+    listingId: 'L1',
+    listingTitle: 'U17 Trials',
+    listingKind: 'opportunity',
+    orgId: 'org1',
+    orgName: 'Soweto FC',
+    ownerUid: 'bob',
+    applicantUid: 'teen2',
+    applicantIsMinor: true,
+    status: 'submitted',
+    note: null,
+    orgMessage: null,
+    snapshot: { displayName: 'T', age: 15, isMinor: true },
+    history: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users/teen2'), user('teen2', { isMinor: true, guardianUids: ['mom'] }));
+      await setDoc(doc(db, 'applications/L1_teen2'), application);
+      await setDoc(doc(db, 'users/alice/notifications/n1'), {
+        type: 'application.status',
+        title: 't',
+        body: 'b',
+        link: '/app',
+        read: false,
+        createdAt: now,
+      });
+    });
+  });
+
+  it("the applicant, the listing organisation and the child's verified parent can read it; nobody else", async () => {
+    await assertSucceeds(getDoc(doc(as('teen2', { role: 'athlete' }), 'applications/L1_teen2')));
+    await assertSucceeds(getDoc(doc(as('bob', { role: 'organisation' }), 'applications/L1_teen2')));
+    await assertSucceeds(getDoc(doc(as('mom', { role: 'guardian' }), 'applications/L1_teen2')));
+    await assertFails(getDoc(doc(as('alice', { role: 'athlete' }), 'applications/L1_teen2')));
+    await assertFails(getDoc(doc(as('other-org', { role: 'organisation' }), 'applications/L1_teen2')));
+    await assertFails(getDoc(doc(anon(), 'applications/L1_teen2')));
+  });
+  it('the list queries the app uses are allowed for the right people', async () => {
+    await assertSucceeds(
+      getDocs(query(collection(as('teen2'), 'applications'), where('applicantUid', '==', 'teen2'))),
+    );
+    await assertSucceeds(
+      getDocs(query(collection(as('bob'), 'applications'), where('ownerUid', '==', 'bob'))),
+    );
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(as('mom', { role: 'guardian' }), 'applications'),
+          where('applicantUid', '==', 'teen2'),
+        ),
+      ),
+    );
+    await assertFails(
+      getDocs(query(collection(as('alice'), 'applications'), where('applicantUid', '==', 'teen2'))),
+    );
+  });
+  it('nobody can create, change or delete applications from the browser', async () => {
+    await assertFails(
+      setDoc(doc(as('alice', { role: 'athlete' }), 'applications/L1_alice'), {
+        ...application,
+        applicantUid: 'alice',
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(as('bob', { role: 'organisation' }), 'applications/L1_teen2'), { status: 'accepted' }),
+    );
+    await assertFails(updateDoc(doc(as('teen2'), 'applications/L1_teen2'), { status: 'withdrawn' }));
+    await assertFails(deleteDoc(doc(as('bob'), 'applications/L1_teen2')));
+  });
+  it('people read and mark only their own notifications, and cannot write any', async () => {
+    await assertSucceeds(getDoc(doc(as('alice'), 'users/alice/notifications/n1')));
+    await assertSucceeds(updateDoc(doc(as('alice'), 'users/alice/notifications/n1'), { read: true }));
+    await assertFails(updateDoc(doc(as('alice'), 'users/alice/notifications/n1'), { title: 'changed' }));
+    await assertFails(getDoc(doc(as('bob'), 'users/alice/notifications/n1')));
+    await assertFails(
+      setDoc(doc(as('bob'), 'users/alice/notifications/n2'), {
+        type: 'x',
+        title: 't',
+        body: 'b',
+        link: '/',
+        read: false,
+        createdAt: now,
+      }),
+    );
   });
 });
