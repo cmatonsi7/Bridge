@@ -88,6 +88,7 @@ export function buildOnboardingWrite(
       id: newId(COLLECTIONS.guardianLinks),
       data: {
         athleteUid: uid,
+        athleteName: user.displayName,
         guardianEmail: input.guardianEmail!,
         guardianUid: null,
         relationship: input.guardianRelationship!,

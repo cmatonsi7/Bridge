@@ -1,9 +1,6 @@
-Here's the full content to paste into `PROJECT_STATUS.md` — select everything in the file and replace it with this:
-
-```markdown
 # PROJECT_STATUS — SportBridge
 
-_Last updated: 2026-11-03 · **Phase 1 accepted.** Live at https://bridge-ekz6.onrender.com (Render, not Railway — see D). Registration tested end-to-end against the real Firebase project (sportbridge-4861e) by the client, including the production bug chase documented in E2._
+_Last updated: 2026-11-03 · **Phase 2b (Parent / Guardian) code complete on branch `phase-2-parent-dashboard`, awaiting review.** Phase 2a accepted. Phase 1 accepted. Live at https://bridge-ekz6.onrender.com (Render, not Railway — see D)._
 
 ## A. Project overview
 - **Purpose:** turn the approved HTML prototype (`SportBridge_UI_Fixed.html` + assets) into a production platform connecting athletes, parents/guardians, coaches, organisations and administrators. South African launch; minors are users.
@@ -14,7 +11,9 @@ _Last updated: 2026-11-03 · **Phase 1 accepted.** Live at https://bridge-ekz6.o
 | Phase | Status |
 |---|---|
 | 1 Foundation & authentication | **Accepted.** Live, tested end-to-end by the client against real Firebase |
-| 2 Profiles & dashboards (2a Athlete → 2b Parent → 2c Coach → 2d Organisation) | Not started |
+| 2a Athlete dashboard | **Accepted.** Tested on the live site against real Firebase |
+| 2b Parent / Guardian | **Code complete, awaiting review** (branch `phase-2-parent-dashboard`) |
+| 2c Coach · 2d Organisation | Not started |
 | 3 Core features | Not started |
 | 4 Membership & payments | Not started (blocked on client pricing) |
 | 5 Messaging & admin | Not started |
@@ -29,6 +28,23 @@ _Last updated: 2026-11-03 · **Phase 1 accepted.** Live at https://bridge-ekz6.o
 - App shell (prototype sidebar/top bar) with role-based navigation. Dashboard shows real name, role, and the minor "awaiting guardian" notice. Other sections show an honest "not available yet" state.
 - Firestore rules (deny by default) deployed to the real project; Storage rules written but not deployed (needs Blaze — deferred, nothing in Phase 1 needs Storage). Admin grant/revoke CLI.
 - Friendly route-level error boundary (`RouteErrorBoundary`) on every top-level route group, so an unexpected render error shows a "Reload" screen instead of a blank crash.
+
+**Implemented in Phase 2a (Athlete)**
+- My Profile: header (name, sport · position, location · age from DOB), Overview (about, position, club, school, experience, skills, interests), About Me, Achievements, Privacy tabs. Edit Profile form with validation and honest empty states.
+- My Progress: profile completion computed from real data (`athleteCompletion` in shared — the prototype's 75% was hardcoded), achievements add/edit/delete.
+- Settings: Account (read-only sign-in email, editable phone, the same profile form) and Privacy (three toggles from the prototype, saved for real; enforced by Discovery in Phase 3).
+- Dashboard: athletes see a real "Your Progress" card with the next step, replacing the placeholder.
+- Fixed lists in `packages/shared/src/athlete.ts`: 16 sports, 10 skills, 5 adjacent interests, 9 provinces. **Firestore rules repeat these lists — change both together.** Position is free text by decision (per-sport lists later if wanted).
+- Deliberately deferred: Media & Videos and Documents tabs (need Storage/Blaze — show "coming soon"), Calendar (needs Phase 3 opportunity data), Development focus (needs a connected coach — shows an explanation), Notifications/Membership/Connected Accounts settings tabs.
+
+**Implemented in Phase 2b (Parent / Guardian)** — linking by **match on sign-up** (no email service, client decision 2026-11-03)
+- Restricted (under-18) athletes see which email their parent must register with; declined / withdrawn requests are explained.
+- Parent dashboard (prototype "Family Sporting Hub"): pending requests addressed to the parent's **verified** email, each with a consent checkbox, **Confirm & give consent** and **This is not my child**; confirmed children as cards with sport, position and real profile completion; instructions for connecting another child.
+- Child profile (`/app/children/:childUid`, guardians only): read-only profile, completion, achievements, consent record (date + terms version) and **Withdraw consent**.
+- Parent settings / profile: read-only email, phone, name.
+- Server API `POST /api/guardian/links/:id/{confirm|decline|revoke}`: guardian role + verified email required; request must be addressed to the caller's email (case-insensitive); can't be answered twice; atomic transaction updates the link, the child's `users.guardianUids` and `status` (`active` on confirm; back to `restricted` when the last guardian withdraws) and writes an audit entry.
+- Rules: parents read links addressed to their verified email; verified guardians read the child's `users` doc, athlete profile and achievements (read-only; never private details); links stay server-write only. `guardianLinks` now store `athleteName` (new sign-ups only; older pending links show "A SportBridge athlete").
+- Deferred: guardian-controlled visibility of the child's profile (needs Discovery, Phase 3); guardians adding under-13 children themselves; email invites to parents (can be added later without rework).
 
 **Not yet implemented (by design, later phases):** role dashboards, profiles, uploads, opportunities/applications/saved/directory/sponsorship, guardian invite email + acceptance, memberships/payments, messaging, admin UI, top-bar search and notifications.
 
@@ -77,18 +93,18 @@ _Last updated: 2026-11-03 · **Phase 1 accepted.** Live at https://bridge-ekz6.o
 | Check | Result |
 |---|---|
 | Shared unit tests (age, validation) | 8/8 pass |
-| Web render tests (AppShell + Dashboard signed-in; PublicLayout crash repro + normal scroll) | 4/4 pass |
-| API tests (auth, onboarding, minors, orgs, idempotency, claim repair, errors) | 12/12 pass |
+| Shared unit tests (athlete lists, schemas, completion) | 9 more, 17/17 total pass |
+| Web tests (dashboard, PublicLayout crash repro, athlete pages, parent dashboard/child page/athlete notice) | 21/21 pass |
+| API tests (onboarding, guardian confirm/decline/revoke, static serving, CSP) | 24/24 pass |
 | Typecheck (shared, web, api) | pass |
 | Production build (`npm run build`) | pass |
-| Firestore rules deployed to sportbridge-4861e | done — Storage rules written, not yet deployed (needs Blaze) |
-| Firestore/Storage rules tests (17) | written, not yet run (needs Java + emulators) |
+| Firestore rules deployed to sportbridge-4861e | done, including the Phase 2a athlete rules. Storage rules written, not yet deployed (needs Blaze) |
+| Firestore/Storage rules tests (26, incl. athlete and guardian access) | written, not yet run (needs Java + emulators) |
+| Parent flow against real Firebase | **not yet tested** — needs rules deploy and a live check with two accounts |
+| Athlete pages against real Firebase | **done, confirmed working on the live site** (profile view and edit, progress, achievements, settings, privacy) |
 | Registration → verify → dashboard, real Firebase, real device | **done — confirmed working by the client** |
 | Deployment | **Live on Render**: https://bridge-ekz6.onrender.com |
 
 **Environment variable names:** `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`, `VITE_USE_FIREBASE_EMULATORS`, `FIREBASE_SERVICE_ACCOUNT_BASE64`, `FIREBASE_PROJECT_ID`, `NODE_ENV`, `TRUST_PROXY_HOPS`, `PORT` (set by the host automatically).
 
-**Secrets handling note:** keep the Firebase service-account key file outside the project directory entirely (not just gitignored) to avoid any risk of accidental commit.
-```
-
-Once saved, commit and push as before.
+**Secrets handling note:** keep the Firebase service-account key file outside the project directory entirely (not just gitignored). On 2026-11-03 a key file was accidentally committed and pushed. The key was replaced in Firebase and Render and the old one deleted, but the old key remains in Git history on `phase-1-foundation` and `phase-2-athlete-dashboard`. It is harmless now that it is revoked.

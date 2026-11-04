@@ -5,11 +5,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { AuthPort, UserRepoPort } from './services/ports.js';
 import { onboardingRouter } from './routes/onboarding.js';
+import { guardianRouter } from './routes/guardian.js';
+import type { GuardianRepoPort } from './services/guardian.js';
 import { errorHandler, notFound } from './middleware/errors.js';
 
 export interface AppDeps {
   auth: AuthPort;
   users: UserRepoPort;
+  guardians: GuardianRepoPort;
   webDistDir?: string;
   trustProxyHops?: number;
 }
@@ -21,9 +24,15 @@ export function createApp(deps: AppDeps) {
 
   app.use(
     helmet({
-           contentSecurityPolicy: {
+      contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
+          // Firebase Auth loads https://apis.google.com/js/api.js itself (for its reCAPTCHA /
+          // abuse-protection check on sign-up) and can render a reCAPTCHA challenge from
+          // https://www.gstatic.com and https://www.google.com. Without these, the browser
+          // silently blocks the script and Firebase Auth throws "n is not a function" the first
+          // time getAuth()/sign-up actually needs it — this is not optional for email/password
+          // auth even though we never call Google Sign-In ourselves.
           scriptSrc: ["'self'", 'https://apis.google.com', 'https://www.gstatic.com'],
           styleSrc: ["'self'", "'unsafe-inline'", 'https://www.gstatic.com'],
           imgSrc: ["'self'", 'data:', 'blob:', 'https://firebasestorage.googleapis.com'],
@@ -60,6 +69,7 @@ export function createApp(deps: AppDeps) {
   );
   api.get('/health', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
   api.use(onboardingRouter(deps));
+  api.use(guardianRouter(deps));
   api.use(notFound);
   app.use('/api', api);
 

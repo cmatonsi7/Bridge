@@ -2,10 +2,11 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
 import { PublicLayout } from '../layouts/PublicLayout';
 import { AppShell } from '../layouts/AppShell';
-import { BootScreen, GuestOnly, RequireAccount, RequireSection, SignedInOnly } from './guards';
+import { BootScreen, GuestOnly, RequireAccount, RequireRole, RequireSection, SignedInOnly } from './guards';
 import { NAV_ITEMS } from '../config/navigation';
 import HomePage from '../pages/public/HomePage';
 import NotFoundPage from '../pages/NotFoundPage';
+import RouteErrorBoundary from './RouteErrorBoundary';
 
 const page = (load: () => Promise<{ default: React.ComponentType }>) => {
   const C = lazy(load);
@@ -16,16 +17,19 @@ const page = (load: () => Promise<{ default: React.ComponentType }>) => {
   );
 };
 
+// NOTE: this must not be a component that calls page()/lazy() during render — doing so builds a
+// brand-new lazy component on every render, so the Suspense boundary never settles.
 const discoverElement = page(() => import('../pages/public/DiscoverPage'));
 const RegisterFinish = lazy(() => import('../pages/auth/RegisterPage'));
-const SectionPlaceholder = lazy(() => import('../pages/app/SectionPlaceholder'));
+const SectionRoute = lazy(() => import('../pages/app/SectionRoute'));
 
 const router = createBrowserRouter([
   {
     element: <PublicLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { path: '/', element: <HomePage /> },
-      { path: '/discover', element: discoverElement },      
+      { path: '/discover', element: discoverElement },
       { path: '/features', element: page(() => import('../pages/public/FeaturesPage')) },
       { path: '/features/athletes', element: page(() => import('../pages/public/FeatureAthletesPage')) },
       { path: '/features/coaches', element: page(() => import('../pages/public/FeatureCoachesPage')) },
@@ -49,6 +53,7 @@ const router = createBrowserRouter([
   },
   {
     element: <PublicLayout showCta={false} />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { path: '/sign-in', element: <GuestOnly>{page(() => import('../pages/auth/SignInPage'))}</GuestOnly> },
       {
@@ -79,14 +84,23 @@ const router = createBrowserRouter([
         <AppShell />
       </RequireAccount>
     ),
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: page(() => import('../pages/app/DashboardPage')) },
+      {
+        path: 'children/:childUid',
+        element: (
+          <RequireRole role="guardian">
+            {page(() => import('../pages/app/guardian/ChildProfilePage'))}
+          </RequireRole>
+        ),
+      },
       ...NAV_ITEMS.filter((i) => i.section !== 'dashboard').map((item) => ({
         path: item.section,
         element: (
           <RequireSection section={item.section}>
             <Suspense fallback={<BootScreen />}>
-              <SectionPlaceholder item={item} />
+              <SectionRoute item={item} />
             </Suspense>
           </RequireSection>
         ),
