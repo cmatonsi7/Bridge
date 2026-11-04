@@ -1,6 +1,6 @@
 # PROJECT_STATUS — SportBridge
 
-_Last updated: 2026-11-04 · Phases 1, 2a and 2b accepted. Phase 2c (Coach) code complete on `phase-2-coach-dashboard`, awaiting review. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
+_Last updated: 2026-11-04 · Phases 1, 2a, 2b and 2c accepted. Phase 2d (Organisation) code complete on `phase-2-organisation-dashboard`, awaiting review. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
 
 ## Phase progress
 | Phase | Status |
@@ -8,8 +8,8 @@ _Last updated: 2026-11-04 · Phases 1, 2a and 2b accepted. Phase 2c (Coach) code
 | 1 Foundation & authentication | Accepted |
 | 2a Athlete dashboard | Accepted |
 | 2b Parent / Guardian dashboard | Accepted (match-on-sign-up linking) |
-| 2c Coach dashboard | Code complete, awaiting review (branch `phase-2-coach-dashboard`) |
-| 2d Organisation dashboard | Not started |
+| 2c Coach dashboard | Accepted (credentials self-declared) |
+| 2d Organisation dashboard | Code complete, awaiting review (branch `phase-2-organisation-dashboard`) |
 | 3 Core features (opportunities, applications, discovery, connections) | Not started |
 | 4 Membership & payments | Blocked on client pricing |
 | 5 Messaging & admin dashboard | Not started |
@@ -23,6 +23,8 @@ _Last updated: 2026-11-04 · Phases 1, 2a and 2b accepted. Phase 2c (Coach) code
 - **Consent:** server-side confirm, decline and withdraw, each audited.
 - **Minors:** under-18 accounts start restricted until a parent confirms.
 - **Coach credentials:** self-declared (decision 2026-11-04). Qualifications show a "Self-declared" badge; staff verification comes with the admin dashboard in Phase 5.
+- **Organisations:** one owner per organisation. `verified` and `ownerUid` are server-only; organisations show "Not yet verified" until staff verification in Phase 5. Organisation types now include Sports facility and University / tertiary (from the prototype).
+- **Organisation fixed lists** (offerings, facilities) live in `packages/shared/src/organisation.ts`; age groups are shared with coaches. The Firestore rules repeat them.
 - **Coach fixed lists** (coaching levels, specialisations, services, age groups) live in `packages/shared/src/coach.ts`. The Firestore rules repeat them, so change both together.
 
 ## Open client decisions
@@ -30,9 +32,10 @@ _Last updated: 2026-11-04 · Phases 1, 2a and 2b accepted. Phase 2c (Coach) code
 - Legal documents: privacy policy, terms, POPIA notice. Terms version is `2026-11-draft` until these arrive.
 - Confirm age rules: minimum self-registration age 13; under-18s may only be athletes.
 - Whether public listings show real data or sample cards until Phase 3.
+- Whether unverified organisations may post opportunities in Phase 3.
 
 ## Known gaps
-- Firestore and Storage rules tests (29) are written but not run locally (needs Java and emulators).
+- Firestore and Storage rules tests (32) are written but not run locally (needs Java and emulators).
 - Storage uploads (photos, documents, media) are deferred until the Blaze plan.
 - Guardians cannot yet control what others see about their child (needs Phase 3 discovery).
 - Older test accounts created before the name-on-request change show "A SportBridge athlete".
@@ -44,6 +47,13 @@ _Last updated: 2026-11-04 · Phases 1, 2a and 2b accepted. Phase 2c (Coach) code
 - Dashboard: real profile completion and next step; "My Athletes" explains connections arrive with discovery (no fake roster).
 - Rules: coach field whitelist and list validation; qualifications owner-only.
 - Deferred: athlete connections and roster (Phase 3), calendar and messages (Phases 3 and 5), credential verification (Phase 5), certificate uploads (Blaze).
+
+## Phase 2d (Organisation) summary
+- Organisation profile: name, type, description, contact email / phone / website (validated), location, sports (up to 10), age groups, offerings, facilities; Overview, Contact and Privacy tabs.
+- Settings: owner's account (email read-only, phone, name), organisation form, privacy (listed in directory, show contact details, accept enquiries), Team tab explaining one owner for now.
+- Dashboard: real profile completion, verification status, honest Opportunities / Programmes / Team cards.
+- Rules: organisation field whitelist and validation (email, phone, http/https website, fixed lists); owner can never set `verified` or change `ownerUid`.
+- Deferred: team members and permissions, opportunities and programmes (Phase 3), verification (Phase 5), logo uploads (Blaze).
 
 ## Architecture
 - `apps/web`: React, Vite, Tailwind, React Router. Role dashboards under `pages/app`, data services under `features/`.

@@ -11,6 +11,8 @@ const AthleteSettingsPage = lazy(() => import('./athlete/AthleteSettingsPage'));
 const GuardianSettingsPage = lazy(() => import('./guardian/GuardianSettingsPage'));
 const CoachProfilePage = lazy(() => import('./coach/CoachProfilePage'));
 const CoachSettingsPage = lazy(() => import('./coach/CoachSettingsPage'));
+const OrgProfilePage = lazy(() => import('./organisation/OrgProfilePage'));
+const OrgSettingsPage = lazy(() => import('./organisation/OrgSettingsPage'));
 
 /** Pages that are built for a role. Anything not listed falls back to the "not available yet" placeholder. */
 const BUILT: Partial<Record<Role, Partial<Record<AppSection, ComponentType>>>> = {
@@ -26,6 +28,10 @@ const BUILT: Partial<Record<Role, Partial<Record<AppSection, ComponentType>>>> =
   coach: {
     profile: CoachProfilePage,
     settings: CoachSettingsPage,
+  },
+  organisation: {
+    profile: OrgProfilePage,
+    settings: OrgSettingsPage,
   },
 };
 

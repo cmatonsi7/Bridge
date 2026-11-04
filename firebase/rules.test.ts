@@ -39,7 +39,7 @@ beforeEach(async () => {
     await setDoc(doc(db, 'users/bob'), user('bob', { role: 'coach' }));
     await setDoc(doc(db, 'athleteProfiles/alice'), { uid: 'alice', displayName: 'A B', visibility: 'members', createdAt: now, updatedAt: now });
     await setDoc(doc(db, 'athleteProfiles/teen'), { uid: 'teen', displayName: 'T', visibility: 'private', createdAt: now, updatedAt: now });
-    await setDoc(doc(db, 'organisations/org1'), { name: 'Soweto FC', type: 'club', ownerUid: 'bob', verified: false, createdAt: now });
+    await setDoc(doc(db, 'organisations/org1'), { name: 'Soweto FC', type: 'club', ownerUid: 'bob', verified: false, createdAt: now, updatedAt: now });
     await setDoc(doc(db, 'guardianLinks/l1'), { athleteUid: 'teen', guardianEmail: 'mom@example.com', guardianUid: null, status: 'pending' });
     await setDoc(doc(db, 'auditLogs/a1'), { type: 'x' });
   });
@@ -220,5 +220,27 @@ describe('coach profiles (Phase 2c)', () => {
     await assertFails(setDoc(doc(as('alice'), 'coachProfiles/coach1/qualifications/q2'), q));
     await assertFails(setDoc(doc(coach(), 'coachProfiles/coach1/qualifications/q3'), { ...q, verified: true }));
     await assertFails(getDoc(doc(as('alice'), 'coachProfiles/coach1/qualifications/q1')));
+  });
+});
+
+describe('organisation profiles (Phase 2d)', () => {
+  const owner = () => as('bob', { role: 'organisation' });
+  it('accepts a valid profile from the fixed lists', async () => {
+    await assertSucceeds(updateDoc(doc(owner(), 'organisations/org1'), {
+      description: 'Community football club.', contactEmail: 'info@sowetofc.co.za', contactPhone: '0111234567',
+      website: 'https://sowetofc.co.za', province: 'Gauteng', sports: ['Football'], ageGroups: ['Under 16'],
+      offerings: ['Trials'], facilities: ['Grass Field'],
+      privacy: { listed: true, showContactDetails: false, acceptEnquiries: true }, updatedAt: now,
+    }));
+  });
+  it('rejects bad contact details and values outside the lists', async () => {
+    await assertFails(updateDoc(doc(owner(), 'organisations/org1'), { contactEmail: 'nope', updatedAt: now }));
+    await assertFails(updateDoc(doc(owner(), 'organisations/org1'), { website: 'javascript:alert(1)', updatedAt: now }));
+    await assertFails(updateDoc(doc(owner(), 'organisations/org1'), { facilities: ['Helipad'], updatedAt: now }));
+    await assertFails(updateDoc(doc(owner(), 'organisations/org1'), { type: 'cartel', updatedAt: now }));
+  });
+  it('never lets the owner verify themselves or hand over ownership', async () => {
+    await assertFails(updateDoc(doc(owner(), 'organisations/org1'), { verified: true, updatedAt: now }));
+    await assertFails(updateDoc(doc(owner(), 'organisations/org1'), { ownerUid: 'alice', updatedAt: now }));
   });
 });
