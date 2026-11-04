@@ -6,6 +6,7 @@ import { AthleteDashboardProgress } from '../../features/athlete/AthleteDashboar
 import { AthleteGuardianNotice } from '../../features/guardian/AthleteGuardianNotice';
 import { GuardianDashboard } from '../../features/guardian/GuardianDashboard';
 import { CoachDashboard } from '../../features/coach/CoachDashboard';
+import { OrgDashboard } from '../../features/organisation/OrgDashboard';
 
 const COPY = {
   athlete:
@@ -26,6 +27,10 @@ export default function DashboardPage() {
   const profile = typeof state.profile === 'object' ? state.profile : null;
   const firstName = profile?.firstName ?? state.user.displayName?.split(' ')[0] ?? '';
   const restricted = profile?.status === 'restricted';
+
+  if (role === 'organisation') {
+    return <OrgDashboard />;
+  }
 
   if (role === 'coach') {
     return <CoachDashboard uid={state.user.uid} firstName={firstName} />;

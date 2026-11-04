@@ -15,7 +15,7 @@ export function CoachDashboard({ uid, firstName }: { uid: string; firstName: str
   const next = items.find((i) => !i.done);
 
   return (
-    <section className="sb-page active" id="sb-page-dashboard">
+    <section className="sb-page role-dashboard-page active" id="sb-page-dashboard">
       <div className="sb-page-head">
         <div>
           <div className="sb-kicker">COACH DASHBOARD</div>

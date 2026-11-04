@@ -125,7 +125,7 @@
 /* ---- Phase 2a: athlete profile editing ---- */
 /* Selectable pills for fixed-list fields (skills, interests). Matches .sb-pill visually. */
 .sb-chip {
-  font-size: 9px;
+  font-size: 11px;
   border: 1px solid #dde6e0;
   background: #fff;
   border-radius: 6px;
@@ -146,7 +146,7 @@
 .sb-field .field-error {
   display: block;
   margin-top: 4px;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   color: #b42318;
 }
@@ -160,7 +160,7 @@
 .sb-field-hint {
   display: block;
   margin-top: 4px;
-  font-size: 9px;
+  font-size: 11px;
   color: #6b7a71;
 }
 /* The prototype's .sb-switch was a span; ours is a real button for keyboard/screen-reader use. */
@@ -176,7 +176,7 @@ button.sb-switch {
   margin-top: 18px;
 }
 .sb-form-status {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   margin-right: auto;
   align-self: center;
@@ -190,7 +190,7 @@ button.sb-switch {
 .sb-empty {
   padding: 22px;
   text-align: center;
-  font-size: 10px;
+  font-size: 12px;
   color: #6b7a71;
 }
 .sb-achievement-actions {
@@ -200,7 +200,7 @@ button.sb-switch {
 }
 .sb-achievement-actions .sb-btn {
   padding: 5px 9px;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 /* Sidebar links are <a> elements (React Router NavLink), but the prototype styles .sb-nav button.
@@ -214,7 +214,7 @@ button.sb-switch {
   padding: 11px 12px;
   border-radius: 8px;
   margin: 2px 0;
-  font-size: 12px;
+  font-size: 14.5px;
   font-weight: 700;
   color: rgb(215, 229, 222);
   text-decoration: none;
@@ -240,4 +240,15 @@ button.sb-switch {
 .sb-nav button:focus-visible {
   outline: 3px solid #f5b900;
   outline-offset: 2px;
+}
+
+/* Signed-in polish: a checkbox big enough to tap, and badges sized to their text. */
+#sbApp .auth-consent input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  margin-top: 1px;
+}
+#sbApp .sb-card > .v-badge {
+  display: inline-block;
 }

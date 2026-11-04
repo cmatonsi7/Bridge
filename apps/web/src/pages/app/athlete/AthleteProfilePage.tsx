@@ -85,7 +85,7 @@ export default function AthleteProfilePage() {
         <div className="sb-card sb-profile-card">
           {editing ? (
             <>
-              <h2 style={{ fontSize: 15, margin: '0 0 14px' }}>Edit profile</h2>
+              <h2 style={{ fontSize: 16.5, margin: '0 0 14px' }}>Edit profile</h2>
               <AthleteProfileForm
                 uid={ctx.uid}
                 firstName={ctx.user.firstName}
@@ -151,7 +151,7 @@ export default function AthleteProfilePage() {
                         ] as const
                       ).map(([label, v]) => (
                         <div key={label}>
-                          <b style={{ fontSize: 8 }}>{label}</b>
+                          <b style={{ fontSize: 9.5 }}>{label}</b>
                           <p>{v || <Muted>—</Muted>}</p>
                         </div>
                       ))}
@@ -210,7 +210,7 @@ export default function AthleteProfilePage() {
                     {achievementList.map((a) => (
                       <div className="sb-card" style={{ padding: 16 }} key={a.id}>
                         <span className="sb-tag">{a.year}</span>
-                        <h3 style={{ fontSize: 12, margin: '10px 0 4px' }}>{a.title}</h3>
+                        <h3 style={{ fontSize: 14.5, margin: '10px 0 4px' }}>{a.title}</h3>
                         <p className="sb-meta">{[a.organisation, a.detail].filter(Boolean).join(' · ')}</p>
                       </div>
                     ))}

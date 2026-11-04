@@ -1,6 +1,7 @@
 @import './fonts.css';
 @import './legacy.css';
 @import './app.css';
+@import './signed-in-scale.css';
 
 @tailwind base;
 @tailwind components;

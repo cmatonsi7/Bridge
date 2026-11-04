@@ -161,13 +161,47 @@ service cloud.firestore {
     }
 
     // ---- Organisations: one owner in the MVP. Ownership and verification are server-controlled. ----
+    // ---- Organisations (Phase 2d). Lists must match packages/shared (roles.ts, organisation.ts, coach.ts). ----
+    function organisationTypes() {
+      return ['club', 'school', 'academy', 'sports_facility', 'programme_provider', 'tertiary',
+              'service_provider', 'federation', 'other'];
+    }
+    function orgOfferings() {
+      return ['Teams & Leagues', 'Academy Programmes', 'Holiday Camps', 'Trials', 'Coaching Clinics',
+              'Scholarships & Bursaries', 'Sports Science', 'Facility Hire'];
+    }
+    function orgFacilities() {
+      return ['Grass Field', 'Artificial Turf', 'Indoor Hall', 'Swimming Pool', 'Athletics Track', 'Gym', 'Courts', 'Changing Rooms'];
+    }
+    function validOrganisation(d) {
+      return isShortString(d.name, 120) && d.type in organisationTypes()
+        && optText(d, 'description', 1000) && optText(d, 'city', 60)
+        && (!('contactEmail' in d) || d.contactEmail == null
+            || (d.contactEmail is string && d.contactEmail.size() <= 120 && d.contactEmail.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')))
+        && (!('contactPhone' in d) || d.contactPhone == null
+            || (d.contactPhone is string && d.contactPhone.matches('^\\+?[0-9]{9,15}$')))
+        && (!('website' in d) || d.website == null
+            || (d.website is string && d.website.size() <= 200 && d.website.matches('^https?://.+')))
+        && (!('province' in d) || d.province == null || d.province in provinces())
+        && (!('sports' in d) || (d.sports is list && d.sports.size() <= 10 && d.sports.hasOnly(sports())))
+        && (!('ageGroups' in d) || (d.ageGroups is list && d.ageGroups.hasOnly(ageGroups())))
+        && (!('offerings' in d) || (d.offerings is list && d.offerings.hasOnly(orgOfferings())))
+        && (!('facilities' in d) || (d.facilities is list && d.facilities.hasOnly(orgFacilities())))
+        && (!('privacy' in d) || (d.privacy is map
+            && d.privacy.keys().hasOnly(['listed', 'showContactDetails', 'acceptEnquiries'])
+            && d.privacy.listed is bool && d.privacy.showContactDetails is bool && d.privacy.acceptEnquiries is bool))
+        && d.updatedAt is string;
+    }
+
     match /organisations/{orgId} {
       allow read: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
       allow create, delete: if false;
+      // ownerUid, verified and createdAt are server-only (verification comes with the admin dashboard).
       allow update: if signedIn()
         && resource.data.ownerUid == request.auth.uid
-        && !changed().hasAny(['ownerUid', 'verified', 'createdAt'])
-        && isShortString(request.resource.data.name, 120);
+        && changed().hasOnly(['name', 'type', 'description', 'contactEmail', 'contactPhone', 'website', 'city',
+                              'province', 'sports', 'ageGroups', 'offerings', 'facilities', 'privacy', 'updatedAt'])
+        && validOrganisation(request.resource.data);
     }
 
     // ---- Guardian links: visible to the athlete it concerns, the linked guardian, and admins. Server-written. ----
