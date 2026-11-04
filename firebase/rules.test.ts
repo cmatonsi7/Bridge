@@ -67,8 +67,10 @@ describe('users', () => {
     const db = as('alice', { role: 'athlete' });
     await assertSucceeds(updateDoc(doc(db, 'users/alice'), { firstName: 'Ali', displayName: 'Ali B', updatedAt: now }));
     await assertFails(updateDoc(doc(db, 'users/alice'), { role: 'organisation' }));
-    await assertFails(updateDoc(doc(db, 'users/alice'), { status: 'active' }));
-    await assertFails(updateDoc(doc(as('teen', { role: 'athlete' }), 'users/teen'), { isMinor: false }));
+    // A real change is needed here: alice is already 'active', so writing 'active' would change nothing.
+    await assertFails(updateDoc(doc(db, 'users/alice'), { status: 'suspended' }));
+    // A restricted child must not be able to lift their own restriction (only a confirming parent can, server-side).
+    await assertFails(updateDoc(doc(as('teen', { role: 'athlete' }), 'users/teen'), { status: 'active' }));    await assertFails(updateDoc(doc(as('teen', { role: 'athlete' }), 'users/teen'), { isMinor: false }));
     await assertFails(updateDoc(doc(db, 'users/alice'), { firstName: '' }));
   });
   it('nobody can delete a user doc from the client', async () => {
@@ -242,5 +244,58 @@ describe('organisation profiles (Phase 2d)', () => {
   it('never lets the owner verify themselves or hand over ownership', async () => {
     await assertFails(updateDoc(doc(owner(), 'organisations/org1'), { verified: true, updatedAt: now }));
     await assertFails(updateDoc(doc(owner(), 'organisations/org1'), { ownerUid: 'alice', updatedAt: now }));
+  });
+});
+
+describe('listings (Phase 3a)', () => {
+  const listing = (over: Record<string, unknown> = {}) => ({
+    kind: 'opportunity', type: 'Trial', title: 'U17 Trials', description: 'Open trials for the U17 provincial squad.',
+    sports: ['Football'], province: 'Gauteng', city: 'Soweto', ageMin: 14, ageMax: 17, deadline: '2030-01-31',
+    startDate: null, endDate: null, isFree: true, priceZar: null, inclusions: [], status: 'published',
+    orgId: 'org1', ownerUid: 'bob', orgName: 'Soweto FC', orgVerified: false, createdAt: now, updatedAt: now, publishedAt: now,
+    ...over,
+  });
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users/bob'), user('bob', { role: 'organisation', organisationId: 'org1' }));
+      await setDoc(doc(db, 'listings/pub'), listing());
+      await setDoc(doc(db, 'listings/draft'), listing({ status: 'draft' }));
+    });
+  });
+  const owner = () => as('bob', { role: 'organisation' });
+
+  it('anyone, even signed out, reads published listings; drafts only by the owner', async () => {
+    await assertSucceeds(getDoc(doc(anon(), 'listings/pub')));
+    await assertFails(getDoc(doc(anon(), 'listings/draft')));
+    await assertFails(getDoc(doc(as('alice'), 'listings/draft')));
+    await assertSucceeds(getDoc(doc(owner(), 'listings/draft')));
+  });
+  it('the organisation owner can create a valid listing for their own organisation', async () => {
+    await assertSucceeds(setDoc(doc(owner(), 'listings/new1'), listing()));
+  });
+  it('rejects a faked verified badge, a wrong organisation, non-organisations and bad data', async () => {
+    await assertFails(setDoc(doc(owner(), 'listings/n2'), listing({ orgVerified: true })));
+    await assertFails(setDoc(doc(owner(), 'listings/n3'), listing({ orgName: 'Kaizer Chiefs' })));
+    await assertFails(setDoc(doc(owner(), 'listings/n4'), listing({ orgId: 'someone-else' })));
+    await assertFails(setDoc(doc(as('alice', { role: 'athlete' }), 'listings/n5'), listing({ ownerUid: 'alice' })));
+    await assertFails(setDoc(doc(owner(), 'listings/n6'), listing({ ageMin: 18, ageMax: 10 })));
+    await assertFails(setDoc(doc(owner(), 'listings/n7'), listing({ isFree: false, priceZar: null })));
+    await assertFails(setDoc(doc(owner(), 'listings/n8'), listing({ type: 'Raffle' })));
+  });
+  it('owner can close a listing but not reassign it; only drafts can be deleted', async () => {
+    await assertSucceeds(updateDoc(doc(owner(), 'listings/pub'), { status: 'closed', updatedAt: now }));
+    await assertFails(updateDoc(doc(owner(), 'listings/pub'), { orgId: 'org2', updatedAt: now }));
+    await assertFails(updateDoc(doc(as('alice'), 'listings/pub'), { title: 'Hijacked', updatedAt: now }));
+    await assertFails(deleteDoc(doc(owner(), 'listings/pub')));
+    await assertSucceeds(deleteDoc(doc(owner(), 'listings/draft')));
+  });
+  it('members manage only their own saved shortlist', async () => {
+    const saved = { listingId: 'pub', kind: 'opportunity', title: 'U17 Trials', savedAt: now };
+    await assertSucceeds(setDoc(doc(as('alice'), 'users/alice/saved/pub'), saved));
+    await assertSucceeds(getDoc(doc(as('alice'), 'users/alice/saved/pub')));
+    await assertFails(getDoc(doc(as('bob'), 'users/alice/saved/pub')));
+    await assertFails(setDoc(doc(as('bob'), 'users/alice/saved/x'), { ...saved, listingId: 'x' }));
+    await assertSucceeds(deleteDoc(doc(as('alice'), 'users/alice/saved/pub')));
   });
 });

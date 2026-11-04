@@ -13,23 +13,49 @@ const CoachProfilePage = lazy(() => import('./coach/CoachProfilePage'));
 const CoachSettingsPage = lazy(() => import('./coach/CoachSettingsPage'));
 const OrgProfilePage = lazy(() => import('./organisation/OrgProfilePage'));
 const OrgSettingsPage = lazy(() => import('./organisation/OrgSettingsPage'));
+const BrowseOpportunitiesPage = lazy(() =>
+  import('./listings/BrowseListingsPage').then((m) => ({ default: m.BrowseOpportunitiesPage })),
+);
+const BrowseProgrammesPage = lazy(() =>
+  import('./listings/BrowseListingsPage').then((m) => ({ default: m.BrowseProgrammesPage })),
+);
+const OrgOpportunitiesPage = lazy(() =>
+  import('./listings/OrgListingsPage').then((m) => ({ default: m.OrgOpportunitiesPage })),
+);
+const OrgProgrammesPage = lazy(() =>
+  import('./listings/OrgListingsPage').then((m) => ({ default: m.OrgProgrammesPage })),
+);
+const SavedPage = lazy(() => import('./listings/SavedPage'));
+
+/** Browsing and saving listings are the same for every member role. */
+const MEMBER_LISTINGS = {
+  opportunities: BrowseOpportunitiesPage,
+  programmes: BrowseProgrammesPage,
+  saved: SavedPage,
+};
 
 /** Pages that are built for a role. Anything not listed falls back to the "not available yet" placeholder. */
 const BUILT: Partial<Record<Role, Partial<Record<AppSection, ComponentType>>>> = {
   athlete: {
+    ...MEMBER_LISTINGS,
     profile: AthleteProfilePage,
     progress: AthleteProgressPage,
     settings: AthleteSettingsPage,
   },
   guardian: {
+    ...MEMBER_LISTINGS,
     profile: GuardianSettingsPage,
     settings: GuardianSettingsPage,
   },
   coach: {
+    ...MEMBER_LISTINGS,
     profile: CoachProfilePage,
     settings: CoachSettingsPage,
   },
   organisation: {
+    opportunities: OrgOpportunitiesPage,
+    programmes: OrgProgrammesPage,
+    saved: SavedPage,
     profile: OrgProfilePage,
     settings: OrgSettingsPage,
   },
