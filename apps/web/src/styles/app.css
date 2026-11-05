@@ -249,8 +249,11 @@ button.sb-switch {
   flex: 0 0 20px;
   margin-top: 1px;
 }
-#sbApp .sb-card > .v-badge {
+/* Badges are inline spans; inside flex rows they stretch into circles without this. */
+.v-badge {
   display: inline-block;
+  align-self: flex-start;
+  white-space: nowrap;
 }
 
 /* ---- Phase 3a: listings ---- */

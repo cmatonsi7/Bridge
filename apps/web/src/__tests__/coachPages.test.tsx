@@ -55,6 +55,10 @@ vi.mock('../features/athlete/athleteService', () => ({
   usePrivateDetails: () => ({ status: 'ready', data: { dateOfBirth: '1985-01-01', mobile: '0821234567' } }),
   saveMobile: vi.fn(async () => {}),
 }));
+vi.mock('../features/directory/directoryService', () => ({
+  useCoachConnections: () => ({ status: 'ready', data: [] }),
+  syncDirectory: vi.fn(async () => ({ listed: true })),
+}));
 vi.mock('../features/coach/coachService', () => ({
   useCoachProfile: () => ({ status: 'ready', data: c.profile }),
   useQualifications: () => ({ status: 'ready', data: c.quals }),
@@ -140,6 +144,6 @@ describe('CoachDashboard', () => {
     renderIn(<CoachDashboard uid="c1" firstName="Sibusiso" />);
     expect(screen.getByRole('img', { name: 'Profile 100% complete' })).toBeTruthy();
     expect(screen.getByText(/0 connected athletes/)).toBeTruthy();
-    expect(screen.getByText(/once discovery launches/)).toBeTruthy();
+    expect(screen.getByText(/No connected athletes yet/)).toBeTruthy();
   });
 });

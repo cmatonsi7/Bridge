@@ -29,12 +29,16 @@ const SavedPage = lazy(() => import('./listings/SavedPage'));
 const MyApplicationsPage = lazy(() => import('./applications/MyApplicationsPage'));
 const OrgApplicationsPage = lazy(() => import('./applications/OrgApplicationsPage'));
 const GuardianApplicationsPage = lazy(() => import('./applications/GuardianApplicationsPage'));
+const DirectoryPage = lazy(() => import('./directory/DirectoryPage'));
+const ConnectionsPage = lazy(() => import('./directory/ConnectionsPage'));
 
 /** Browsing and saving listings are the same for every member role. */
 const MEMBER_LISTINGS = {
   opportunities: BrowseOpportunitiesPage,
   programmes: BrowseProgrammesPage,
   saved: SavedPage,
+  directory: DirectoryPage,
+  connections: ConnectionsPage,
 };
 
 /** Pages that are built for a role. Anything not listed falls back to the "not available yet" placeholder. */
@@ -58,6 +62,7 @@ const BUILT: Partial<Record<Role, Partial<Record<AppSection, ComponentType>>>> =
     settings: CoachSettingsPage,
   },
   organisation: {
+    directory: DirectoryPage,
     opportunities: OrgOpportunitiesPage,
     programmes: OrgProgrammesPage,
     saved: SavedPage,

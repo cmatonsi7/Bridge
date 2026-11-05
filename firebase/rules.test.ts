@@ -549,3 +549,93 @@ describe('applications and notifications (Phase 3b)', () => {
     );
   });
 });
+
+describe('directory and connections (Phase 3c)', () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'directoryProfiles/adult'), {
+        uid: 'adult',
+        role: 'athlete',
+        displayName: 'A B',
+        sports: ['Football'],
+        province: 'Gauteng',
+        city: 'Soweto',
+        headline: null,
+        tags: [],
+        updatedAt: now,
+      });
+      await setDoc(doc(db, 'users/teen3'), user('teen3', { isMinor: true, guardianUids: ['mom'] }));
+      await setDoc(doc(db, 'connections/coach1_teen3'), {
+        coachUid: 'coach1',
+        coachName: 'Coach One',
+        athleteUid: 'teen3',
+        athleteName: 'T',
+        athleteIsMinor: true,
+        decidedByUid: null,
+        decidedByRole: null,
+        status: 'pending',
+        message: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+  });
+  it('any signed-in member can search the directory; signed-out visitors cannot', async () => {
+    await assertSucceeds(getDoc(doc(as('alice', { role: 'athlete' }), 'directoryProfiles/adult')));
+    await assertSucceeds(getDocs(collection(as('bob', { role: 'coach' }), 'directoryProfiles')));
+    await assertFails(getDoc(doc(anon(), 'directoryProfiles/adult')));
+  });
+  it('nobody can add themselves to the directory from the browser', async () => {
+    await assertFails(
+      setDoc(doc(as('alice'), 'directoryProfiles/alice'), {
+        uid: 'alice',
+        role: 'athlete',
+        displayName: 'A',
+        sports: [],
+        province: null,
+        city: null,
+        headline: null,
+        tags: [],
+        updatedAt: now,
+      }),
+    );
+    await assertFails(deleteDoc(doc(as('alice'), 'directoryProfiles/adult')));
+  });
+  it("a connection is readable by the coach, the athlete and the child's parent only", async () => {
+    await assertSucceeds(getDoc(doc(as('coach1', { role: 'coach' }), 'connections/coach1_teen3')));
+    await assertSucceeds(getDoc(doc(as('teen3', { role: 'athlete' }), 'connections/coach1_teen3')));
+    await assertSucceeds(getDoc(doc(as('mom', { role: 'guardian' }), 'connections/coach1_teen3')));
+    await assertFails(getDoc(doc(as('alice', { role: 'athlete' }), 'connections/coach1_teen3')));
+    await assertFails(getDoc(doc(anon(), 'connections/coach1_teen3')));
+  });
+  it('nobody can accept a connection from the browser, not even the parent', async () => {
+    await assertFails(
+      updateDoc(doc(as('mom', { role: 'guardian' }), 'connections/coach1_teen3'), { status: 'accepted' }),
+    );
+    await assertFails(updateDoc(doc(as('teen3'), 'connections/coach1_teen3'), { status: 'accepted' }));
+    await assertFails(
+      setDoc(doc(as('coach1'), 'connections/coach1_alice'), {
+        coachUid: 'coach1',
+        athleteUid: 'alice',
+        status: 'accepted',
+      }),
+    );
+  });
+  it('the list queries the app uses work for coach, athlete and parent', async () => {
+    await assertSucceeds(
+      getDocs(query(collection(as('coach1'), 'connections'), where('coachUid', '==', 'coach1'))),
+    );
+    await assertSucceeds(
+      getDocs(query(collection(as('teen3'), 'connections'), where('athleteUid', '==', 'teen3'))),
+    );
+    await assertSucceeds(
+      getDocs(
+        query(collection(as('mom', { role: 'guardian' }), 'connections'), where('athleteUid', '==', 'teen3')),
+      ),
+    );
+    await assertFails(
+      getDocs(query(collection(as('alice'), 'connections'), where('athleteUid', '==', 'teen3'))),
+    );
+  });
+});

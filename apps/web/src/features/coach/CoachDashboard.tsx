@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { coachCompletion } from '@sportbridge/shared';
+import { useCoachConnections } from '../directory/directoryService';
 import { useCoachProfile, useQualifications } from './coachService';
 
 /** Coach dashboard (prototype "Your athlete roster"), with real completion and an honest roster state. */
 export function CoachDashboard({ uid, firstName }: { uid: string; firstName: string }) {
   const navigate = useNavigate();
   const profile = useCoachProfile(uid);
+  const connections = useCoachConnections(uid);
   const quals = useQualifications(uid);
   const ready = profile.status === 'ready' && quals.status === 'ready';
   const { percent, items } = coachCompletion(
@@ -76,12 +78,40 @@ export function CoachDashboard({ uid, firstName }: { uid: string; firstName: str
           <div className="sb-card" style={{ padding: 18 }}>
             <div className="sb-section-title" style={{ margin: '0 0 12px' }}>
               <h2>My Athletes</h2>
+              <button type="button" className="auth-link" onClick={() => navigate('/app/connections')}>
+                View all
+              </button>
             </div>
-            <p className="sb-meta" style={{ lineHeight: 1.7 }}>
-              Athletes will be able to find you and send connection requests once discovery launches. Accepted
-              athletes will appear here with their development progress. For athletes under 18, a confirmed
-              parent or guardian will be part of every connection.
-            </p>
+            {connections.status !== 'ready' ? (
+              <p className="sb-meta">Loading…</p>
+            ) : connections.data.filter((c) => c.status === 'accepted').length === 0 ? (
+              <>
+                <p className="sb-meta" style={{ lineHeight: 1.7 }}>
+                  No connected athletes yet. Search the Talent Directory and ask an athlete to connect. For
+                  athletes under 18, their parent or guardian decides.
+                </p>
+                <button
+                  type="button"
+                  className="sb-btn primary"
+                  style={{ marginTop: 10 }}
+                  onClick={() => navigate('/app/directory')}
+                >
+                  Find athletes
+                </button>
+              </>
+            ) : (
+              <div style={{ display: 'grid', gap: 8 }}>
+                {connections.data
+                  .filter((c) => c.status === 'accepted')
+                  .slice(0, 5)
+                  .map((c) => (
+                    <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                      <span>{c.athleteName}</span>
+                      {c.athleteIsMinor && <span className="v-badge pending">Under 18</span>}
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         </div>
       )}

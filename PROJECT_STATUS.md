@@ -1,6 +1,6 @@
 # PROJECT_STATUS — SportBridge
 
-_Last updated: 2026-11-04 · Phases 1, 2 and 3a accepted. Phase 3b (Applications) code complete on `phase-3-applications`, awaiting review. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
+_Last updated: 2026-11-05 · Phases 1, 2, 3a and 3b accepted. Phase 3c (Directory & connections) code complete on `phase-3-directory`, awaiting review. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
 
 ## Phase progress
 | Phase | Status |
@@ -11,8 +11,8 @@ _Last updated: 2026-11-04 · Phases 1, 2 and 3a accepted. Phase 3b (Applications
 | 2c Coach dashboard | Accepted (credentials self-declared) |
 | 2d Organisation dashboard | Accepted |
 | 3a Listings (opportunities, programmes, saved) | Accepted |
-| 3b Applications | Code complete, awaiting review (branch `phase-3-applications`) |
-| 3c Directory & connections | Not started |
+| 3b Applications | Accepted |
+| 3c Directory & connections | Code complete, awaiting review (branch `phase-3-directory`) |
 | 3d Sponsorship & calendar | Not started |
 | 4 Membership & payments | Blocked on client pricing |
 | 5 Messaging & admin dashboard | Not started |
@@ -51,6 +51,16 @@ _Last updated: 2026-11-04 · Phases 1, 2 and 3a accepted. Phase 3b (Applications
 5. Applications: optional note plus a profile snapshot; applicants can withdraw; organisations see applicants only for their own listings.
 6. Notifications: in-app only.
 7. Sponsorship: request and express interest only; SportBridge handles no money. **Client to confirm.**
+
+## Phase 3c (Directory & connections) summary
+- **Talent Directory** (`directoryProfiles`, server-written): a separate collection holding only safe fields — name, role, sports, province, city, headline, tags. **No contact details, no date of birth, and never an under-18 athlete**, enforced in `buildEntry` on the server, so tampering with the browser cannot list a child. Signed-in members only; signed-out visitors cannot read it.
+- People appear only if they opt in (athlete/coach "discoverable", organisation "listed"); turning it off deletes the entry. `POST /api/directory/sync` rebuilds the caller's own entry and runs after every privacy change.
+- **Athlete privacy:** for under-18s the directory switch is shown disabled with "Not available for under-18 accounts", rather than silently ignored.
+- **Connections** (`connections/{coachUid}_{athleteUid}`, server-written): a coach requests; an **adult athlete** answers for themselves; for a **child the parent answers** and the child is told but cannot accept. Coach, adult athlete or parent can end an accepted connection. Declined/ended requests may be sent again; a live one may not.
+- Coach dashboard "My Athletes" now shows real connections. New Connections page per role. Notifications for request, answer and ending.
+- Rules: directory readable by any signed-in member, never written from the browser; a connection readable by its coach, the athlete and the athlete's verified parents only.
+- Decisions (approved 2026-11-05): athletes cannot request coaches (coaches ask, families decide); a connected coach sees the child's profile but never contact details; sponsorship and calendar remain in 3d.
+- Deferred: messaging (Phase 5); a parent with several children sees the first child's requests on the Connections page and the rest on each child's page; search still filters on the device (fine for hundreds).
 
 ## Phase 3b (Applications) summary
 - Athletes apply (opportunities) or express interest (programmes) from the listing page with an optional note. The panel says exactly what the organisation will see. One application per person per listing (id `{listingId}_{applicantUid}`).

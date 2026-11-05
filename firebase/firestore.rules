@@ -271,6 +271,21 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid && resource.data.status == 'draft';
     }
 
+    // ---- Directory and connections (Phase 3c). Both are written only by the server. ----
+    // The directory holds no contact details and no date of birth, and never an under-18 athlete.
+    match /directoryProfiles/{uid} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /connections/{connectionId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.coachUid == request.auth.uid)
+        || (signedIn() && resource.data.athleteUid == request.auth.uid)
+        || isGuardianOf(resource.data.athleteUid);
+      allow write: if false;
+    }
+
     // ---- Applications (Phase 3b). Created and changed only by the server, which applies the safeguarding checks.
     match /applications/{applicationId} {
       allow read: if isAdmin()
