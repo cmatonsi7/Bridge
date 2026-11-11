@@ -1,3 +1,4 @@
+import { refreshDirectoryQuietly } from '../directory/useDirectoryReconcile';
 import { useState, type FormEvent } from 'react';
 import {
   AGE_GROUPS,
@@ -76,6 +77,7 @@ export function CoachProfileForm({ uid, firstName, surname, profile, onSaved, on
         services: f.services,
         ageGroups: f.ageGroups,
       });
+      refreshDirectoryQuietly();
       if (f.firstName.trim() !== firstName || f.surname.trim() !== surname)
         await saveCoachName(uid, f.firstName, f.surname);
       setErrors({});

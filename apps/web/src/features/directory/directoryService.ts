@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { collection, doc, limit, onSnapshot, query, where } from 'firebase/firestore';
-import type { ConnectRequestInput, ConnectionDoc, DirectoryEntryDoc } from '@sportbridge/shared';
+import type {
+  ConnectRequestInput,
+  ConnectionDoc,
+  DirectoryEntryDoc,
+  ListingReason,
+} from '@sportbridge/shared';
 import { requireDb } from '../../lib/firebase';
 import { apiFetch } from '../../lib/apiClient';
 import type { Loadable } from '../athlete/athleteService';
@@ -98,4 +103,5 @@ export const acceptConnection = (id: string) => apiFetch(`/connections/${id}/acc
 export const declineConnection = (id: string) => apiFetch(`/connections/${id}/decline`, { method: 'POST' });
 export const endConnection = (id: string) => apiFetch(`/connections/${id}/end`, { method: 'POST' });
 /** Rebuilds the caller's own directory entry after they change their privacy settings. */
-export const syncDirectory = () => apiFetch<{ listed: boolean }>('/directory/sync', { method: 'POST' });
+export type SyncResult = { listed: boolean; reason: ListingReason | null };
+export const syncDirectory = () => apiFetch<SyncResult>('/directory/sync', { method: 'POST' });

@@ -12,6 +12,24 @@ export type DirectoryRole = (typeof DIRECTORY_ROLES)[number];
  * Written by the server. It deliberately holds no contact details and no date of birth,
  * and under-18 athletes never get one at all.
  */
+/** Why someone is not in the directory. Shown to them, so it must be plain and kind. */
+export const LISTING_REASONS = [
+  'UNDER_18',
+  'NOT_ACTIVE',
+  'SWITCH_OFF',
+  'NO_PROFILE',
+  'NOT_LISTABLE',
+] as const;
+export type ListingReason = (typeof LISTING_REASONS)[number];
+export const LISTING_REASON_MESSAGES: Record<ListingReason, string> = {
+  UNDER_18: 'for safety, athletes under 18 are never listed in the Talent Directory.',
+  NOT_ACTIVE:
+    'your account isn’t active yet. Finish setting it up (and have a parent confirm it, if you’re under 18).',
+  SWITCH_OFF: 'the directory switch is off.',
+  NO_PROFILE: 'your profile isn’t set up yet. Save your profile and try again.',
+  NOT_LISTABLE: 'this type of account isn’t listed in the directory.',
+};
+
 export interface DirectoryEntryDoc {
   uid: string;
   role: DirectoryRole;

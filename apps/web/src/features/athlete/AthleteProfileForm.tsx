@@ -1,3 +1,4 @@
+import { refreshDirectoryQuietly } from '../directory/useDirectoryReconcile';
 import { useState, type FormEvent } from 'react';
 import {
   INTERESTS,
@@ -74,6 +75,7 @@ export function AthleteProfileForm({ uid, firstName, surname, profile, onSaved, 
         throw new Error('NAME');
       }
       await saveAthleteProfile(uid, payload);
+      refreshDirectoryQuietly();
       if (f.firstName.trim() !== firstName || f.surname.trim() !== surname) {
         await saveName(uid, f.firstName, f.surname);
       }

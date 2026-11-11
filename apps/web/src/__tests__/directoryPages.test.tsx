@@ -7,6 +7,8 @@ import DirectoryPage from '../pages/app/directory/DirectoryPage';
 import DirectoryProfilePage from '../pages/app/directory/DirectoryProfilePage';
 import ConnectionsPage from '../pages/app/directory/ConnectionsPage';
 import { PrivacyForm } from '../features/athlete/PrivacyForm';
+import { useDirectoryReconcile } from '../features/directory/useDirectoryReconcile';
+import { renderHook } from '@testing-library/react';
 
 const entry = (over: Partial<DirectoryEntryDoc> & { uid: string }): DirectoryEntryDoc & { id: string } => ({
   id: over.uid,
@@ -185,5 +187,71 @@ describe('athlete privacy', () => {
     );
     fireEvent.click(screen.getByRole('switch', { name: 'List me in the Talent Directory' }));
     await waitFor(() => expect(ds.syncDirectory).toHaveBeenCalled());
+  });
+  it('tells the person when the directory could not be updated, instead of saying Saved', async () => {
+    vi.mocked(ds.syncDirectory).mockRejectedValueOnce(new Error('offline'));
+    render(
+      <PrivacyForm
+        uid="a1"
+        isMinor={false}
+        value={{ discoverable: false, showAchievements: false, allowEnquiries: false }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('switch', { name: 'List me in the Talent Directory' }));
+    expect(await screen.findByText(/couldn’t update the Talent Directory/)).toBeTruthy();
+    expect(screen.queryByText('Saved.')).toBeNull();
+  });
+  it('confirms when the person is now listed', async () => {
+    render(
+      <PrivacyForm
+        uid="a1"
+        isMinor={false}
+        value={{ discoverable: false, showAchievements: false, allowEnquiries: false }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('switch', { name: 'List me in the Talent Directory' }));
+    expect(await screen.findByText(/You’re now listed in the Talent Directory/)).toBeTruthy();
+  });
+  it('explains exactly why someone is not listed when the switch is on', async () => {
+    vi.mocked(ds.syncDirectory).mockResolvedValueOnce({ listed: false, reason: 'NOT_ACTIVE' });
+    render(
+      <PrivacyForm
+        uid="a1"
+        isMinor={false}
+        value={{ discoverable: false, showAchievements: false, allowEnquiries: false }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('switch', { name: 'List me in the Talent Directory' }));
+    expect(await screen.findByText(/you’re not listed: your account isn’t active yet/)).toBeTruthy();
+  });
+  it('does not touch the directory when a different switch changes', async () => {
+    render(
+      <PrivacyForm
+        uid="a1"
+        isMinor={false}
+        value={{ discoverable: true, showAchievements: false, allowEnquiries: false }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('switch', { name: 'Show achievements publicly' }));
+    expect(await screen.findByText('Saved.')).toBeTruthy();
+    expect(ds.syncDirectory).not.toHaveBeenCalled();
+  });
+});
+
+describe('quiet listing refresh', () => {
+  beforeEach(() => sessionStorage.clear());
+  it('refreshes a listable person once per session, without anyone touching a switch', async () => {
+    const { rerender } = renderHook(({ uid, role }) => useDirectoryReconcile(uid, role), {
+      initialProps: { uid: 'a1', role: 'athlete' },
+    });
+    await waitFor(() => expect(ds.syncDirectory).toHaveBeenCalledTimes(1));
+    rerender({ uid: 'a1', role: 'athlete' });
+    renderHook(() => useDirectoryReconcile('a1', 'athlete'));
+    expect(ds.syncDirectory).toHaveBeenCalledTimes(1);
+  });
+  it('does not refresh parents or signed-out visitors', () => {
+    renderHook(() => useDirectoryReconcile('g1', 'guardian'));
+    renderHook(() => useDirectoryReconcile(undefined, undefined));
+    expect(ds.syncDirectory).not.toHaveBeenCalled();
   });
 });

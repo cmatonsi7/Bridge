@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { saveErrorMessage } from '../athlete/fieldErrors';
+import type { Feedback } from '../directory/listingFeedback';
 
 interface Props<T extends Record<string, boolean>> {
   rows: { key: keyof T & string; label: string }[];
   value: T;
-  save: (next: T) => Promise<void>;
+  /** Return feedback to show after saving; the choice itself is already saved and is kept. */
+  save: (next: T, changedKey: keyof T & string) => Promise<void | Feedback>;
   note?: string;
 }
 
@@ -20,8 +22,8 @@ export function PrivacySwitches<T extends Record<string, boolean>>({ rows, value
     setBusy(true);
     setStatus(null);
     try {
-      await save(next);
-      setStatus({ kind: 'ok', text: 'Saved.' });
+      const feedback = await save(next, key);
+      setStatus(feedback ?? { kind: 'ok', text: 'Saved.' });
     } catch (err) {
       setP(p);
       setStatus({ kind: 'err', text: saveErrorMessage(err) });

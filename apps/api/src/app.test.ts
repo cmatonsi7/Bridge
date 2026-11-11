@@ -779,7 +779,7 @@ describe('directory and connections', () => {
       .send(body as object);
 
   it('lists a discoverable adult athlete but never a child, whatever their settings say', async () => {
-    expect((await post('/api/directory/sync', 't-adult')).body).toEqual({ listed: true });
+    expect((await post('/api/directory/sync', 't-adult')).body).toEqual({ listed: true, reason: null });
     expect(f.entries.get('adult')).toMatchObject({
       role: 'athlete',
       sports: ['Football'],
@@ -787,17 +787,37 @@ describe('directory and connections', () => {
     });
     // the child has discoverable: true and is still refused
     f.tokens.set('t-kid2', { uid: 'kid', email: 'kid@example.com', email_verified: true, role: 'athlete' });
-    expect((await post('/api/directory/sync', 't-kid2')).body).toEqual({ listed: false });
+    expect((await post('/api/directory/sync', 't-kid2')).body).toEqual({ listed: false, reason: 'UNDER_18' });
     expect(f.entries.has('kid')).toBe(false);
   });
 
   it('never lists someone who has not opted in, and removes them when they opt out', async () => {
-    expect((await post('/api/directory/sync', 't-shy')).body).toEqual({ listed: false });
+    expect((await post('/api/directory/sync', 't-shy')).body).toEqual({
+      listed: false,
+      reason: 'SWITCH_OFF',
+    });
     await post('/api/directory/sync', 't-adult');
     expect(f.entries.has('adult')).toBe(true);
     f.subjects.set('adult', subject('adult', 'athlete', {}, athleteProfile(false)));
-    expect((await post('/api/directory/sync', 't-adult')).body).toEqual({ listed: false });
+    expect((await post('/api/directory/sync', 't-adult')).body).toEqual({
+      listed: false,
+      reason: 'SWITCH_OFF',
+    });
     expect(f.entries.has('adult')).toBe(false);
+  });
+
+  it('says why someone is not listed: inactive account or missing profile', async () => {
+    f.subjects.set('new', subject('new', 'athlete', { status: 'restricted' }, athleteProfile(true)));
+    f.tokens.set('t-new', { uid: 'new', email: 'new@example.com', email_verified: true, role: 'athlete' });
+    expect((await post('/api/directory/sync', 't-new')).body.reason).toBe('NOT_ACTIVE');
+    f.subjects.set('noprof', subject('noprof', 'athlete'));
+    f.tokens.set('t-noprof', {
+      uid: 'noprof',
+      email: 'n@example.com',
+      email_verified: true,
+      role: 'athlete',
+    });
+    expect((await post('/api/directory/sync', 't-noprof')).body.reason).toBe('NO_PROFILE');
   });
 
   it('a directory entry never carries contact details or a date of birth', async () => {

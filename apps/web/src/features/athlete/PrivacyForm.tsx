@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DEFAULT_ATHLETE_PRIVACY, type AthletePrivacy } from '@sportbridge/shared';
 import { savePrivacy } from './athleteService';
 import { syncDirectory } from '../directory/directoryService';
+import { SYNC_FAILED, listingFeedback } from '../directory/listingFeedback';
 import { saveErrorMessage } from './fieldErrors';
 
 const ROWS: { key: keyof AthletePrivacy; label: string }[] = [
@@ -31,9 +32,16 @@ export function PrivacyForm({
     setStatus(null);
     try {
       await savePrivacy(uid, next);
-      // Rebuild the directory entry; the save itself has already succeeded.
-      await syncDirectory().catch(() => {});
-      setStatus({ kind: 'ok', text: 'Saved.' });
+      if (key === 'discoverable') {
+        // The directory entry is rebuilt on the server; tell the person what happened.
+        try {
+          setStatus(listingFeedback(await syncDirectory(), next.discoverable));
+        } catch {
+          setStatus(SYNC_FAILED);
+        }
+      } else {
+        setStatus({ kind: 'ok', text: 'Saved.' });
+      }
     } catch (err) {
       setP(p);
       setStatus({ kind: 'err', text: saveErrorMessage(err) });

@@ -8,6 +8,7 @@ import {
   type ConnectRequestInput,
   type ConnectionDoc,
   type DirectoryEntryDoc,
+  type ListingReason,
   type NotificationDoc,
   type OrganisationFullDoc,
   type UserDoc,
@@ -67,71 +68,92 @@ const note = (
   createdAt: at,
 });
 
+export interface ListingDecision {
+  entry: DirectoryEntryDoc | null;
+  reason: ListingReason | null;
+}
+
 /**
- * The directory entry a subject should have, or null if they must not be listed.
- * Under-18 athletes are never listed, whatever their settings say.
+ * Decides whether a subject is listed, and if not, why. Under-18 athletes are never listed,
+ * whatever their settings say, and this is checked before anything else.
  */
-export function buildEntry(s: DirectorySubject, at: string): DirectoryEntryDoc | null {
+export function decideListing(s: DirectorySubject, at: string): ListingDecision {
   const { user } = s;
-  if (user.status !== 'active') return null;
+  if (user.role === 'athlete' && user.isMinor) return { entry: null, reason: 'UNDER_18' };
+  if (user.status !== 'active') return { entry: null, reason: 'NOT_ACTIVE' };
   const base = { uid: user.uid, displayName: user.displayName, updatedAt: at };
 
   if (user.role === 'athlete') {
-    if (user.isMinor) return null; // hard rule: children are never discoverable
     const p = s.athlete;
-    if (!p?.privacy?.discoverable) return null;
+    if (!p) return { entry: null, reason: 'NO_PROFILE' };
+    if (!p.privacy?.discoverable) return { entry: null, reason: 'SWITCH_OFF' };
     return {
-      ...base,
-      role: 'athlete',
-      sports: p.sport ? [p.sport] : [],
-      province: p.province ?? null,
-      city: p.city ?? null,
-      headline: [p.position, p.club].filter(Boolean).join(' · ') || null,
-      tags: p.skills ?? [],
+      reason: null,
+      entry: {
+        ...base,
+        role: 'athlete',
+        sports: p.sport ? [p.sport] : [],
+        province: p.province ?? null,
+        city: p.city ?? null,
+        headline: [p.position, p.club].filter(Boolean).join(' · ') || null,
+        tags: p.skills ?? [],
+      },
     };
   }
   if (user.role === 'coach') {
     const p = s.coach;
-    if (!p?.privacy?.discoverable) return null;
+    if (!p) return { entry: null, reason: 'NO_PROFILE' };
+    if (!p.privacy?.discoverable) return { entry: null, reason: 'SWITCH_OFF' };
     return {
-      ...base,
-      role: 'coach',
-      sports: p.sports ?? [],
-      province: p.province ?? null,
-      city: p.city ?? null,
-      headline:
-        [p.coachingLevel && `${p.coachingLevel} level`, p.organisation].filter(Boolean).join(' · ') || null,
-      tags: p.specialisations ?? [],
+      reason: null,
+      entry: {
+        ...base,
+        role: 'coach',
+        sports: p.sports ?? [],
+        province: p.province ?? null,
+        city: p.city ?? null,
+        headline:
+          [p.coachingLevel && `${p.coachingLevel} level`, p.organisation].filter(Boolean).join(' · ') || null,
+        tags: p.specialisations ?? [],
+      },
     };
   }
   if (user.role === 'organisation') {
     const o = s.organisation;
-    if (!o?.privacy?.listed) return null;
+    if (!o) return { entry: null, reason: 'NO_PROFILE' };
+    if (!o.privacy?.listed) return { entry: null, reason: 'SWITCH_OFF' };
     return {
-      ...base,
-      role: 'organisation',
-      displayName: o.name,
-      sports: o.sports ?? [],
-      province: o.province ?? null,
-      city: o.city ?? null,
-      headline: o.description?.slice(0, 140) ?? null,
-      tags: o.offerings ?? [],
-      orgId: o.id,
-      orgType: o.type,
-      verified: o.verified,
+      reason: null,
+      entry: {
+        ...base,
+        role: 'organisation',
+        displayName: o.name,
+        sports: o.sports ?? [],
+        province: o.province ?? null,
+        city: o.city ?? null,
+        headline: o.description?.slice(0, 140) ?? null,
+        tags: o.offerings ?? [],
+        orgId: o.id,
+        orgType: o.type,
+        verified: o.verified,
+      },
     };
   }
-  return null;
+  return { entry: null, reason: 'NOT_LISTABLE' };
 }
+
+/** The directory entry a subject should have, or null if they must not be listed. */
+export const buildEntry = (s: DirectorySubject, at: string): DirectoryEntryDoc | null =>
+  decideListing(s, at).entry;
 
 /** Rebuilds the caller's own directory entry from their real records. Called after they save settings. */
 export async function syncOwnEntry(repo: DirectoryRepoPort, c: DirectoryCaller, now = new Date()) {
   const s = await repo.getSubject(c.uid);
   if (!s) throw new HttpError(404, 'NO_PROFILE', 'Finish setting up your account first');
-  const entry = buildEntry(s, now.toISOString());
+  const { entry, reason } = decideListing(s, now.toISOString());
   if (entry) await repo.putEntry(c.uid, entry);
   else await repo.removeEntry(c.uid);
-  return { listed: entry !== null };
+  return { listed: entry !== null, reason };
 }
 
 export async function requestConnection(
