@@ -8,6 +8,7 @@ import {
   type DirectoryFilters,
   type DirectoryRole,
 } from '@sportbridge/shared';
+import { useSignedInUser } from '../../../features/account/useSignedInUser';
 import { useDirectory } from '../../../features/directory/directoryService';
 import { DirectoryCard } from '../../../features/directory/DirectoryCard';
 import { BootScreen } from '../../../app/guards';
@@ -20,7 +21,10 @@ const ROLE_LABEL: Record<DirectoryRole, string> = {
 
 /** Talent Directory: only people who chose to be listed. Under-18 athletes never appear. */
 export default function DirectoryPage() {
-  const dir = useDirectory();
+  const me = useSignedInUser();
+  // Children see coaches and organisations only (the security rules enforce this as well).
+  const childView = !!me?.user.isMinor;
+  const dir = useDirectory(childView);
   const [f, setF] = useState<DirectoryFilters>({});
   if (dir.status === 'loading') return <BootScreen label="Loading the directory…" />;
   if (dir.status === 'error')
@@ -62,7 +66,7 @@ export default function DirectoryPage() {
           style={{ minWidth: 0, flex: '1 1 150px' }}
         >
           <option value="">Everyone</option>
-          {DIRECTORY_ROLES.map((r) => (
+          {DIRECTORY_ROLES.filter((r) => !(childView && r === 'athlete')).map((r) => (
             <option key={r} value={r}>
               {ROLE_LABEL[r]}
             </option>

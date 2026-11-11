@@ -639,3 +639,45 @@ describe('directory and connections (Phase 3c)', () => {
     );
   });
 });
+
+describe('directory audience: children see coaches and organisations only (Phase 3c)', () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users/kid5'), user('kid5', { isMinor: true, guardianUids: ['mom'] }));
+      await setDoc(doc(db, 'users/adult5'), user('adult5', { isMinor: false }));
+      const base = {
+        displayName: 'X',
+        sports: ['Football'],
+        province: 'Gauteng',
+        city: 'Soweto',
+        headline: null,
+        tags: [],
+        updatedAt: now,
+      };
+      await setDoc(doc(db, 'directoryProfiles/athleteX'), { uid: 'athleteX', role: 'athlete', ...base });
+      await setDoc(doc(db, 'directoryProfiles/coachX'), { uid: 'coachX', role: 'coach', ...base });
+      await setDoc(doc(db, 'directoryProfiles/orgX'), { uid: 'orgX', role: 'organisation', ...base });
+    });
+  });
+  it('an adult reads any listed profile and an unfiltered list', async () => {
+    const adult = as('adult5', { role: 'athlete' });
+    await assertSucceeds(getDoc(doc(adult, 'directoryProfiles/athleteX')));
+    await assertSucceeds(getDoc(doc(adult, 'directoryProfiles/coachX')));
+    await assertSucceeds(getDocs(collection(adult, 'directoryProfiles')));
+  });
+  it('a child reads coaches and organisations but not other athletes', async () => {
+    const kid = as('kid5', { role: 'athlete' });
+    await assertSucceeds(getDoc(doc(kid, 'directoryProfiles/coachX')));
+    await assertSucceeds(getDoc(doc(kid, 'directoryProfiles/orgX')));
+    await assertFails(getDoc(doc(kid, 'directoryProfiles/athleteX')));
+  });
+  it('a child list must be limited to coaches and organisations', async () => {
+    const kid = as('kid5', { role: 'athlete' });
+    await assertSucceeds(
+      getDocs(query(collection(kid, 'directoryProfiles'), where('role', 'in', ['coach', 'organisation']))),
+    );
+    await assertFails(getDocs(collection(kid, 'directoryProfiles')));
+    await assertFails(getDocs(query(collection(kid, 'directoryProfiles'), where('role', '==', 'athlete'))));
+  });
+});

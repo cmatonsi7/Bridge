@@ -15,13 +15,19 @@ export type ConnectionWithId = ConnectionDoc & { id: string };
 const LOAD_ERROR = 'We couldn’t load this. Check your connection and refresh.';
 const MAX = 300;
 
-export function useDirectory(enabled = true): Loadable<DirectoryEntry[]> {
+/**
+ * The directory. `professionalsOnly` (used for under-18s) asks for coaches and organisations only,
+ * which is also what the security rules require of a child's query.
+ */
+export function useDirectory(professionalsOnly = false): Loadable<DirectoryEntry[]> {
   const [state, setState] = useState<Loadable<DirectoryEntry[]>>({ status: 'loading' });
   useEffect(() => {
-    if (!enabled) return;
     let q;
     try {
-      q = query(collection(requireDb(), 'directoryProfiles'), limit(MAX));
+      const col = collection(requireDb(), 'directoryProfiles');
+      q = professionalsOnly
+        ? query(col, where('role', 'in', ['coach', 'organisation']), limit(MAX))
+        : query(col, limit(MAX));
     } catch {
       setState({ status: 'error', message: LOAD_ERROR });
       return;
@@ -35,7 +41,7 @@ export function useDirectory(enabled = true): Loadable<DirectoryEntry[]> {
         }),
       () => setState({ status: 'error', message: LOAD_ERROR }),
     );
-  }, [enabled]);
+  }, [professionalsOnly]);
   return state;
 }
 

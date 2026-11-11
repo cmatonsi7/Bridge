@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
-import { connectionId } from '@sportbridge/shared';
+import { connectionId, formatDate, formatPrice, isOpen } from '@sportbridge/shared';
 import { useSignedInUser } from '../../../features/account/useSignedInUser';
 import {
   useCoachConnections,
   useDirectoryEntry,
   requestConnection,
 } from '../../../features/directory/directoryService';
+import { useOrgListings } from '../../../features/listings/listingsService';
 import { ApiError } from '../../../lib/apiClient';
 import { BootScreen } from '../../../app/guards';
 
@@ -19,6 +20,9 @@ export default function DirectoryProfilePage() {
   const navigate = useNavigate();
   const me = useSignedInUser();
   const entry = useDirectoryEntry(uid);
+  const orgListings = useOrgListings(
+    entry.status === 'ready' && entry.data?.role === 'organisation' ? entry.data.orgId : undefined,
+  );
   const myConnections = useCoachConnections(me?.user.role === 'coach' ? me.uid : undefined);
   const [message, setMessage] = useState('');
   const [open, setOpen] = useState(false);
@@ -103,9 +107,68 @@ export default function DirectoryProfilePage() {
           </>
         )}
         <p className="sb-field-hint" style={{ marginTop: 16 }}>
-          SportBridge never shows contact details in the directory. Connect through SportBridge to get in
-          touch.
+          {e.role === 'organisation'
+            ? 'SportBridge never shows contact details in the directory. Browse their open listings below and apply through SportBridge.'
+            : me?.user.role === 'coach' && e.role === 'athlete'
+              ? 'SportBridge never shows contact details in the directory. Ask to connect to get in touch.'
+              : e.role === 'coach'
+                ? 'SportBridge never shows contact details in the directory. Coaches reach out to athletes through SportBridge, and messaging for families is coming soon.'
+                : 'SportBridge never shows contact details in the directory.'}
         </p>
+
+        {e.role === 'organisation' && (
+          <div style={{ marginTop: 18 }}>
+            <h4>Open opportunities and programmes</h4>
+            {orgListings.status === 'loading' ? (
+              <p className="sb-meta">Loading…</p>
+            ) : orgListings.status === 'error' ? (
+              <p className="sb-meta" role="alert">
+                {orgListings.message}
+              </p>
+            ) : (
+              (() => {
+                const open = orgListings.data
+                  .filter((l) => isOpen(l))
+                  .sort((a, b) => a.deadline.localeCompare(b.deadline));
+                return open.length === 0 ? (
+                  <p className="sb-meta">Nothing is open right now. Check back soon.</p>
+                ) : (
+                  <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>
+                    {open.map((l) => (
+                      <div
+                        key={l.id}
+                        className="sb-card"
+                        style={{
+                          padding: 14,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <div>
+                          <b>{l.title}</b>
+                          <p className="sb-meta">
+                            {l.type} · Ages {l.ageMin}–{l.ageMax} · {formatPrice(l)} · Closes{' '}
+                            {formatDate(l.deadline)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="sb-btn primary"
+                          onClick={() => navigate(`/app/listings/${l.id}`)}
+                        >
+                          View and apply
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
+            )}
+          </div>
+        )}
 
         {canConnect && (
           <div style={{ marginTop: 16 }}>

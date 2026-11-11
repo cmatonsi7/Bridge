@@ -43,6 +43,7 @@ const st = {
   coachConns: [] as ReturnType<typeof conn>[],
   athleteConns: [] as ReturnType<typeof conn>[],
   isMinor: false,
+  orgListings: [] as ReturnType<typeof listing>[],
 };
 
 vi.mock('../features/account/useSignedInUser', () => ({
@@ -57,7 +58,7 @@ vi.mock('../features/guardian/guardianService', () => ({
 }));
 vi.mock('../features/athlete/athleteService', () => ({ savePrivacy: vi.fn(async () => {}) }));
 vi.mock('../features/directory/directoryService', () => ({
-  useDirectory: () => ({ status: 'ready', data: st.dir }),
+  useDirectory: vi.fn(() => ({ status: 'ready', data: st.dir })),
   useDirectoryEntry: (uid?: string) => ({ status: 'ready', data: st.dir.find((e) => e.uid === uid) ?? null }),
   useCoachConnections: () => ({ status: 'ready', data: st.coachConns }),
   useAthleteConnections: () => ({ status: 'ready', data: st.athleteConns }),
@@ -66,6 +67,38 @@ vi.mock('../features/directory/directoryService', () => ({
   declineConnection: vi.fn(async () => ({})),
   endConnection: vi.fn(async () => ({})),
   syncDirectory: vi.fn(async () => ({ listed: true })),
+}));
+
+const future = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+const listing = (id: string, over: Record<string, unknown> = {}) => ({
+  id,
+  kind: 'opportunity',
+  type: 'Trial',
+  title: `Listing ${id}`,
+  description: 'x'.repeat(30),
+  sports: ['Football'],
+  province: 'Gauteng',
+  city: 'Soweto',
+  ageMin: 14,
+  ageMax: 17,
+  deadline: future,
+  startDate: null,
+  endDate: null,
+  isFree: true,
+  priceZar: null,
+  inclusions: [],
+  status: 'published',
+  orgId: 'org1',
+  ownerUid: 'o1',
+  orgName: 'Soweto FC',
+  orgVerified: false,
+  createdAt: '',
+  updatedAt: '',
+  publishedAt: '',
+  ...over,
+});
+vi.mock('../features/listings/listingsService', () => ({
+  useOrgListings: () => ({ status: 'ready', data: st.orgListings }),
 }));
 
 const at = (path: string, el: JSX.Element, route = path) =>
@@ -86,6 +119,7 @@ beforeEach(() => {
     coachConns: [],
     athleteConns: [],
     isMinor: false,
+    orgListings: [],
   });
   vi.clearAllMocks();
 });
@@ -253,5 +287,46 @@ describe('quiet listing refresh', () => {
     renderHook(() => useDirectoryReconcile('g1', 'guardian'));
     renderHook(() => useDirectoryReconcile(undefined, undefined));
     expect(ds.syncDirectory).not.toHaveBeenCalled();
+  });
+});
+
+describe('what families can do from the directory', () => {
+  it('a child browses coaches and organisations only: the query is limited and Athletes is not offered', () => {
+    st.isMinor = true;
+    st.dir = [entry({ uid: 'c9', role: 'coach', displayName: 'Coach Nine' })];
+    at('/', <DirectoryPage />);
+    expect(ds.useDirectory).toHaveBeenCalledWith(true);
+    expect(screen.queryByRole('option', { name: 'Athletes' })).toBeNull();
+    expect(screen.getByRole('option', { name: 'Coaches' })).toBeTruthy();
+  });
+  it('an adult still sees everyone', () => {
+    st.dir = [entry({ uid: '1' })];
+    at('/', <DirectoryPage />);
+    expect(ds.useDirectory).toHaveBeenCalledWith(false);
+    expect(screen.getByRole('option', { name: 'Athletes' })).toBeTruthy();
+  });
+  it('an organisation profile lists its open listings with a way to apply, and hides closed ones', () => {
+    st.role = 'guardian';
+    st.dir = [entry({ uid: 'o1', role: 'organisation', displayName: 'Soweto FC', orgId: 'org1' })];
+    st.orgListings = [
+      listing('a', { title: 'U17 Trials' }),
+      listing('b', { title: 'Old Trials', deadline: '2020-01-01' }),
+    ];
+    at('/app/directory/o1', <DirectoryProfilePage />, '/app/directory/:uid');
+    expect(screen.getByText('U17 Trials')).toBeTruthy();
+    expect(screen.queryByText('Old Trials')).toBeNull();
+    expect(screen.getByRole('button', { name: 'View and apply' })).toBeTruthy();
+  });
+  it('an organisation with nothing open says so', () => {
+    st.dir = [entry({ uid: 'o1', role: 'organisation', displayName: 'Soweto FC', orgId: 'org1' })];
+    at('/app/directory/o1', <DirectoryProfilePage />, '/app/directory/:uid');
+    expect(screen.getByText(/Nothing is open right now/)).toBeTruthy();
+  });
+  it('a parent looking at a coach is told honestly what happens next, not to "connect"', () => {
+    st.role = 'guardian';
+    st.dir = [entry({ uid: 'c9', role: 'coach', displayName: 'Coach Nine' })];
+    at('/app/directory/c9', <DirectoryProfilePage />, '/app/directory/:uid');
+    expect(screen.getByText(/Coaches reach out to athletes through SportBridge/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Ask to connect' })).toBeNull();
   });
 });

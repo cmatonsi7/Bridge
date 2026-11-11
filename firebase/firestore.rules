@@ -273,8 +273,16 @@ service cloud.firestore {
 
     // ---- Directory and connections (Phase 3c). Both are written only by the server. ----
     // The directory holds no contact details and no date of birth, and never an under-18 athlete.
+    // Children browse coaches and organisations only, never other athletes. A child's list query must
+    // therefore be limited to role in ['coach', 'organisation']; adults can read everything listed.
+    function isMinorUser() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userDoc(request.auth.uid).get('isMinor', false) == true;
+    }
     match /directoryProfiles/{uid} {
-      allow read: if signedIn();
+      allow read: if signedIn()
+        && (resource.data.role in ['coach', 'organisation'] || !isMinorUser());
       allow write: if false;
     }
 

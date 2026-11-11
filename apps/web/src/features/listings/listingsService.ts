@@ -68,6 +68,21 @@ export const usePublishedListings = (kind: ListingKind) =>
     [kind],
   );
 
+/** An organisation's published listings, for its directory profile. */
+export const useOrgListings = (orgId: string | undefined) =>
+  useQueryList<ListingDoc>(
+    orgId
+      ? () =>
+          query(
+            collection(requireDb(), LISTINGS),
+            where('orgId', '==', orgId),
+            where('status', '==', 'published'),
+            limit(50),
+          )
+      : null,
+    [orgId],
+  );
+
 /** Every listing an organisation owner has created, drafts included. */
 export const useMyListings = (ownerUid: string | undefined) =>
   useQueryList<ListingDoc>(
