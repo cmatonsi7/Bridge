@@ -544,7 +544,7 @@ export default function HomePage() {
                   Monthly
                 </button>
                 <button onClick={a.toggleBilling} type="button">
-                  Annual <span className="save">SAVE 20%</span>
+                  Annual <span className="save">2 MONTHS FREE</span>
                 </button>
               </div>
             </div>
@@ -577,8 +577,11 @@ export default function HomePage() {
                 <h3>Pro</h3>
                 <p className="desc">For committed athletes, parents and coaches.</p>
                 <div className="price">
-                  R99 <span>/ month</span>
+                  R149 <span>/ month</span>
                 </div>
+                <p className="desc" style={{ marginTop: -6 }}>
+                  R1 490 / year — two months free
+                </p>
                 <ul className="checks">
                   <li>Everything in Starter</li>
                   <li>Advanced profile features</li>
@@ -598,8 +601,11 @@ export default function HomePage() {
                 <h3>Organisation</h3>
                 <p className="desc">For clubs, schools, academies and programme providers.</p>
                 <div className="price">
-                  R299 <span>/ month</span>
+                  R499 <span>/ month</span>
                 </div>
+                <p className="desc" style={{ marginTop: -6 }}>
+                  R4 990 / year — two months free
+                </p>
                 <ul className="checks">
                   <li>Create and manage organisation profile</li>
                   <li>Post opportunities and programmes</li>
