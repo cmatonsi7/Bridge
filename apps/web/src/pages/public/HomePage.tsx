@@ -14,10 +14,24 @@ import {
   ClipboardList,
   Zap,
 } from 'lucide-react';
+import { useState } from 'react';
 import { useLegacyActions } from '../../features/marketing/useLegacyActions';
+
+/**
+ * Membership pricing, confirmed by the client on 2026-11-11.
+ * Annual is two months free, so it is ten times the monthly price.
+ */
+const PLANS = {
+  starter: { monthly: 'R0', annual: 'R0' },
+  pro: { monthly: 'R149', annual: 'R1 490' },
+  organisation: { monthly: 'R499', annual: 'R4 990' },
+} as const;
 
 export default function HomePage() {
   const a = useLegacyActions();
+  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
+  const annual = billing === 'annual';
+  const per = annual ? '/ year' : '/ month';
   return (
     <>
       <section className="page active" id="home">
@@ -539,11 +553,21 @@ export default function HomePage() {
               <p>Get access to the right tools for your sporting journey.</p>
             </div>
             <div className="billing">
-              <div className="billing-toggle">
-                <button className="active" onClick={a.toggleBilling} type="button">
+              <div className="billing-toggle" role="group" aria-label="Billing period">
+                <button
+                  className={annual ? '' : 'active'}
+                  aria-pressed={!annual}
+                  onClick={() => setBilling('monthly')}
+                  type="button"
+                >
                   Monthly
                 </button>
-                <button onClick={a.toggleBilling} type="button">
+                <button
+                  className={annual ? 'active' : ''}
+                  aria-pressed={annual}
+                  onClick={() => setBilling('annual')}
+                  type="button"
+                >
                   Annual <span className="save">2 MONTHS FREE</span>
                 </button>
               </div>
@@ -556,8 +580,11 @@ export default function HomePage() {
                 <h3>Starter</h3>
                 <p className="desc">For individuals getting started on their sporting journey.</p>
                 <div className="price">
-                  R0 <span>/ month</span>
+                  {PLANS.starter[billing]} <span>{per}</span>
                 </div>
+                <p className="desc" style={{ marginTop: -6 }}>
+                  Free forever
+                </p>
                 <ul className="checks">
                   <li>Create a profile</li>
                   <li>Search opportunities</li>
@@ -577,10 +604,12 @@ export default function HomePage() {
                 <h3>Pro</h3>
                 <p className="desc">For committed athletes, parents and coaches.</p>
                 <div className="price">
-                  R149 <span>/ month</span>
+                  {PLANS.pro[billing]} <span>{per}</span>
                 </div>
                 <p className="desc" style={{ marginTop: -6 }}>
-                  R1 490 / year — two months free
+                  {annual
+                    ? `${PLANS.pro.monthly} / month billed monthly`
+                    : `${PLANS.pro.annual} / year — two months free`}
                 </p>
                 <ul className="checks">
                   <li>Everything in Starter</li>
@@ -601,10 +630,15 @@ export default function HomePage() {
                 <h3>Organisation</h3>
                 <p className="desc">For clubs, schools, academies and programme providers.</p>
                 <div className="price">
-                  R499 <span>/ month</span>
+                  {PLANS.organisation[billing]} <span>{per}</span>
                 </div>
                 <p className="desc" style={{ marginTop: -6 }}>
-                  R4 990 / year — two months free
+                  {annual
+                    ? `${PLANS.organisation.monthly} / month billed monthly`
+                    : `${PLANS.organisation.annual} / year — two months free`}
+                </p>
+                <p className="desc" style={{ marginTop: 4 }}>
+                  Includes a 30-day free trial for approved organisations.
                 </p>
                 <ul className="checks">
                   <li>Create and manage organisation profile</li>

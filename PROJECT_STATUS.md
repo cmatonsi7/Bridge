@@ -19,7 +19,7 @@ _Last updated: 2026-11-05 · Phases 1, 2, 3a and 3b accepted. Phase 3c (Director
 | 6 Production readiness | Not started |
 
 ## Key decisions
-- **Pricing confirmed by the client (2026-11-11):** Starter free; Pro R149/month or R1 490/year; Organisation R499/month or R4 990/year. Annual = **two months free** (replaces the 20% discount). Organisation trial is **30 days**, opt-in to a paid subscription afterwards, **no automatic billing** — the trial and billing rules are implemented in Phase 4.
+- **Pricing confirmed by the client (2026-11-11):** Starter free; Pro R149/month or R1 490/year; Organisation R499/month or R4 990/year. Annual = **two months free** (replaces the 20% discount). The Monthly/Annual toggle on the home page switches the displayed prices (it was highlight-only before). Organisation trial is **30 days**, opt-in to a paid subscription afterwards, **no automatic billing** — the trial and billing rules are implemented in Phase 4.
 - **Photography (2026-11-11):** the AI-generated placeholders were replaced with the client's real photography. Same file names, so no code changes; each image keeps its original aspect ratio and is cropped slightly above centre. New per-sport photos added for football, tennis, basketball, cycling, squash, rowing and martial arts.
 - **Site footer** (prototype `.footer-v2`) added to every public page. Legal links (Safety & Child Protection, Privacy & POPIA, Terms of Use) are **plain text until the documents exist**; a test asserts every footer link points at a real route.
 - **Host:** Render (Railway had sign-ups disabled during its October incident). Same code runs on either.
