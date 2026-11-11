@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Calendar, MapPin } from 'lucide-react';
 import { filterListings, formatDate, formatPrice, type ListingKind } from '@sportbridge/shared';
+import { useAuth } from '../auth/AuthProvider';
 import { usePublishedListings } from './listingsService';
 import { listingImage } from './listingImage';
 
@@ -8,6 +9,8 @@ import { listingImage } from './listingImage';
 export function PublicListingsGrid({ kind, max = 8 }: { kind: ListingKind; max?: number }) {
   const navigate = useNavigate();
   const state = usePublishedListings(kind);
+  const { state: auth } = useAuth();
+  const signedIn = auth.status === 'signedIn';
   const label = kind === 'programme' ? 'programmes' : 'opportunities';
 
   if (state.status === 'loading') return <p className="meta">Loading {label}…</p>;
@@ -23,16 +26,20 @@ export function PublicListingsGrid({ kind, max = 8 }: { kind: ListingKind; max?:
       <div className="op-card" style={{ padding: 24, textAlign: 'center' }}>
         <h3>No {label} listed yet</h3>
         <p className="meta">
-          Clubs, academies and programme providers are adding {label} now. Create a free account to be ready
-          when they open.
+          Clubs, academies and programme providers are adding {label} now.
+          {signedIn
+            ? ' We’ll show them here as soon as they open.'
+            : ' Create a free account to be ready when they open.'}
         </p>
         <button
           className="btn green"
           type="button"
-          onClick={() => navigate('/register')}
+          onClick={() =>
+            navigate(signedIn ? `/app/${kind === 'programme' ? 'programmes' : 'opportunities'}` : '/register')
+          }
           style={{ marginTop: 12 }}
         >
-          Create Account
+          {signedIn ? 'Go to your dashboard' : 'Create Account'}
         </button>
       </div>
     );

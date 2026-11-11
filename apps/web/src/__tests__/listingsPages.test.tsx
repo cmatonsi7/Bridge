@@ -86,6 +86,7 @@ vi.mock('../features/listings/listingsService', () => ({
   deleteDraft: vi.fn(async () => {}),
 }));
 
+vi.mock('../features/auth/AuthProvider', () => ({ useAuth: () => ({ state: { status: 'signedOut' } }) }));
 vi.mock('../features/applications/applicationsService', () => ({
   useApplicationsBy: () => ({ status: 'ready', data: [] }),
   applyTo: vi.fn(async () => ({ id: 'x' })),
@@ -217,5 +218,10 @@ describe('PublicListingsGrid', () => {
     st.published = [L('a', { title: 'Holiday Camp', kind: 'programme', isFree: false, priceZar: 850 })];
     at('/', <PublicListingsGrid kind="programme" />);
     expect(screen.getByText('Holiday Camp')).toBeTruthy();
+  });
+  it('offers sign-up to visitors on the public empty state', () => {
+    at('/', <PublicListingsGrid kind="programme" />);
+    expect(screen.getByRole('button', { name: 'Create Account' })).toBeTruthy();
+    expect(screen.getByText(/Create a free account/)).toBeTruthy();
   });
 });
