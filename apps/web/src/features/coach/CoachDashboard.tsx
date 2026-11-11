@@ -8,6 +8,10 @@ export function CoachDashboard({ uid, firstName }: { uid: string; firstName: str
   const navigate = useNavigate();
   const profile = useCoachProfile(uid);
   const connections = useCoachConnections(uid);
+  const connected =
+    connections.status === 'ready' ? connections.data.filter((c) => c.status === 'accepted').length : 0;
+  const waiting =
+    connections.status === 'ready' ? connections.data.filter((c) => c.status === 'pending').length : 0;
   const quals = useQualifications(uid);
   const ready = profile.status === 'ready' && quals.status === 'ready';
   const { percent, items } = coachCompletion(
@@ -22,9 +26,12 @@ export function CoachDashboard({ uid, firstName }: { uid: string; firstName: str
         <div>
           <div className="sb-kicker">COACH DASHBOARD</div>
           <h1>Welcome, {firstName}</h1>
-          <p>Build your coaching profile so athletes and parents can find you when discovery launches.</p>
+          <p>
+            Build your coaching profile, find athletes in the Talent Directory and manage your connections.
+          </p>
           <div className="dashboard-context">
-            <b>Coach account</b> · 0 connected athletes · Credentials self-declared
+            <b>Coach account</b> · {connected} connected {connected === 1 ? 'athlete' : 'athletes'}
+            {waiting > 0 ? ` · ${waiting} awaiting a decision` : ''} · Credentials self-declared
           </div>
         </div>
       </div>

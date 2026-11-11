@@ -8,6 +8,7 @@ import CoachSettingsPage from '../pages/app/coach/CoachSettingsPage';
 import { CoachDashboard } from '../features/coach/CoachDashboard';
 
 const c = {
+  connections: [] as Array<{ id: string; status: string; athleteName: string; athleteIsMinor: boolean }>,
   profile: null as CoachProfileDoc | null,
   quals: [] as Array<{
     id: string;
@@ -56,7 +57,7 @@ vi.mock('../features/athlete/athleteService', () => ({
   saveMobile: vi.fn(async () => {}),
 }));
 vi.mock('../features/directory/directoryService', () => ({
-  useCoachConnections: () => ({ status: 'ready', data: [] }),
+  useCoachConnections: () => ({ status: 'ready', data: c.connections }),
   syncDirectory: vi.fn(async () => ({ listed: true })),
 }));
 vi.mock('../features/coach/coachService', () => ({
@@ -75,6 +76,7 @@ const renderIn = (el: JSX.Element) => render(<MemoryRouter>{el}</MemoryRouter>);
 beforeEach(() => {
   c.profile = null;
   c.quals = [];
+  c.connections = [];
   vi.clearAllMocks();
 });
 
@@ -145,5 +147,15 @@ describe('CoachDashboard', () => {
     expect(screen.getByRole('img', { name: 'Profile 100% complete' })).toBeTruthy();
     expect(screen.getByText(/0 connected athletes/)).toBeTruthy();
     expect(screen.getByText(/No connected athletes yet/)).toBeTruthy();
+  });
+  it('counts real connections in the header instead of a fixed zero', () => {
+    c.connections = [
+      { id: 'c1_a1', status: 'accepted', athleteName: 'Calvin Matonsi', athleteIsMinor: false },
+      { id: 'c1_a2', status: 'pending', athleteName: 'Thabo M', athleteIsMinor: true },
+    ];
+    renderIn(<CoachDashboard uid="c1" firstName="Sibusiso" />);
+    expect(screen.getByText(/1 connected athlete\b/)).toBeTruthy();
+    expect(screen.getByText(/1 awaiting a decision/)).toBeTruthy();
+    expect(screen.getByText('Calvin Matonsi')).toBeTruthy();
   });
 });
