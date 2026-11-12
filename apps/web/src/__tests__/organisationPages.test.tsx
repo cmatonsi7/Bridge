@@ -48,6 +48,13 @@ vi.mock('../features/athlete/athleteService', () => ({
   usePrivateDetails: () => ({ status: 'ready', data: { dateOfBirth: '1980-01-01', mobile: '0821234567' } }),
   saveMobile: vi.fn(async () => {}),
 }));
+const dash = { listings: [] as Array<Record<string, unknown>>, apps: [] as Array<Record<string, unknown>> };
+vi.mock('../features/listings/listingsService', () => ({
+  useMyListings: () => ({ status: 'ready', data: dash.listings }),
+}));
+vi.mock('../features/applications/applicationsService', () => ({
+  useApplicationsTo: () => ({ status: 'ready', data: dash.apps }),
+}));
 vi.mock('../features/directory/directoryService', () => ({
   syncDirectory: vi.fn(async () => ({ listed: true })),
 }));
@@ -63,15 +70,37 @@ const renderIn = (el: JSX.Element) => render(<MemoryRouter>{el}</MemoryRouter>);
 beforeEach(() => {
   st.org = newOrg;
   st.orgId = 'org1';
+  dash.listings = [];
+  dash.apps = [];
   vi.clearAllMocks();
 });
 
 describe('OrgDashboard', () => {
+  it('shows real counts of live and draft listings and applications waiting', () => {
+    const future = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+    dash.listings = [
+      { id: 'a', kind: 'opportunity', status: 'published', deadline: future },
+      { id: 'b', kind: 'opportunity', status: 'published', deadline: future },
+      { id: 'c', kind: 'opportunity', status: 'draft', deadline: future },
+      { id: 'd', kind: 'programme', status: 'published', deadline: '2020-01-01' },
+    ];
+    dash.apps = [
+      { id: '1', status: 'submitted' },
+      { id: '2', status: 'accepted' },
+    ];
+    renderIn(<OrgDashboard />);
+    expect(screen.getByText('2 live · 1 draft')).toBeTruthy();
+    expect(screen.getByText('0 live')).toBeTruthy(); // the programme's date has passed
+    expect(screen.getByText('1 waiting for review · 2 in total')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Manage opportunities' })).toBeTruthy();
+  });
+
   it('shows real completion, an unverified badge and honest empty sections', () => {
     renderIn(<OrgDashboard />);
     expect(screen.getByRole('img', { name: 'Profile 0% complete' })).toBeTruthy();
     expect(screen.getAllByText('Not yet verified').length).toBeGreaterThan(0);
-    expect(screen.getByText(/Posting trials, scholarships/)).toBeTruthy();
+    expect(screen.getByText(/haven’t created any opportunities yet/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Create your first opportunity' })).toBeTruthy();
   });
   it('reaches 100% with a complete profile', () => {
     st.org = fullOrg;

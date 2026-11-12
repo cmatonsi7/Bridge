@@ -42,6 +42,8 @@ export interface DirectoryEntryDoc {
   orgId?: string;
   orgType?: string;
   verified?: boolean;
+  /** false for organisations added by SportBridge staff that nobody has claimed yet. */
+  claimed?: boolean;
   updatedAt: string;
 }
 

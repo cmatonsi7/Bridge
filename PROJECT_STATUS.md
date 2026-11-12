@@ -1,6 +1,6 @@
 # PROJECT_STATUS — SportBridge
 
-_Last updated: 2026-11-05 · Phases 1, 2, 3a and 3b accepted. Phase 3c (Directory & connections) code complete on `phase-3-directory`, awaiting review. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
+_Last updated: 2026-11-12 · Phases 1–3 accepted. Admin Dashboard and onboarding step A (schools and organisations) code complete on `phase-4-onboarding`, awaiting review. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
 
 ## Phase progress
 | Phase | Status |
@@ -54,6 +54,28 @@ _Last updated: 2026-11-05 · Phases 1, 2, 3a and 3b accepted. Phase 3c (Director
 5. Applications: optional note plus a profile snapshot; applicants can withdraw; organisations see applicants only for their own listings.
 6. Notifications: in-app only.
 7. Sponsorship: request and express interest only; SportBridge handles no money. **Client to confirm.**
+
+## Admin Dashboard (one staff area, branch `phase-4-onboarding`)
+One **Admin** item in the sidebar (visible only to accounts with the administrator claim) opens a single dashboard with sections. **Sections appear only once they exist**, so staff never open an empty tab; new ones (Import, Coaches, Sponsorship approvals, Verification, Users) are added as they are built.
+- **Overview:** real figures only — schools added by SportBridge (waiting / claimed), organisations awaiting verification, live opportunities and programmes, applications in the last 7 days, and account counts by role. A figure that cannot be read shows "—", never a made-up zero.
+- **Schools & organisations:** add a school on its behalf, issue a claim code (shown once, with Copy), replace a code, remove an unclaimed school.
+- **Activity log:** read-only record of onboarding actions (added, new claim code, removed, claimed) with who and when, in plain language. Audit entries now carry the organisation's name so removed schools are still named. The log cannot be edited from a browser.
+- **Verification:** staff see organisations that have an owner, split into *Awaiting* and *Verified*, with contact details, school number, how they joined, and listing count. **Verify…** / **Remove verification…** each open a confirmation (never a single click) with an optional internal note that only staff can read. One server transaction updates the organisation, **all its listings** (each carries a copy of the badge), its directory entry, a staff-only record (`organisationVerifications`), a notification to the owner (without the note) and the audit entry, so nothing is left out of step. Unclaimed organisations cannot be verified (nobody's claim to check yet). Staff cannot change the badge from a browser; only the server can.
+- **Staff home and sidebar:** signing in as staff opens the Admin Overview; the sidebar shows only Opportunities, Programmes, Talent Directory and Admin. The unused "being added next" dashboard fallback was removed.
+- The selected section is kept in the address (`?tab=`), so a refresh keeps your place. Reads are enforced by the security rules (administrators only); 4 new rules tests.
+- Legal questions are kept in `LEGAL_QUESTIONS.md` for review with the client's legal adviser.
+
+## Onboarding step A: schools and organisations (branch `phase-4-onboarding`)
+The client wants real schools, clubs and coaches on the platform instead of an empty directory. Plan: A schools/organisations, B staff CSV import tool, C coaches (with recorded permission), D real data on the public Clubs/Coaches/Discover pages. **Step A is built:**
+- **Staff add an organisation** (Admin dashboard → Schools & organisations, administrators only; the server checks the `admin` claim): name, type, location, sports, optional school number and contact details, and **where the information came from** (required). It is stored as `ownerUid: null`, `claimStatus: 'unclaimed'`, `source: 'staff_import'`, `verified: false`, and listed in the directory as "Added by SportBridge". The directory entry never carries contact details.
+- **Claim codes** (`SB-XXXX-XXXX`, random, no look-alike characters, valid 60 days). Only a **SHA-256 hash** is stored (`organisationClaims/{orgId}`, readable/writable by nobody from a browser); the code is shown to staff **once**. Staff can issue a new code (the old one stops) or remove an unclaimed organisation.
+- **Claiming** (`POST /api/organisations/claim`, 10 attempts / 15 min): a signed-in, email-verified organisation account enters the code and takes over the record. Their own empty self-registered organisation is replaced. **Refused** if that organisation is verified or already has listings (nothing is lost; they are referred to support). Wrong, used and already-claimed codes give the same answer. Done in one transaction that re-checks the record is still unclaimed, so two people cannot claim it. Audited.
+- Unclaimed organisations cannot post (no owner) and show a notice on their directory profile. The organisation dashboard offers a claim card to self-registered, unverified organisations.
+- Organisation dashboard now shows **real** counts of live/draft opportunities and programmes and applications waiting (the "coming in the next release" text was stale).
+- **To make a staff account:** `npm run grant-admin -w apps/api -- person@example.com` (needs the service account key in the environment; the person signs out and in again).
+- Rules: 59 tests. API: 50 tests. Web: 114 tests.
+- Decisions pending from the client: where the school/coach lists come from; coach vetting for those connecting with children; who the admin users are; POPIA sign-off for listing coaches.
+- Step B (CSV import with preview, duplicate detection and undo) and step C (coaches) follow.
 
 ## Phase 3c (Directory & connections) summary
 - **Talent Directory** (`directoryProfiles`, server-written): a separate collection holding only safe fields — name, role, sports, province, city, headline, tags. **No contact details, no date of birth, and never an under-18 athlete**, enforced in `buildEntry` on the server, so tampering with the browser cannot list a child. Signed-in members only; signed-out visitors cannot read it.

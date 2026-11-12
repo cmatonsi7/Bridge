@@ -107,16 +107,30 @@ export default function DirectoryProfilePage() {
           </>
         )}
         <p className="sb-field-hint" style={{ marginTop: 16 }}>
-          {e.role === 'organisation'
-            ? 'SportBridge never shows contact details in the directory. Browse their open listings below and apply through SportBridge.'
-            : me?.user.role === 'coach' && e.role === 'athlete'
-              ? 'SportBridge never shows contact details in the directory. Ask to connect to get in touch.'
-              : e.role === 'coach'
-                ? 'SportBridge never shows contact details in the directory. Coaches reach out to athletes through SportBridge, and messaging for families is coming soon.'
-                : 'SportBridge never shows contact details in the directory.'}
+          {e.role === 'organisation' && e.claimed === false
+            ? 'SportBridge never shows contact details in the directory.'
+            : e.role === 'organisation'
+              ? 'SportBridge never shows contact details in the directory. Browse their open listings below and apply through SportBridge.'
+              : me?.user.role === 'coach' && e.role === 'athlete'
+                ? 'SportBridge never shows contact details in the directory. Ask to connect to get in touch.'
+                : e.role === 'coach'
+                  ? 'SportBridge never shows contact details in the directory. Coaches reach out to athletes through SportBridge, and messaging for families is coming soon.'
+                  : 'SportBridge never shows contact details in the directory.'}
         </p>
 
-        {e.role === 'organisation' && (
+        {e.role === 'organisation' && e.claimed === false && (
+          <div className="sb-member-notice" role="status" style={{ marginTop: 18 }}>
+            <div>
+              <strong>Added by SportBridge</strong>
+              <span>
+                This organisation hasn’t been claimed yet, so it can’t post opportunities. If you represent
+                it, ask SportBridge for your claim code.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {e.role === 'organisation' && e.claimed !== false && (
           <div style={{ marginTop: 18 }}>
             <h4>Open opportunities and programmes</h4>
             {orgListings.status === 'loading' ? (

@@ -186,7 +186,8 @@ export const ROLE_SECTIONS: Record<Role, AppSection[]> = {
   guardian: [...COMMON, 'progress', 'calendar', 'directory', 'applications', 'sponsorship'],
   coach: [...COMMON, 'calendar', 'directory', 'applications', 'sponsorship'],
   organisation: [...COMMON, 'calendar', 'directory', 'applications', 'sponsorship'],
-  admin: [...COMMON, 'progress', 'calendar', 'directory', 'applications', 'sponsorship', 'admin'],
+  // Staff see what they use: browsing (to check what families see) and the Admin dashboard.
+  admin: ['opportunities', 'programmes', 'directory', 'admin'],
 };
 
 export function navFor(role: Role | undefined): NavItem[] {

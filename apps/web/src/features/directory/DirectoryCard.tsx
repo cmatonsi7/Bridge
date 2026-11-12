@@ -36,7 +36,7 @@ export function DirectoryCard({ entry: e }: { entry: DirectoryEntry }) {
             <Icon className="icon" aria-hidden="true" /> {ROLE_LABEL[e.role]}
             {e.verified === false && e.role === 'organisation' && (
               <span className="v-badge pending" style={{ marginLeft: 6 }}>
-                Not yet verified
+                {e.claimed === false ? 'Added by SportBridge' : 'Not yet verified'}
               </span>
             )}
           </p>

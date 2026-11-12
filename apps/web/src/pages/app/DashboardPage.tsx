@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { Hand } from 'lucide-react';
 import { ROLE_LABELS } from '@sportbridge/shared';
 import { effectiveRole, useAuth } from '../../features/auth/AuthProvider';
@@ -27,6 +27,9 @@ export default function DashboardPage() {
   const profile = typeof state.profile === 'object' ? state.profile : null;
   const firstName = profile?.firstName ?? state.user.displayName?.split(' ')[0] ?? '';
   const restricted = profile?.status === 'restricted';
+
+  // Staff have no personal dashboard: the Admin Overview is their home.
+  if (role === 'admin') return <Navigate to="/app/admin" replace />;
 
   if (role === 'organisation') {
     return <OrgDashboard />;
@@ -68,22 +71,7 @@ export default function DashboardPage() {
 
       {restricted && <AthleteGuardianNotice uid={state.user.uid} />}
 
-      {role === 'athlete' ? (
-        <AthleteDashboardProgress uid={state.user.uid} />
-      ) : (
-        <div className="sb-card role-dashboard-shortcut" style={{ marginTop: 18 }}>
-          <div className="role-dashboard-shortcut-main">
-            <div>
-              <div className="sb-kicker">YOUR DASHBOARD</div>
-              <h3>{ROLE_LABELS[role]} dashboard</h3>
-              <p className="sb-meta">
-                Your account is set up. Your full {ROLE_LABELS[role].toLowerCase()} dashboard, with your
-                profile, connections and activity, is being added next.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <AthleteDashboardProgress uid={state.user.uid} />
     </section>
   );
 }

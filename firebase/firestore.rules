@@ -223,6 +223,19 @@ service cloud.firestore {
         && validOrganisation(request.resource.data);
     }
 
+    // ---- Organisation claim codes (Phase 4). Hashes of the codes staff give to schools. Server-only:
+    // nobody can read or write them from a browser, administrators included.
+    match /organisationClaims/{orgId} {
+      allow read, write: if false;
+    }
+
+    // ---- Verification decisions (Phase 4): staff-only record, with the internal note. Written only by the server;
+    // the organisation can never read the note.
+    match /organisationVerifications/{orgId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // ---- Listings: opportunities and programmes (Phase 3a). Lists must match packages/shared/src/listings.ts. ----
     function listingTypes() { return ['Trial', 'Scholarship', 'Bursary', 'Programme', 'Talent ID', 'High Performance', 'Event']; }
     function listingInclusions() { return ['Meals', 'Equipment', 'Transport', 'Accommodation', 'Kit', 'Certificate']; }
