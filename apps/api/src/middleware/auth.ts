@@ -42,3 +42,12 @@ export function requireVerifiedEmail(req: Request, _res: Response, next: NextFun
   if (req.auth?.email_verified) return next();
   next(new HttpError(403, 'EMAIL_NOT_VERIFIED', 'Verify your email address to continue'));
 }
+
+/** Staff only: the verified token must carry the administrator claim (set by the grant-admin script, never by a user). */
+export function requireAdmin() {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    const claims = req.auth as (DecodedIdToken & { admin?: boolean }) | undefined;
+    if (claims?.admin === true) return next();
+    next(new HttpError(403, 'FORBIDDEN', 'You do not have access to this action'));
+  };
+}

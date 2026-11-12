@@ -98,9 +98,17 @@ export const DEFAULT_ORG_PRIVACY: OrgPrivacy = {
 export interface OrganisationFullDoc extends Partial<Omit<OrganisationProfileFields, 'name' | 'type'>> {
   name: string;
   type: OrganisationType;
-  ownerUid: string;
+  /** null while a staff-added organisation is unclaimed. */
+  ownerUid: string | null;
   verified: boolean;
   privacy?: OrgPrivacy;
+  /** Absent on organisations created at sign-up (treated as claimed, self-registered). */
+  claimStatus?: 'unclaimed' | 'claimed';
+  source?: 'staff_import' | 'self_registered';
+  schoolNumber?: string | null;
+  sourceNote?: string;
+  importedBy?: string;
+  claimedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

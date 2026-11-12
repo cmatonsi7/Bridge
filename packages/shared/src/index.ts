@@ -8,3 +8,4 @@ export * from './organisation.js';
 export * from './listings.js';
 export * from './applications.js';
 export * from './directory.js';
+export * from './onboarding.js';

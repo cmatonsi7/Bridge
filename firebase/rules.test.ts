@@ -21,6 +21,9 @@ import {
   getDocs,
   query,
   where,
+  orderBy,
+  limit,
+  getCountFromServer,
 } from 'firebase/firestore';
 import { ref, uploadString } from 'firebase/storage';
 
@@ -679,5 +682,213 @@ describe('directory audience: children see coaches and organisations only (Phase
     );
     await assertFails(getDocs(collection(kid, 'directoryProfiles')));
     await assertFails(getDocs(query(collection(kid, 'directoryProfiles'), where('role', '==', 'athlete'))));
+  });
+});
+
+describe('organisation onboarding: unclaimed schools and claim codes (Phase 4)', () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'organisations/school1'), {
+        name: 'Soweto High School',
+        type: 'school',
+        ownerUid: null,
+        verified: false,
+        claimStatus: 'unclaimed',
+        source: 'staff_import',
+        schoolNumber: '700123456',
+        sourceNote: 'list',
+        importedBy: 'staff',
+        contactEmail: 'office@sowetohigh.edu.za',
+        privacy: { listed: true, showContactDetails: false, acceptEnquiries: false },
+        createdAt: now,
+        updatedAt: now,
+      });
+      await setDoc(doc(db, 'organisationClaims/school1'), {
+        orgId: 'school1',
+        codeHash: 'x'.repeat(64),
+        createdAt: now,
+        createdBy: 'staff',
+        expiresAt: now,
+      });
+      await setDoc(doc(db, 'directoryProfiles/org_school1'), {
+        uid: 'org_school1',
+        role: 'organisation',
+        displayName: 'Soweto High School',
+        sports: [],
+        province: 'Gauteng',
+        city: 'Soweto',
+        headline: null,
+        tags: [],
+        orgId: 'school1',
+        verified: false,
+        claimed: false,
+        updatedAt: now,
+      });
+      await setDoc(doc(db, 'users/kid6'), user('kid6', { isMinor: true }));
+    });
+  });
+  const staff = () => as('staff', { role: 'admin', admin: true });
+
+  it('claim codes can be read or written by nobody, staff included', async () => {
+    for (const c of [staff(), as('bob', { role: 'organisation' }), anon()]) {
+      await assertFails(getDoc(doc(c, 'organisationClaims/school1')));
+      await assertFails(
+        setDoc(doc(c, 'organisationClaims/school1'), { orgId: 'school1', codeHash: 'y'.repeat(64) }),
+      );
+      await assertFails(deleteDoc(doc(c, 'organisationClaims/school1')));
+    }
+  });
+  it('an unclaimed school is visible to staff only, not to other organisations or visitors', async () => {
+    await assertSucceeds(getDoc(doc(staff(), 'organisations/school1')));
+    await assertFails(getDoc(doc(as('bob', { role: 'organisation' }), 'organisations/school1')));
+    await assertFails(getDoc(doc(anon(), 'organisations/school1')));
+  });
+  it('nobody can take over a school, edit it, or post listings for it from the browser', async () => {
+    const bob = as('bob', { role: 'organisation' });
+    await assertFails(updateDoc(doc(bob, 'organisations/school1'), { ownerUid: 'bob', updatedAt: now }));
+    await assertFails(
+      updateDoc(doc(bob, 'organisations/school1'), { description: 'mine now', updatedAt: now }),
+    );
+    await assertFails(updateDoc(doc(staff(), 'organisations/school1'), { verified: true, updatedAt: now }));
+    await assertFails(
+      setDoc(doc(bob, 'listings/hijack'), {
+        kind: 'opportunity',
+        type: 'Trial',
+        title: 'Trials',
+        description: 'x'.repeat(30),
+        sports: ['Football'],
+        province: 'Gauteng',
+        city: 'Soweto',
+        ageMin: 14,
+        ageMax: 17,
+        deadline: '2030-01-01',
+        startDate: null,
+        endDate: null,
+        isFree: true,
+        priceZar: null,
+        inclusions: [],
+        status: 'published',
+        orgId: 'school1',
+        ownerUid: 'bob',
+        orgName: 'Soweto High School',
+        orgVerified: false,
+        createdAt: now,
+        updatedAt: now,
+        publishedAt: now,
+      }),
+    );
+  });
+  it('the directory shows the unclaimed school to everyone signed in, children included', async () => {
+    await assertSucceeds(getDoc(doc(as('alice', { role: 'athlete' }), 'directoryProfiles/org_school1')));
+    await assertSucceeds(getDoc(doc(as('kid6', { role: 'athlete' }), 'directoryProfiles/org_school1')));
+    await assertFails(getDoc(doc(anon(), 'directoryProfiles/org_school1')));
+  });
+  it('once claimed, the owner edits their profile but cannot change the claim fields', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), 'organisations/school1'), {
+        ownerUid: 'bob',
+        claimStatus: 'claimed',
+      });
+    });
+    const bob = as('bob', { role: 'organisation' });
+    await assertSucceeds(
+      updateDoc(doc(bob, 'organisations/school1'), { description: 'Our school.', updatedAt: now }),
+    );
+    await assertFails(
+      updateDoc(doc(bob, 'organisations/school1'), { claimStatus: 'unclaimed', updatedAt: now }),
+    );
+    await assertFails(
+      updateDoc(doc(bob, 'organisations/school1'), { source: 'self_registered', updatedAt: now }),
+    );
+    await assertFails(updateDoc(doc(bob, 'organisations/school1'), { verified: true, updatedAt: now }));
+  });
+});
+
+describe('admin dashboard reads (Phase 4)', () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'organisations/orgA'), {
+        name: 'Org A',
+        type: 'club',
+        ownerUid: 'bob',
+        verified: false,
+        claimStatus: 'claimed',
+        source: 'self_registered',
+        createdAt: now,
+        updatedAt: now,
+      });
+      await setDoc(doc(db, 'applications/L1_alice'), {
+        listingId: 'L1',
+        applicantUid: 'alice',
+        ownerUid: 'bob',
+        status: 'submitted',
+        createdAt: now,
+        updatedAt: now,
+      });
+      await setDoc(doc(db, 'auditLogs/a1'), {
+        type: 'organisation.imported',
+        organisationName: 'Org A',
+        by: 'staff',
+        at: now,
+      });
+    });
+  });
+  const staff = () => as('staff', { role: 'admin', admin: true });
+
+  it('staff can count accounts, organisations and applications for the Overview', async () => {
+    await assertSucceeds(
+      getCountFromServer(query(collection(staff(), 'users'), where('role', '==', 'athlete'))),
+    );
+    await assertSucceeds(
+      getCountFromServer(
+        query(collection(staff(), 'organisations'), where('claimStatus', '==', 'unclaimed')),
+      ),
+    );
+    await assertSucceeds(
+      getCountFromServer(query(collection(staff(), 'organisations'), where('verified', '==', false))),
+    );
+    await assertSucceeds(
+      getCountFromServer(query(collection(staff(), 'applications'), where('createdAt', '>=', '2026-01-01'))),
+    );
+  });
+  it('nobody else can count accounts, organisations or applications', async () => {
+    const alice = as('alice', { role: 'athlete' });
+    const bob = as('bob', { role: 'organisation' });
+    await assertFails(getCountFromServer(query(collection(alice, 'users'), where('role', '==', 'athlete'))));
+    await assertFails(
+      getCountFromServer(query(collection(bob, 'organisations'), where('verified', '==', false))),
+    );
+    await assertFails(
+      getCountFromServer(query(collection(alice, 'applications'), where('createdAt', '>=', '2026-01-01'))),
+    );
+    await assertFails(getCountFromServer(query(collection(anon(), 'users'), where('role', '==', 'athlete'))));
+  });
+  it('staff can read the activity log, newest first; nobody else can', async () => {
+    await assertSucceeds(getDocs(query(collection(staff(), 'auditLogs'), orderBy('at', 'desc'), limit(300))));
+    await assertFails(
+      getDocs(
+        query(collection(as('alice', { role: 'athlete' }), 'auditLogs'), orderBy('at', 'desc'), limit(300)),
+      ),
+    );
+    await assertFails(
+      getDocs(
+        query(
+          collection(as('bob', { role: 'organisation' }), 'auditLogs'),
+          orderBy('at', 'desc'),
+          limit(300),
+        ),
+      ),
+    );
+  });
+  it('staff can list the organisations they added, and nobody can edit the log', async () => {
+    await assertSucceeds(
+      getDocs(query(collection(staff(), 'organisations'), where('source', '==', 'staff_import'), limit(500))),
+    );
+    await assertFails(
+      setDoc(doc(staff(), 'auditLogs/forged'), { type: 'organisation.imported', by: 'staff', at: now }),
+    );
+    await assertFails(deleteDoc(doc(staff(), 'auditLogs/a1')));
   });
 });

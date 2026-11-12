@@ -7,6 +7,8 @@ import type { AuthPort, OnboardingWrite, UserRepoPort } from './services/ports.j
 import type { GuardianRepoPort } from './services/guardian.js';
 import type { ApplicationsRepoPort, ApplicantRecords, Outbox } from './services/applications.js';
 import type { DirectoryRepoPort, DirectorySubject } from './services/directory.js';
+import type { OrgOnboardingRepoPort } from './services/orgOnboarding.js';
+import type { ClaimDoc, OrganisationFullDoc } from '@sportbridge/shared';
 import type { ConnectionDoc, DirectoryEntryDoc } from '@sportbridge/shared';
 import type { ApplicationDoc, GuardianLinkDoc, ListingDoc } from '@sportbridge/shared';
 
@@ -115,6 +117,62 @@ function fakes() {
       audits.push(r.audit);
     },
   };
+  const orgs = new Map<string, OrganisationFullDoc>();
+  const orgClaims = new Map<string, ClaimDoc>();
+  const orgUsers = new Map<string, UserDoc>();
+  const listingCounts = new Map<string, number>();
+  let orgSeq = 0;
+  const orgOnboarding: OrgOnboardingRepoPort = {
+    newOrganisationId: () => `org${++orgSeq}`,
+    async createUnclaimed(id, org, entry, claim, audit) {
+      orgs.set(id, org);
+      orgClaims.set(id, claim);
+      entries.set(entry.uid, entry);
+      audits.push(audit);
+    },
+    async replaceClaim(orgId, claim, audit) {
+      if (orgs.get(orgId)?.claimStatus !== 'unclaimed') throw new Error('NOT_UNCLAIMED');
+      orgClaims.set(orgId, claim);
+      audits.push(audit);
+    },
+    async removeUnclaimed(orgId, audit) {
+      if (orgs.get(orgId)?.claimStatus !== 'unclaimed') throw new Error('NOT_UNCLAIMED');
+      orgs.delete(orgId);
+      orgClaims.delete(orgId);
+      entries.delete(`org_${orgId}`);
+      audits.push(audit);
+    },
+    async loadClaim(hash, uid) {
+      const claim = [...orgClaims.values()].find((c) => c.codeHash === hash);
+      const user = orgUsers.get(uid);
+      const org = claim ? orgs.get(claim.orgId) : undefined;
+      if (!claim || !org || !user) return null;
+      const ownOrgId = user.organisationId ?? null;
+      const ownOrg = ownOrgId && ownOrgId !== claim.orgId ? (orgs.get(ownOrgId) ?? null) : null;
+      return {
+        orgId: claim.orgId,
+        org,
+        claim,
+        user,
+        ownOrgId,
+        ownOrg,
+        ownListingCount: ownOrgId ? (listingCounts.get(ownOrgId) ?? 0) : 0,
+      };
+    },
+    async commitClaim(ctx, uid, at, audit) {
+      const o = orgs.get(ctx.orgId);
+      if (!o || o.claimStatus !== 'unclaimed' || o.ownerUid !== null) throw new Error('NOT_UNCLAIMED');
+      orgs.set(ctx.orgId, { ...o, ownerUid: uid, claimStatus: 'claimed', claimedAt: at });
+      orgClaims.delete(ctx.orgId);
+      entries.delete(`org_${ctx.orgId}`);
+      orgUsers.set(uid, { ...orgUsers.get(uid)!, organisationId: ctx.orgId });
+      if (ctx.ownOrgId && ctx.ownOrgId !== ctx.orgId) {
+        orgs.delete(ctx.ownOrgId);
+        entries.delete(uid);
+      }
+      audits.push(audit);
+    },
+  };
   return {
     tokens,
     claims,
@@ -125,6 +183,11 @@ function fakes() {
     guardians,
     applications,
     directory,
+    orgOnboarding,
+    orgs,
+    orgClaims,
+    orgUsers,
+    listingCounts,
     subjects,
     entries,
     connections,
@@ -167,6 +230,7 @@ describe('API', () => {
       guardians: f.guardians,
       applications: f.applications,
       directory: f.directory,
+      orgOnboarding: f.orgOnboarding,
     });
     f.tokens.set('t-jordan', { uid: 'u1', email: 'Jordan@Example.com', email_verified: false });
     f.tokens.set('t-teen', { uid: 'u2', email: 'teen@example.com' });
@@ -412,6 +476,7 @@ describe('guardian links', () => {
       guardians: f.guardians,
       applications: f.applications,
       directory: f.directory,
+      orgOnboarding: f.orgOnboarding,
     });
     f.links.set('L1', { ...pending });
     f.athletes.set('kid', { guardianUids: [], status: 'restricted' });
@@ -551,6 +616,7 @@ describe('applications', () => {
       guardians: f.guardians,
       applications: f.applications,
       directory: f.directory,
+      orgOnboarding: f.orgOnboarding,
     });
     f.listings.set('L1', { ...listing });
     f.listings.set('LD', { ...listing, status: 'draft' });
@@ -730,6 +796,7 @@ describe('directory and connections', () => {
       guardians: f.guardians,
       applications: f.applications,
       directory: f.directory,
+      orgOnboarding: f.orgOnboarding,
     });
     f.subjects.set('adult', subject('adult', 'athlete', {}, athleteProfile(true)));
     f.subjects.set('shy', subject('shy', 'athlete', {}, athleteProfile(false)));
@@ -869,5 +936,216 @@ describe('directory and connections', () => {
     await post('/api/connections/coach1_kid/accept', 't-mom');
     expect((await post('/api/connections/coach1_kid/end', 't-stranger')).status).toBe(404);
     expect((await post('/api/connections/coach1_kid/end', 't-mom')).status).toBe(200);
+  });
+});
+
+describe('organisation onboarding: staff add schools, representatives claim them', () => {
+  let f: ReturnType<typeof fakes>;
+  let app: ReturnType<typeof createApp>;
+  const school = {
+    name: 'Soweto High School',
+    type: 'school',
+    description: 'A public high school in Soweto.',
+    contactEmail: 'office@sowetohigh.edu.za',
+    contactPhone: '0111234567',
+    website: 'https://sowetohigh.edu.za',
+    city: 'Soweto',
+    province: 'Gauteng',
+    sports: ['Football', 'Netball'],
+    ageGroups: ['Under 16'],
+    offerings: [],
+    facilities: ['Grass Field'],
+    schoolNumber: '700123456',
+    sourceNote: 'Gauteng schools list, Nov 2026',
+  };
+  const user = (uid: string, over: Record<string, unknown> = {}): UserDoc =>
+    ({
+      uid,
+      email: `${uid}@example.com`,
+      firstName: 'A',
+      surname: 'B',
+      displayName: `${uid} B`,
+      role: 'organisation',
+      status: 'active',
+      isMinor: false,
+      onboardingComplete: true,
+      termsVersion: 'v',
+      termsAcceptedAt: 't',
+      createdAt: 't',
+      updatedAt: 't',
+      ...over,
+    }) as UserDoc;
+  const ownOrg = (over: Record<string, unknown> = {}): OrganisationFullDoc => ({
+    name: 'My School',
+    type: 'school',
+    ownerUid: 'rep',
+    verified: false,
+    createdAt: 't',
+    updatedAt: 't',
+    ...over,
+  });
+  beforeEach(() => {
+    f = fakes();
+    app = createApp({
+      auth: f.auth,
+      users: f.repo,
+      guardians: f.guardians,
+      applications: f.applications,
+      directory: f.directory,
+      orgOnboarding: f.orgOnboarding,
+    });
+    for (const [t, uid, role, extra] of [
+      ['t-staff', 'staff', 'admin', { admin: true }],
+      ['t-rep', 'rep', 'organisation', {}],
+      ['t-other', 'other', 'organisation', {}],
+      ['t-athlete', 'ath', 'athlete', {}],
+    ] as const)
+      f.tokens.set(t, { uid, email: `${uid}@example.com`, email_verified: true, role, ...extra });
+    f.tokens.set('t-rep-unverified', {
+      uid: 'rep',
+      email: 'rep@example.com',
+      email_verified: false,
+      role: 'organisation',
+    });
+    f.orgUsers.set('rep', user('rep', { organisationId: 'own1' }));
+    f.orgs.set('own1', ownOrg());
+    f.orgUsers.set('other', user('other', { organisationId: 'own2' }));
+    f.orgs.set('own2', ownOrg({ ownerUid: 'other' }));
+  });
+  const post = (path: string, token: string, body: unknown = {}) =>
+    request(app)
+      .post(path)
+      .set('Authorization', `Bearer ${token}`)
+      .send(body as object);
+  const addSchool = async () =>
+    (await post('/api/admin/organisations', 't-staff', school)).body as { id: string; claimCode: string };
+
+  it('staff add a school: it is unclaimed, unverified, listed without contact details, and the code is shown once', async () => {
+    const r = await post('/api/admin/organisations', 't-staff', school);
+    expect(r.status).toBe(201);
+    expect(r.body.claimCode).toMatch(/^SB-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    const org = f.orgs.get(r.body.id)!;
+    expect(org).toMatchObject({
+      ownerUid: null,
+      claimStatus: 'unclaimed',
+      source: 'staff_import',
+      verified: false,
+      importedBy: 'staff',
+      schoolNumber: '700123456',
+    });
+    expect(org.sourceNote).toBe('Gauteng schools list, Nov 2026');
+    // the audit trail names the organisation, so the staff Activity log is readable
+    expect(f.audits.at(-1)).toMatchObject({
+      type: 'organisation.imported',
+      organisationName: 'Soweto High School',
+      by: 'staff',
+    });
+    const entry = f.entries.get(`org_${r.body.id}`)!;
+    expect(entry).toMatchObject({
+      role: 'organisation',
+      displayName: 'Soweto High School',
+      claimed: false,
+      verified: false,
+    });
+    expect(JSON.stringify(entry)).not.toMatch(/sowetohigh|0111234567/);
+    // only a hash is stored, never the code
+    const stored = f.orgClaims.get(r.body.id)!;
+    expect(JSON.stringify(stored)).not.toContain(r.body.claimCode.replace(/-/g, '').slice(2));
+    expect(stored.codeHash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('only staff can add, re-code or remove organisations', async () => {
+    const { id } = await addSchool();
+    for (const t of ['t-rep', 't-athlete']) {
+      expect((await post('/api/admin/organisations', t, school)).status).toBe(403);
+      expect((await post(`/api/admin/organisations/${id}/claim-code`, t)).status).toBe(403);
+      expect((await post(`/api/admin/organisations/${id}/remove`, t)).status).toBe(403);
+    }
+    expect((await request(app).post('/api/admin/organisations').send(school)).status).toBe(401);
+    expect((await post('/api/admin/organisations', 't-staff', { ...school, sourceNote: '' })).status).toBe(
+      400,
+    );
+    expect((await post('/api/admin/organisations', 't-staff', { ...school, name: ' ' })).status).toBe(400);
+  });
+
+  it('a new code replaces the old one; removal works only for unclaimed organisations', async () => {
+    const { id, claimCode } = await addSchool();
+    const fresh = (await post(`/api/admin/organisations/${id}/claim-code`, 't-staff')).body
+      .claimCode as string;
+    expect(fresh).not.toBe(claimCode);
+    expect((await post('/api/organisations/claim', 't-rep', { code: claimCode })).body.error.code).toBe(
+      'CODE_INVALID',
+    );
+    expect((await post('/api/organisations/claim', 't-rep', { code: fresh })).status).toBe(200);
+    expect((await post(`/api/admin/organisations/${id}/remove`, 't-staff')).status).toBe(409);
+    expect((await post(`/api/admin/organisations/${id}/claim-code`, 't-staff')).status).toBe(409);
+    const second = await addSchool();
+    expect((await post(`/api/admin/organisations/${second.id}/remove`, 't-staff')).status).toBe(200);
+    expect(f.orgs.has(second.id)).toBe(false);
+    expect(f.entries.has(`org_${second.id}`)).toBe(false);
+  });
+
+  it('a representative claims a school with the code, however they type it, and takes over the record', async () => {
+    const { id, claimCode } = await addSchool();
+    f.subjects.set('rep', {
+      user: user('rep', { organisationId: id }),
+      athlete: null,
+      coach: null,
+      organisation: { id, ...f.orgs.get(id)!, ownerUid: 'rep', claimStatus: 'claimed' },
+    });
+    const typed = claimCode.toLowerCase().replace(/-/g, ' ');
+    const r = await post('/api/organisations/claim', 't-rep', { code: typed });
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ organisationId: id, name: 'Soweto High School' });
+    expect(f.orgs.get(id)).toMatchObject({ ownerUid: 'rep', claimStatus: 'claimed' });
+    expect(f.orgUsers.get('rep')!.organisationId).toBe(id);
+    expect(f.orgs.has('own1')).toBe(false); // their empty, self-registered record is replaced
+    expect(f.orgClaims.has(id)).toBe(false); // the code is spent
+    expect(f.audits.at(-1)).toMatchObject({
+      type: 'organisation.claimed',
+      organisationName: 'Soweto High School',
+      by: 'rep',
+    });
+    expect(f.entries.has(`org_${id}`)).toBe(false);
+    expect(f.entries.get('rep')).toMatchObject({ role: 'organisation', orgId: id }); // now listed under the owner
+    expect((await post('/api/organisations/claim', 't-other', { code: claimCode })).body.error.code).toBe(
+      'CODE_INVALID',
+    );
+  });
+
+  it('refuses wrong codes, non-organisations and unverified emails, with the same answer for wrong and used codes', async () => {
+    const { claimCode } = await addSchool();
+    expect((await post('/api/organisations/claim', 't-rep', { code: 'SB-AAAA-BBBB' })).body.error.code).toBe(
+      'CODE_INVALID',
+    );
+    expect((await post('/api/organisations/claim', 't-rep', { code: 'nonsense' })).body.error.code).toBe(
+      'CODE_INVALID',
+    );
+    expect((await post('/api/organisations/claim', 't-athlete', { code: claimCode })).status).toBe(403);
+    expect((await post('/api/organisations/claim', 't-rep-unverified', { code: claimCode })).status).toBe(
+      403,
+    );
+    expect((await post('/api/organisations/claim', 't-rep', {})).status).toBe(400);
+    expect((await request(app).post('/api/organisations/claim').send({ code: claimCode })).status).toBe(401);
+  });
+
+  it('never replaces a verified organisation or one that already has listings, and expired codes stop working', async () => {
+    const { id, claimCode } = await addSchool();
+    f.orgs.set('own1', ownOrg({ verified: true }));
+    expect((await post('/api/organisations/claim', 't-rep', { code: claimCode })).body.error.code).toBe(
+      'OWN_ORG_VERIFIED',
+    );
+    f.orgs.set('own1', ownOrg());
+    f.listingCounts.set('own1', 2);
+    expect((await post('/api/organisations/claim', 't-rep', { code: claimCode })).body.error.code).toBe(
+      'OWN_ORG_HAS_LISTINGS',
+    );
+    expect(f.orgs.get('own1')).toBeDefined(); // nothing was lost
+    expect(f.orgs.get(id)!.claimStatus).toBe('unclaimed');
+    f.listingCounts.set('own1', 0);
+    f.orgClaims.set(id, { ...f.orgClaims.get(id)!, expiresAt: '2020-01-01T00:00:00.000Z' });
+    const expired = await post('/api/organisations/claim', 't-rep', { code: claimCode });
+    expect(expired.status).toBe(410);
+    expect(expired.body.error.code).toBe('CODE_EXPIRED');
   });
 });

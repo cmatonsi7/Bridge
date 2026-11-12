@@ -8,6 +8,7 @@ import { firebaseAuthPort, firestoreUserRepo } from './services/firebasePorts.js
 import { firestoreGuardianRepo } from './services/firebaseGuardianRepo.js';
 import { firestoreApplicationsRepo } from './services/firebaseApplicationsRepo.js';
 import { firestoreDirectoryRepo } from './services/firebaseDirectoryRepo.js';
+import { firestoreOrgOnboardingRepo } from './services/firebaseOrgOnboardingRepo.js';
 import { createApp } from './app.js';
 
 const env = loadEnv();
@@ -21,6 +22,7 @@ const app = createApp({
   guardians: firestoreGuardianRepo(getFirestore(firebaseApp)),
   applications: firestoreApplicationsRepo(getFirestore(firebaseApp)),
   directory: firestoreDirectoryRepo(getFirestore(firebaseApp)),
+  orgOnboarding: firestoreOrgOnboardingRepo(getFirestore(firebaseApp)),
   webDistDir,
   trustProxyHops: env.TRUST_PROXY_HOPS,
 });

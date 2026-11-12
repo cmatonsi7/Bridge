@@ -31,6 +31,7 @@ const OrgApplicationsPage = lazy(() => import('./applications/OrgApplicationsPag
 const GuardianApplicationsPage = lazy(() => import('./applications/GuardianApplicationsPage'));
 const DirectoryPage = lazy(() => import('./directory/DirectoryPage'));
 const ConnectionsPage = lazy(() => import('./directory/ConnectionsPage'));
+const AdminDashboard = lazy(() => import('./admin/AdminDashboard'));
 
 /** Browsing and saving listings are the same for every member role. */
 const MEMBER_LISTINGS = {
@@ -71,6 +72,8 @@ const BUILT: Partial<Record<Role, Partial<Record<AppSection, ComponentType>>>> =
     settings: OrgSettingsPage,
   },
 };
+
+BUILT.admin = { admin: AdminDashboard, directory: DirectoryPage };
 
 export default function SectionRoute({ item }: { item: NavItem }) {
   const { state } = useAuth();
