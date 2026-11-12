@@ -113,6 +113,10 @@ export interface ActivityEntry {
   organisationId: string | null;
   source: string | null;
   note: string | null;
+  createdCount: number | null;
+  skippedCount: number | null;
+  removedCount: number | null;
+  keptCount: number | null;
 }
 
 /** Only these events are staff-relevant onboarding actions. Other audit entries concern families and are not listed here. */
@@ -149,8 +153,12 @@ export async function loadActivity(): Promise<ActivityEntry[]> {
     byName: typeof r.by === 'string' ? (names.get(r.by) ?? null) : null,
     organisationName: typeof r.organisationName === 'string' ? r.organisationName : null,
     organisationId: typeof r.organisationId === 'string' ? r.organisationId : null,
-    source: typeof r.source === 'string' ? r.source : null,
+    source: typeof r.source === 'string' ? r.source : typeof r.sourceNote === 'string' ? r.sourceNote : null,
     note: typeof r.note === 'string' ? r.note : null,
+    createdCount: typeof r.createdCount === 'number' ? r.createdCount : null,
+    skippedCount: typeof r.skippedCount === 'number' ? r.skippedCount : null,
+    removedCount: typeof r.removedCount === 'number' ? r.removedCount : null,
+    keptCount: typeof r.keptCount === 'number' ? r.keptCount : null,
   }));
 }
 
@@ -186,6 +194,10 @@ export function describeActivity(e: ActivityEntry): string {
       return `${who} created a new claim code for ${what}`;
     case 'organisation.removed':
       return `${who} removed ${what}`;
+    case 'organisation.import_batch':
+      return `${who} imported ${e.createdCount ?? 0} schools and organisations from a spreadsheet${e.skippedCount ? ` (${e.skippedCount} skipped)` : ''}${e.source ? ` (source: ${e.source})` : ''}`;
+    case 'organisation.import_undone':
+      return `${who} undid an import: ${e.removedCount ?? 0} removed${e.keptCount ? `, ${e.keptCount} kept because they were already claimed` : ''}`;
     case 'organisation.verified':
       return `${who} verified ${what}${e.note ? ` (note: ${e.note})` : ''}`;
     case 'organisation.unverified':

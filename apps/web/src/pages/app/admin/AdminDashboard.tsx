@@ -4,6 +4,7 @@ import { BootScreen } from '../../../app/guards';
 import AdminOverview from './AdminOverview';
 
 const AdminSchoolsSection = lazy(() => import('./AdminSchoolsSection'));
+const AdminImport = lazy(() => import('./AdminImport'));
 const AdminVerification = lazy(() => import('./AdminVerification'));
 const AdminActivity = lazy(() => import('./AdminActivity'));
 
@@ -11,6 +12,7 @@ const AdminActivity = lazy(() => import('./AdminActivity'));
 const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'schools', label: 'Schools & organisations' },
+  { key: 'import', label: 'Import' },
   { key: 'verification', label: 'Verification' },
   { key: 'activity', label: 'Activity log' },
 ] as const;
@@ -57,6 +59,7 @@ export default function AdminDashboard() {
           />
         )}
         {tab === 'schools' && <AdminSchoolsSection />}
+        {tab === 'import' && <AdminImport />}
         {tab === 'verification' && <AdminVerification />}
         {tab === 'activity' && <AdminActivity />}
       </Suspense>

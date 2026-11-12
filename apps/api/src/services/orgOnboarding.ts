@@ -13,6 +13,7 @@ import {
   type DirectoryEntryDoc,
   type NotificationDoc,
   type OrganisationFullDoc,
+  type UnclaimedOrganisationFields,
   type UnclaimedOrganisationInput,
   type UserDoc,
   type VerifyRequestInput,
@@ -79,7 +80,7 @@ export function generateClaimCode(): string {
   return c;
 }
 
-const expiry = (now: Date) => new Date(now.getTime() + CLAIM_CODE_VALID_DAYS * 86400000).toISOString();
+export const expiry = (now: Date) => new Date(now.getTime() + CLAIM_CODE_VALID_DAYS * 86400000).toISOString();
 const INVALID = () =>
   new HttpError(
     404,
@@ -107,6 +108,29 @@ export function buildUnclaimedEntry(orgId: string, org: OrganisationFullDoc, at:
 }
 
 /** Staff add a school or organisation. Returns the claim code once; only its hash is stored. */
+/** An organisation added by staff on its behalf: nobody owns it, it is unverified, and it is listed publicly. */
+export function buildUnclaimedOrganisation(
+  f: UnclaimedOrganisationFields,
+  importedBy: string,
+  ts: string,
+): OrganisationFullDoc {
+  const { schoolNumber, sourceNote, ...profile } = f;
+  return {
+    ...profile,
+    ownerUid: null,
+    verified: false,
+    claimStatus: 'unclaimed',
+    source: 'staff_import',
+    schoolNumber,
+    sourceNote,
+    importedBy,
+    claimedAt: null,
+    privacy: { ...DEFAULT_ORG_PRIVACY, listed: true },
+    createdAt: ts,
+    updatedAt: ts,
+  };
+}
+
 export async function createUnclaimedOrganisation(
   repo: OrgOnboardingRepoPort,
   admin: OnboardingCaller,
@@ -116,21 +140,7 @@ export async function createUnclaimedOrganisation(
   const f = unclaimedOrganisationSchema.parse(raw);
   const ts = now.toISOString();
   const id = repo.newOrganisationId();
-  const { schoolNumber, sourceNote, ...profile } = f;
-  const org: OrganisationFullDoc = {
-    ...profile,
-    ownerUid: null,
-    verified: false,
-    claimStatus: 'unclaimed',
-    source: 'staff_import',
-    schoolNumber,
-    sourceNote,
-    importedBy: admin.uid,
-    claimedAt: null,
-    privacy: { ...DEFAULT_ORG_PRIVACY, listed: true },
-    createdAt: ts,
-    updatedAt: ts,
-  };
+  const org = buildUnclaimedOrganisation(f, admin.uid, ts);
   const code = generateClaimCode();
   const claim: ClaimDoc = {
     orgId: id,
@@ -144,7 +154,7 @@ export async function createUnclaimedOrganisation(
     organisationId: id,
     organisationName: f.name,
     by: admin.uid,
-    source: sourceNote,
+    source: f.sourceNote,
     at: ts,
   });
   return { id, claimCode: formatClaimCode(code), expiresAt: claim.expiresAt };

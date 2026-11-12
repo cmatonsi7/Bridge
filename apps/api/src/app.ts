@@ -9,6 +9,8 @@ import { guardianRouter } from './routes/guardian.js';
 import { applicationsRouter } from './routes/applications.js';
 import { directoryRouter } from './routes/directory.js';
 import { orgOnboardingRouter } from './routes/orgOnboarding.js';
+import { orgImportRouter } from './routes/orgImport.js';
+import type { OrgImportRepoPort } from './services/orgImport.js';
 import type { OrgOnboardingRepoPort } from './services/orgOnboarding.js';
 import type { DirectoryRepoPort } from './services/directory.js';
 import type { ApplicationsRepoPort } from './services/applications.js';
@@ -22,6 +24,7 @@ export interface AppDeps {
   applications: ApplicationsRepoPort;
   directory: DirectoryRepoPort;
   orgOnboarding: OrgOnboardingRepoPort;
+  orgImport: OrgImportRepoPort;
   webDistDir?: string;
   trustProxyHops?: number;
 }
@@ -72,6 +75,9 @@ export function createApp(deps: AppDeps) {
 
   // ---- API ----
   const api = express.Router();
+  // A 500-row spreadsheet is far larger than a normal request, so the import routes alone get a bigger limit.
+  // This must come first: a body that is already parsed is not parsed again by the 50kb parser below.
+  api.use('/admin/imports', express.json({ limit: '2mb' }));
   api.use(express.json({ limit: '50kb' }));
   api.use(
     rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false }),
@@ -82,6 +88,7 @@ export function createApp(deps: AppDeps) {
   api.use(applicationsRouter(deps));
   api.use(directoryRouter(deps));
   api.use(orgOnboardingRouter(deps));
+  api.use(orgImportRouter(deps));
   api.use(notFound);
   app.use('/api', api);
 

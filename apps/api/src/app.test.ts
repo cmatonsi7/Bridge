@@ -8,6 +8,8 @@ import type { GuardianRepoPort } from './services/guardian.js';
 import type { ApplicationsRepoPort, ApplicantRecords, Outbox } from './services/applications.js';
 import type { DirectoryRepoPort, DirectorySubject } from './services/directory.js';
 import type { OrgOnboardingRepoPort } from './services/orgOnboarding.js';
+import type { OrgImportRepoPort } from './services/orgImport.js';
+import type { ImportBatchDoc } from '@sportbridge/shared';
 import type { ClaimDoc, OrganisationFullDoc } from '@sportbridge/shared';
 import type { ConnectionDoc, DirectoryEntryDoc } from '@sportbridge/shared';
 import type { ApplicationDoc, GuardianLinkDoc, ListingDoc } from '@sportbridge/shared';
@@ -191,6 +193,57 @@ function fakes() {
       audits.push(audit);
     },
   };
+  const importBatches = new Map<string, ImportBatchDoc>();
+  let batchSeq = 0;
+  let importWriteFails = false;
+  const orgImport: OrgImportRepoPort = {
+    async listOrganisationKeys() {
+      return [...orgs.entries()].map(([id, o]) => ({
+        id,
+        name: o.name,
+        province: o.province ?? null,
+        schoolNumber: o.schoolNumber ?? null,
+      }));
+    },
+    newBatchId: () => `batch${++batchSeq}`,
+    newOrganisationId: () => `imp${++orgSeq}`,
+    async startBatch(id, b) {
+      importBatches.set(id, b);
+    },
+    async writeOrganisations(items) {
+      if (importWriteFails) throw new Error('database unavailable');
+      for (const it of items) {
+        orgs.set(it.id, it.org);
+        orgClaims.set(it.id, it.claim);
+        entries.set(it.entry.uid, it.entry);
+      }
+    },
+    async finishBatch(id, patch, audit) {
+      importBatches.set(id, { ...importBatches.get(id)!, ...patch });
+      audits.push(audit);
+    },
+    async getBatch(id) {
+      return importBatches.get(id) ?? null;
+    },
+    async undoBatch(id, _by, _at, audit) {
+      const b = importBatches.get(id)!;
+      let removed = 0;
+      const kept: string[] = [];
+      for (const oid of b.orgIds) {
+        const o = orgs.get(oid);
+        if (!o) continue;
+        if (o.claimStatus === 'unclaimed' && !o.ownerUid) {
+          orgs.delete(oid);
+          orgClaims.delete(oid);
+          entries.delete(`org_${oid}`);
+          removed++;
+        } else kept.push(o.name);
+      }
+      importBatches.set(id, { ...b, status: 'undone', removedCount: removed, keptCount: kept.length });
+      audits.push(audit(removed, kept));
+      return { removed, kept };
+    },
+  };
   return {
     tokens,
     claims,
@@ -202,6 +255,11 @@ function fakes() {
     applications,
     directory,
     orgOnboarding,
+    orgImport,
+    importBatches,
+    setImportFailure: (v: boolean) => {
+      importWriteFails = v;
+    },
     orgListings,
     verifications,
     orgs,
@@ -1283,5 +1341,272 @@ describe('organisation onboarding: staff add schools, representatives claim them
       expect((await post('/api/admin/organisations/nosuchorg/verify', 't-staff')).status).toBe(404);
       expect((await post('/api/admin/organisations/bad$id/verify', 't-staff')).status).toBe(400);
     });
+  });
+});
+
+describe('spreadsheet import', () => {
+  let f: ReturnType<typeof fakes>;
+  let app: ReturnType<typeof createApp>;
+  const HEADER =
+    'name,type,province,city,sports,school_number,contact_email,contact_phone,website,description,source';
+  const SOWETO =
+    'Soweto High School,School,Gauteng,Soweto,Football; Netball,700123,office@sowetohigh.edu.za,011 123 4567,,,';
+  const CAMPS = 'Camps Bay High,School,Western Cape,Cape Town,Rugby,700456,,,,,';
+  const PARKTOWN = 'Parktown Girls,School,Gauteng,Johannesburg,Netball,700789,,,,,';
+  const csv = (...rows: string[]) => [HEADER, ...rows].join('\n');
+  const SRC = 'Gauteng schools list, Nov 2026';
+  beforeEach(() => {
+    f = fakes();
+    app = createApp({
+      auth: f.auth,
+      users: f.repo,
+      guardians: f.guardians,
+      applications: f.applications,
+      directory: f.directory,
+      orgOnboarding: f.orgOnboarding,
+      orgImport: f.orgImport,
+    });
+    f.tokens.set('t-staff', {
+      uid: 'staff',
+      email: 'staff@example.com',
+      email_verified: true,
+      role: 'admin',
+      admin: true,
+    });
+    f.tokens.set('t-rep', {
+      uid: 'rep',
+      email: 'rep@example.com',
+      email_verified: true,
+      role: 'organisation',
+    });
+    f.tokens.set('t-athlete', {
+      uid: 'ath',
+      email: 'ath@example.com',
+      email_verified: true,
+      role: 'athlete',
+    });
+    f.orgUsers.set('rep', {
+      uid: 'rep',
+      email: 'rep@example.com',
+      firstName: 'A',
+      surname: 'B',
+      displayName: 'Rep B',
+      role: 'organisation',
+      status: 'active',
+      isMinor: false,
+      onboardingComplete: true,
+      termsVersion: 'v',
+      termsAcceptedAt: 't',
+      createdAt: 't',
+      updatedAt: 't',
+      organisationId: 'own1',
+    } as UserDoc);
+    f.orgs.set('own1', {
+      name: 'My School',
+      type: 'school',
+      ownerUid: 'rep',
+      verified: false,
+      createdAt: 't',
+      updatedAt: 't',
+    });
+  });
+  const post = (path: string, token: string, body: unknown = {}) =>
+    request(app)
+      .post(path)
+      .set('Authorization', `Bearer ${token}`)
+      .send(body as object);
+  const run = (rows: string[], extra: Record<string, unknown> = {}) =>
+    post('/api/admin/imports', 't-staff', {
+      csv: csv(...rows),
+      source: SRC,
+      fileName: 'schools.csv',
+      ...extra,
+    });
+
+  it('previews every row and writes nothing', async () => {
+    const r = await post('/api/admin/imports/preview', 't-staff', {
+      csv: csv(SOWETO, CAMPS, 'Bad Row,School,Narnia,Soweto,,,,,,,'),
+      source: SRC,
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.counts).toEqual({ ready: 2, warning: 0, duplicate: 0, error: 1 });
+    expect(r.body.importable).toBe(2);
+    expect(r.body.rows).toHaveLength(3);
+    expect(r.body.rows[2]).toMatchObject({ line: 4, status: 'error' });
+    expect(JSON.stringify(r.body)).not.toContain('office@sowetohigh.edu.za'); // parsed data never leaves the server
+    expect(f.orgs.has('own1')).toBe(true);
+    expect([...f.orgs.keys()]).toEqual(['own1']);
+    expect(f.importBatches.size).toBe(0);
+  });
+
+  it('imports the ready rows: unclaimed, unverified, listed without contact details, with codes returned once', async () => {
+    const r = await run([SOWETO, CAMPS]);
+    expect(r.status).toBe(201);
+    expect(r.body.created).toHaveLength(2);
+    for (const c of r.body.created) expect(c.claimCode).toMatch(/^SB-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    const first = r.body.created[0];
+    expect(f.orgs.get(first.id)).toMatchObject({
+      ownerUid: null,
+      claimStatus: 'unclaimed',
+      source: 'staff_import',
+      verified: false,
+      importedBy: 'staff',
+      importBatchId: r.body.batchId,
+      name: 'Soweto High School',
+      sourceNote: SRC,
+    });
+    expect(JSON.stringify(f.entries.get(`org_${first.id}`))).not.toMatch(/sowetohigh|0111234567/);
+    expect(f.importBatches.get(r.body.batchId)).toMatchObject({
+      status: 'active',
+      createdCount: 2,
+      skippedCount: 0,
+      rowCount: 2,
+      createdBy: 'staff',
+      fileName: 'schools.csv',
+    });
+    expect(f.audits.at(-1)).toMatchObject({
+      type: 'organisation.import_batch',
+      createdCount: 2,
+      by: 'staff',
+    });
+    // only a hash is stored: the plain code is nowhere in the database
+    expect(JSON.stringify([...f.orgClaims.values()])).not.toContain(
+      first.claimCode.replace(/-/g, '').slice(2),
+    );
+  });
+
+  it('a code from an import really lets a school representative claim that school', async () => {
+    const r = await run([SOWETO]);
+    const { id, claimCode } = r.body.created[0];
+    const claim = await post('/api/organisations/claim', 't-rep', { code: claimCode });
+    expect(claim.status).toBe(200);
+    expect(f.orgs.get(id)).toMatchObject({ ownerUid: 'rep', claimStatus: 'claimed' });
+  });
+
+  it('skips errors and duplicates, says why, and imports the rest', async () => {
+    f.orgs.set('existing', {
+      name: 'Parktown Girls',
+      type: 'school',
+      province: 'Gauteng',
+      schoolNumber: '700789',
+      ownerUid: null,
+      verified: false,
+      createdAt: 't',
+      updatedAt: 't',
+    });
+    const r = await run([SOWETO, PARKTOWN, 'Nowhere School,School,Narnia,X,,,,,,,', CAMPS]);
+    expect(r.status).toBe(201);
+    expect(r.body.created.map((c: { name: string }) => c.name)).toEqual([
+      'Soweto High School',
+      'Camps Bay High',
+    ]);
+    expect(r.body.skipped).toHaveLength(2);
+    expect(r.body.skipped.map((s: { status: string }) => s.status).sort()).toEqual(['duplicate', 'error']);
+    expect(f.importBatches.get(r.body.batchId)).toMatchObject({
+      createdCount: 2,
+      skippedCount: 2,
+      rowCount: 4,
+    });
+  });
+
+  it('uploading the same file again creates no copies', async () => {
+    await run([SOWETO, CAMPS]);
+    const again = await run([SOWETO, CAMPS]);
+    expect(again.status).toBe(400);
+    expect(again.body.error.code).toBe('NOTHING_TO_IMPORT');
+    expect([...f.orgs.keys()].filter((k) => k.startsWith('imp'))).toHaveLength(2);
+  });
+
+  it('only staff can preview, import or undo', async () => {
+    const first = await run([SOWETO]);
+    for (const t of ['t-rep', 't-athlete']) {
+      expect((await post('/api/admin/imports/preview', t, { csv: csv(SOWETO), source: SRC })).status).toBe(
+        403,
+      );
+      expect((await post('/api/admin/imports', t, { csv: csv(SOWETO), source: SRC })).status).toBe(403);
+      expect((await post(`/api/admin/imports/${first.body.batchId}/undo`, t)).status).toBe(403);
+    }
+    expect(
+      (
+        await request(app)
+          .post('/api/admin/imports')
+          .send({ csv: csv(CAMPS), source: SRC })
+      ).status,
+    ).toBe(401);
+    expect(f.importBatches.get(first.body.batchId)!.status).toBe('active');
+  });
+
+  it('explains a file that cannot work', async () => {
+    const noName = await post('/api/admin/imports', 't-staff', {
+      csv: 'type,province\nSchool,Gauteng',
+      source: SRC,
+    });
+    expect(noName.status).toBe(400);
+    expect(noName.body.error.code).toBe('IMPORT_INVALID');
+    expect(noName.body.error.message).toMatch(/“name” column/);
+    expect((await post('/api/admin/imports', 't-staff', { csv: csv(SOWETO), source: '' })).status).toBe(400);
+    expect((await post('/api/admin/imports', 't-staff', { source: SRC })).status).toBe(400);
+  });
+
+  it('undo removes what is still unclaimed and never touches a claimed school', async () => {
+    const r = await run([SOWETO, CAMPS, PARKTOWN]);
+    const claimed = r.body.created[0];
+    await post('/api/organisations/claim', 't-rep', { code: claimed.claimCode });
+    const undo = await post(`/api/admin/imports/${r.body.batchId}/undo`, 't-staff');
+    expect(undo.status).toBe(200);
+    expect(undo.body).toEqual({ removed: 2, kept: ['Soweto High School'] });
+    expect(f.orgs.has(claimed.id)).toBe(true);
+    expect(f.orgs.get(claimed.id)!.ownerUid).toBe('rep');
+    expect(
+      r.body.created
+        .slice(1)
+        .every((c: { id: string }) => !f.orgs.has(c.id) && !f.entries.has(`org_${c.id}`)),
+    ).toBe(true);
+    expect(f.importBatches.get(r.body.batchId)).toMatchObject({
+      status: 'undone',
+      removedCount: 2,
+      keptCount: 1,
+    });
+    expect(f.audits.at(-1)).toMatchObject({
+      type: 'organisation.import_undone',
+      removedCount: 2,
+      keptCount: 1,
+    });
+    expect((await post(`/api/admin/imports/${r.body.batchId}/undo`, 't-staff')).status).toBe(409);
+    expect((await post('/api/admin/imports/nosuchbatch/undo', 't-staff')).status).toBe(404);
+    expect((await post('/api/admin/imports/bad$id/undo', 't-staff')).status).toBe(400);
+  });
+
+  it('a failed import is recorded as unfinished, can be undone, and the file can simply be uploaded again', async () => {
+    f.setImportFailure(true);
+    const failed = await run([SOWETO, CAMPS]);
+    expect(failed.status).toBe(500);
+    expect(failed.body.error.code).toBe('IMPORT_INCOMPLETE');
+    const [batchId] = [...f.importBatches.keys()];
+    expect(failed.body.error.message).toContain(batchId!);
+    expect(f.importBatches.get(batchId!)).toMatchObject({ status: 'importing', createdCount: 2 });
+    f.setImportFailure(false);
+    const retry = await run([SOWETO, CAMPS]);
+    expect(retry.status).toBe(201);
+    expect(retry.body.created).toHaveLength(2);
+    expect((await post(`/api/admin/imports/${batchId}/undo`, 't-staff')).status).toBe(200);
+  });
+
+  it('accepts a spreadsheet far larger than a normal request, and politely refuses an enormous one', async () => {
+    const rows = Array.from(
+      { length: 450 },
+      (_, i) => `School Number ${i},School,Gauteng,Soweto,Football,N${i},,,,${'d'.repeat(140)},`,
+    );
+    const big = csv(...rows);
+    expect(big.length).toBeGreaterThan(60_000); // more than the 50kb limit every other route has
+    const ok = await post('/api/admin/imports', 't-staff', { csv: big, source: SRC });
+    expect(ok.status).toBe(201);
+    expect(ok.body.created).toHaveLength(450);
+    const huge = await post('/api/admin/imports', 't-staff', { csv: 'x'.repeat(2_200_000), source: SRC });
+    expect(huge.status).toBe(413);
+    expect(huge.body.error.code).toBe('TOO_LARGE');
+    // everywhere else the small limit still applies
+    const other = await post('/api/admin/organisations', 't-staff', { name: 'x'.repeat(70_000) });
+    expect(other.status).toBe(413);
   });
 });

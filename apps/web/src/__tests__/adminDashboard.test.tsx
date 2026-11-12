@@ -44,6 +44,10 @@ const entry = (over: Partial<ActivityEntry>): ActivityEntry => ({
   organisationId: 'o1',
   source: 'Gauteng schools list',
   note: null,
+  createdCount: null,
+  skippedCount: null,
+  removedCount: null,
+  keptCount: null,
   ...over,
 });
 const at = (path = '/app/admin') =>
@@ -84,7 +88,7 @@ describe('AdminDashboard', () => {
       within(nav)
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual(['Overview', 'Schools & organisations', 'Verification', 'Activity log']);
+    ).toEqual(['Overview', 'Schools & organisations', 'Import', 'Verification', 'Activity log']);
   });
 
   it('moves between sections, and the selected one is marked', async () => {
@@ -161,5 +165,22 @@ describe('describeActivity', () => {
     expect(describeActivity(entry({ type: 'organisation.unverified', note: null }))).toBe(
       'Bongiwe N removed the verification from Soweto High School',
     );
+  });
+  it('describes imports and undos in plain language', () => {
+    expect(
+      describeActivity(
+        entry({
+          type: 'organisation.import_batch',
+          createdCount: 120,
+          skippedCount: 8,
+          source: 'Gauteng list',
+        }),
+      ),
+    ).toBe(
+      'Bongiwe N imported 120 schools and organisations from a spreadsheet (8 skipped) (source: Gauteng list)',
+    );
+    expect(
+      describeActivity(entry({ type: 'organisation.import_undone', removedCount: 118, keptCount: 2 })),
+    ).toBe('Bongiwe N undid an import: 118 removed, 2 kept because they were already claimed');
   });
 });

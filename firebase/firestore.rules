@@ -229,6 +229,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ---- Spreadsheet import batches (Phase 4): a record of each upload, so it can be reviewed or undone.
+    // Staff can read them; only the server writes them.
+    match /importBatches/{batchId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // ---- Verification decisions (Phase 4): staff-only record, with the internal note. Written only by the server;
     // the organisation can never read the note.
     match /organisationVerifications/{orgId} {

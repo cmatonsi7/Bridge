@@ -959,3 +959,52 @@ describe('verification (Phase 4)', () => {
     await assertFails(updateDoc(doc(staff(), 'organisations/vorg'), { verified: false, updatedAt: now }));
   });
 });
+
+describe('spreadsheet import records (Phase 4)', () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'importBatches/b1'), {
+        createdAt: now,
+        createdBy: 'staff',
+        sourceNote: 'list',
+        fileName: 'schools.csv',
+        rowCount: 3,
+        createdCount: 2,
+        skippedCount: 1,
+        status: 'active',
+        orgIds: ['o1', 'o2'],
+      });
+    });
+  });
+  const staff = () => as('staff', { role: 'admin', admin: true });
+
+  it('staff can read and list import batches; nobody else can', async () => {
+    await assertSucceeds(getDoc(doc(staff(), 'importBatches/b1')));
+    await assertSucceeds(
+      getDocs(query(collection(staff(), 'importBatches'), orderBy('createdAt', 'desc'), limit(20))),
+    );
+    await assertFails(getDoc(doc(as('bob', { role: 'organisation' }), 'importBatches/b1')));
+    await assertFails(
+      getDocs(
+        query(
+          collection(as('alice', { role: 'athlete' }), 'importBatches'),
+          orderBy('createdAt', 'desc'),
+          limit(20),
+        ),
+      ),
+    );
+    await assertFails(getDoc(doc(anon(), 'importBatches/b1')));
+  });
+  it('nobody can write an import batch from a browser, staff included', async () => {
+    await assertFails(
+      setDoc(doc(staff(), 'importBatches/forged'), {
+        createdAt: now,
+        createdBy: 'staff',
+        status: 'active',
+        orgIds: [],
+      }),
+    );
+    await assertFails(updateDoc(doc(staff(), 'importBatches/b1'), { status: 'undone' }));
+    await assertFails(deleteDoc(doc(staff(), 'importBatches/b1')));
+  });
+});
