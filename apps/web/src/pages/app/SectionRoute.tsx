@@ -73,7 +73,12 @@ const BUILT: Partial<Record<Role, Partial<Record<AppSection, ComponentType>>>> =
   },
 };
 
-BUILT.admin = { admin: AdminDashboard, directory: DirectoryPage };
+BUILT.admin = {
+  admin: AdminDashboard,
+  directory: DirectoryPage,
+  opportunities: BrowseOpportunitiesPage,
+  programmes: BrowseProgrammesPage,
+};
 
 export default function SectionRoute({ item }: { item: NavItem }) {
   const { state } = useAuth();

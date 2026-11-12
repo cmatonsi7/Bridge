@@ -8,11 +8,14 @@ import {
   normaliseClaimCode,
   unclaimedEntryId,
   unclaimedOrganisationSchema,
+  verifyRequestSchema,
   type ClaimDoc,
   type DirectoryEntryDoc,
+  type NotificationDoc,
   type OrganisationFullDoc,
   type UnclaimedOrganisationInput,
   type UserDoc,
+  type VerifyRequestInput,
 } from '@sportbridge/shared';
 import { HttpError } from '../middleware/errors.js';
 
@@ -40,9 +43,25 @@ export interface OrgOnboardingRepoPort {
   replaceClaim(orgId: string, claim: ClaimDoc, audit: Record<string, unknown>): Promise<void>;
   /** Deletes an unclaimed organisation, its claim and its directory entry. Throws Error('NOT_UNCLAIMED') otherwise. */
   removeUnclaimed(orgId: string, audit: Record<string, unknown>): Promise<void>;
+  /**
+   * Verifies or un-verifies an organisation in ONE transaction: the organisation, every one of its listings
+   * (which carry a copy of the badge), its directory entry, a staff-only record, a notification and the audit entry.
+   * Throws Error with code NOT_FOUND, UNCLAIMED, ALREADY, NOT_VERIFIED or TOO_MANY_LISTINGS.
+   */
+  setVerification(args: VerificationArgs): Promise<{ name: string }>;
   loadClaim(codeHash: string, uid: string): Promise<ClaimContext | null>;
   /** Re-checks the organisation is still unclaimed and applies the claim atomically. Throws Error('NOT_UNCLAIMED') if it was taken meanwhile. */
   commitClaim(ctx: ClaimContext, uid: string, at: string, audit: Record<string, unknown>): Promise<void>;
+}
+
+export interface VerificationArgs {
+  orgId: string;
+  verified: boolean;
+  by: string;
+  at: string;
+  note: string | null;
+  notify: (ownerUid: string, organisationName: string) => NotificationDoc;
+  audit: (organisationName: string) => Record<string, unknown>;
 }
 
 export interface OnboardingCaller {
@@ -245,4 +264,64 @@ export async function claimOrganisation(
     throw err;
   }
   return { organisationId: ctx.orgId, name: ctx.org.name };
+}
+
+const VERIFICATION_ERRORS: Record<string, [number, string, string]> = {
+  NOT_FOUND: [404, 'ORGANISATION_NOT_FOUND', 'This organisation could not be found'],
+  UNCLAIMED: [
+    409,
+    'UNCLAIMED',
+    'An organisation nobody has claimed can’t be verified yet. Verify it once its representative has claimed it.',
+  ],
+  ALREADY: [409, 'ALREADY_VERIFIED', 'This organisation is already verified'],
+  NOT_VERIFIED: [409, 'NOT_VERIFIED', 'This organisation is not currently verified'],
+  TOO_MANY_LISTINGS: [
+    409,
+    'TOO_MANY_LISTINGS',
+    'This organisation has too many listings to update safely at once. Contact the developer.',
+  ],
+};
+
+/** Staff verify an organisation, or remove its verification. The note is internal and never shown to the organisation. */
+export async function setOrganisationVerification(
+  repo: OrgOnboardingRepoPort,
+  admin: OnboardingCaller,
+  orgId: string,
+  verified: boolean,
+  raw: VerifyRequestInput,
+  now = new Date(),
+) {
+  const { note } = verifyRequestSchema.parse(raw ?? {});
+  const at = now.toISOString();
+  try {
+    return await repo.setVerification({
+      orgId,
+      verified,
+      by: admin.uid,
+      at,
+      note,
+      notify: (_ownerUid, name) => ({
+        type: 'organisation.verification',
+        title: verified ? 'Your organisation is now verified' : 'Verification removed',
+        body: verified
+          ? `SportBridge has verified ${name}. Your profile, listings and directory entry now show the Verified badge.`
+          : `SportBridge has removed the Verified badge from ${name}. Contact SportBridge if you have questions.`,
+        link: '/app/profile',
+        read: false,
+        createdAt: at,
+      }),
+      audit: (name) => ({
+        type: verified ? 'organisation.verified' : 'organisation.unverified',
+        organisationId: orgId,
+        organisationName: name,
+        by: admin.uid,
+        note,
+        at,
+      }),
+    });
+  } catch (err) {
+    const known = err instanceof Error ? VERIFICATION_ERRORS[err.message] : undefined;
+    if (known) throw new HttpError(known[0], known[1], known[2]);
+    throw err;
+  }
 }

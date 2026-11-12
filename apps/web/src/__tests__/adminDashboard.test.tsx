@@ -24,6 +24,7 @@ vi.mock('../features/admin/adminService', async () => {
     ...actual,
     useOverview: () => ({ status: 'ready', data: st.overview }),
     useActivity: () => ({ status: 'ready', data: st.activity }),
+    useVerificationQueue: () => ({ status: 'ready', data: { awaiting: [], verified: [] } }),
   };
 });
 vi.mock('../features/onboarding/onboardingService', () => ({
@@ -42,6 +43,7 @@ const entry = (over: Partial<ActivityEntry>): ActivityEntry => ({
   organisationName: 'Soweto High School',
   organisationId: 'o1',
   source: 'Gauteng schools list',
+  note: null,
   ...over,
 });
 const at = (path = '/app/admin') =>
@@ -63,7 +65,7 @@ describe('AdminDashboard', () => {
     expect(screen.getByText('4 waiting to be claimed · 2 claimed')).toBeTruthy();
     expect(screen.getByText('31')).toBeTruthy();
     expect(screen.getByText('120')).toBeTruthy();
-    expect(screen.getByText(/Verification tools arrive in a later update/)).toBeTruthy();
+    expect(screen.getByText(/that SportBridge has not verified yet/)).toBeTruthy();
   });
 
   it('shows a dash, not a made-up zero, for a figure it could not read', () => {
@@ -82,7 +84,7 @@ describe('AdminDashboard', () => {
       within(nav)
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual(['Overview', 'Schools & organisations', 'Activity log']);
+    ).toEqual(['Overview', 'Schools & organisations', 'Verification', 'Activity log']);
   });
 
   it('moves between sections, and the selected one is marked', async () => {
@@ -100,6 +102,12 @@ describe('AdminDashboard', () => {
     at();
     fireEvent.click(screen.getByRole('button', { name: 'Manage schools & organisations' }));
     expect(await screen.findByRole('button', { name: 'Add and create claim code' })).toBeTruthy();
+  });
+
+  it('the awaiting-verification card opens the Verification section', async () => {
+    at();
+    fireEvent.click(screen.getByRole('button', { name: 'Review organisations' }));
+    expect(await screen.findByText('What “verified” promises')).toBeTruthy();
   });
 
   it('remembers the section in the address, and ignores an unknown one', async () => {
@@ -144,6 +152,14 @@ describe('describeActivity', () => {
     );
     expect(describeActivity(entry({ type: 'organisation.something_new' }))).toBe(
       'organisation.something_new',
+    );
+  });
+  it('describes verification decisions, with the staff note when there is one', () => {
+    expect(describeActivity(entry({ type: 'organisation.verified', note: 'Phoned the school' }))).toBe(
+      'Bongiwe N verified Soweto High School (note: Phoned the school)',
+    );
+    expect(describeActivity(entry({ type: 'organisation.unverified', note: null }))).toBe(
+      'Bongiwe N removed the verification from Soweto High School',
     );
   });
 });

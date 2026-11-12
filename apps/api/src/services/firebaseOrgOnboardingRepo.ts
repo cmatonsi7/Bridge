@@ -11,6 +11,7 @@ import type { ClaimContext, OrgOnboardingRepoPort } from './orgOnboarding.js';
 const CLAIMS = 'organisationClaims';
 const DIRECTORY = 'directoryProfiles';
 const LISTINGS = 'listings';
+const VERIFICATIONS = 'organisationVerifications';
 
 export function firestoreOrgOnboardingRepo(db: Firestore): OrgOnboardingRepoPort {
   const orgRef = (id: string) => db.collection(COLLECTIONS.organisations).doc(id);
@@ -54,6 +55,42 @@ export function firestoreOrgOnboardingRepo(db: Firestore): OrgOnboardingRepoPort
           ...audit,
           organisationName: (org.data() as OrganisationFullDoc).name,
         });
+      });
+    },
+
+    async setVerification(a) {
+      return db.runTransaction(async (tx) => {
+        const orgSnap = await tx.get(orgRef(a.orgId));
+        if (!orgSnap.exists) throw new Error('NOT_FOUND');
+        const org = orgSnap.data() as OrganisationFullDoc;
+        if (!org.ownerUid) throw new Error('UNCLAIMED');
+        if (a.verified && org.verified) throw new Error('ALREADY');
+        if (!a.verified && !org.verified) throw new Error('NOT_VERIFIED');
+        // Listings carry a copy of the badge. All of them change together with the organisation.
+        const listings = await tx.get(db.collection(LISTINGS).where('orgId', '==', a.orgId).limit(401));
+        if (listings.size > 400) throw new Error('TOO_MANY_LISTINGS');
+        const entry = await tx.get(entryRef(org.ownerUid));
+
+        tx.update(orgRef(a.orgId), {
+          verified: a.verified,
+          verifiedAt: a.verified ? a.at : null,
+          updatedAt: a.at,
+        });
+        for (const l of listings.docs) tx.update(l.ref, { orgVerified: a.verified });
+        if (entry.exists) tx.update(entryRef(org.ownerUid), { verified: a.verified, updatedAt: a.at });
+        tx.set(db.collection(VERIFICATIONS).doc(a.orgId), {
+          orgId: a.orgId,
+          verified: a.verified,
+          decidedBy: a.by,
+          decidedAt: a.at,
+          note: a.note,
+        });
+        tx.create(
+          db.collection(COLLECTIONS.users).doc(org.ownerUid).collection('notifications').doc(),
+          a.notify(org.ownerUid, org.name),
+        );
+        tx.create(db.collection(COLLECTIONS.auditLogs).doc(), a.audit(org.name));
+        return { name: org.name };
       });
     },
 

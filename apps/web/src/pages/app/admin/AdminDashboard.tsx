@@ -4,12 +4,14 @@ import { BootScreen } from '../../../app/guards';
 import AdminOverview from './AdminOverview';
 
 const AdminSchoolsSection = lazy(() => import('./AdminSchoolsSection'));
+const AdminVerification = lazy(() => import('./AdminVerification'));
 const AdminActivity = lazy(() => import('./AdminActivity'));
 
 /** Sections appear here only once they exist, so staff never open a tab that leads nowhere. */
 const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'schools', label: 'Schools & organisations' },
+  { key: 'verification', label: 'Verification' },
   { key: 'activity', label: 'Activity log' },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
@@ -48,8 +50,14 @@ export default function AdminDashboard() {
       </nav>
 
       <Suspense fallback={<BootScreen />}>
-        {tab === 'overview' && <AdminOverview onOpenSchools={() => open('schools')} />}
+        {tab === 'overview' && (
+          <AdminOverview
+            onOpenSchools={() => open('schools')}
+            onOpenVerification={() => open('verification')}
+          />
+        )}
         {tab === 'schools' && <AdminSchoolsSection />}
+        {tab === 'verification' && <AdminVerification />}
         {tab === 'activity' && <AdminActivity />}
       </Suspense>
     </section>

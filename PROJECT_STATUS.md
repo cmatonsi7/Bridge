@@ -60,6 +60,8 @@ One **Admin** item in the sidebar (visible only to accounts with the administrat
 - **Overview:** real figures only — schools added by SportBridge (waiting / claimed), organisations awaiting verification, live opportunities and programmes, applications in the last 7 days, and account counts by role. A figure that cannot be read shows "—", never a made-up zero.
 - **Schools & organisations:** add a school on its behalf, issue a claim code (shown once, with Copy), replace a code, remove an unclaimed school.
 - **Activity log:** read-only record of onboarding actions (added, new claim code, removed, claimed) with who and when, in plain language. Audit entries now carry the organisation's name so removed schools are still named. The log cannot be edited from a browser.
+- **Verification:** staff see organisations that have an owner, split into *Awaiting* and *Verified*, with contact details, school number, how they joined, and listing count. **Verify…** / **Remove verification…** each open a confirmation (never a single click) with an optional internal note that only staff can read. One server transaction updates the organisation, **all its listings** (each carries a copy of the badge), its directory entry, a staff-only record (`organisationVerifications`), a notification to the owner (without the note) and the audit entry, so nothing is left out of step. Unclaimed organisations cannot be verified (nobody's claim to check yet). Staff cannot change the badge from a browser; only the server can.
+- **Staff home and sidebar:** signing in as staff opens the Admin Overview; the sidebar shows only Opportunities, Programmes, Talent Directory and Admin. The unused "being added next" dashboard fallback was removed.
 - The selected section is kept in the address (`?tab=`), so a refresh keeps your place. Reads are enforced by the security rules (administrators only); 4 new rules tests.
 - Legal questions are kept in `LEGAL_QUESTIONS.md` for review with the client's legal adviser.
 
@@ -71,7 +73,7 @@ The client wants real schools, clubs and coaches on the platform instead of an e
 - Unclaimed organisations cannot post (no owner) and show a notice on their directory profile. The organisation dashboard offers a claim card to self-registered, unverified organisations.
 - Organisation dashboard now shows **real** counts of live/draft opportunities and programmes and applications waiting (the "coming in the next release" text was stale).
 - **To make a staff account:** `npm run grant-admin -w apps/api -- person@example.com` (needs the service account key in the environment; the person signs out and in again).
-- Rules: 5 new tests, plus 4 for the dashboard (55 total). API: 6 new tests (45). Web: 17 new (102 total).
+- Rules: 59 tests. API: 50 tests. Web: 114 tests.
 - Decisions pending from the client: where the school/coach lists come from; coach vetting for those connecting with children; who the admin users are; POPIA sign-off for listing coaches.
 - Step B (CSV import with preview, duplicate detection and undo) and step C (coaches) follow.
 

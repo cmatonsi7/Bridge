@@ -7,6 +7,7 @@ import {
   createUnclaimedOrganisation,
   regenerateClaimCode,
   removeUnclaimedOrganisation,
+  setOrganisationVerification,
   type OnboardingCaller,
   type OrgOnboardingRepoPort,
 } from '../services/orgOnboarding.js';
@@ -84,6 +85,31 @@ export function orgOnboardingRouter(deps: {
       }
     },
   );
+  for (const [path, verified] of [
+    ['verify', true],
+    ['unverify', false],
+  ] as const) {
+    r.post(
+      `/admin/organisations/:id/${path}`,
+      adminLimiter,
+      requireAuth(deps.auth),
+      requireAdmin(),
+      async (req, res, next) => {
+        try {
+          const done = await setOrganisationVerification(
+            deps.orgOnboarding,
+            caller(req),
+            orgId(req.params.id),
+            verified,
+            req.body,
+          );
+          res.json({ ok: true, name: done.name });
+        } catch (err) {
+          next(err);
+        }
+      },
+    );
+  }
   r.post('/organisations/claim', claimLimiter, requireAuth(deps.auth), async (req, res, next) => {
     try {
       const { code } = claimRequestSchema.parse(req.body);

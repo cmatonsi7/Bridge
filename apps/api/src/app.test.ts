@@ -121,6 +121,8 @@ function fakes() {
   const orgClaims = new Map<string, ClaimDoc>();
   const orgUsers = new Map<string, UserDoc>();
   const listingCounts = new Map<string, number>();
+  const orgListings = new Map<string, { orgId: string; orgVerified: boolean }>();
+  const verifications = new Map<string, { verified: boolean; note: string | null; decidedBy: string }>();
   let orgSeq = 0;
   const orgOnboarding: OrgOnboardingRepoPort = {
     newOrganisationId: () => `org${++orgSeq}`,
@@ -141,6 +143,22 @@ function fakes() {
       orgClaims.delete(orgId);
       entries.delete(`org_${orgId}`);
       audits.push(audit);
+    },
+    async setVerification(a) {
+      const o = orgs.get(a.orgId);
+      if (!o) throw new Error('NOT_FOUND');
+      if (!o.ownerUid) throw new Error('UNCLAIMED');
+      if (a.verified && o.verified) throw new Error('ALREADY');
+      if (!a.verified && !o.verified) throw new Error('NOT_VERIFIED');
+      orgs.set(a.orgId, { ...o, verified: a.verified, verifiedAt: a.verified ? a.at : null });
+      for (const [id, l] of orgListings)
+        if (l.orgId === a.orgId) orgListings.set(id, { ...l, orgVerified: a.verified });
+      const entry = entries.get(o.ownerUid);
+      if (entry) entries.set(o.ownerUid, { ...entry, verified: a.verified });
+      verifications.set(a.orgId, { verified: a.verified, note: a.note, decidedBy: a.by });
+      sent.push({ uid: o.ownerUid, notification: a.notify(o.ownerUid, o.name) });
+      audits.push(a.audit(o.name));
+      return { name: o.name };
     },
     async loadClaim(hash, uid) {
       const claim = [...orgClaims.values()].find((c) => c.codeHash === hash);
@@ -184,6 +202,8 @@ function fakes() {
     applications,
     directory,
     orgOnboarding,
+    orgListings,
+    verifications,
     orgs,
     orgClaims,
     orgUsers,
@@ -1147,5 +1167,121 @@ describe('organisation onboarding: staff add schools, representatives claim them
     const expired = await post('/api/organisations/claim', 't-rep', { code: claimCode });
     expect(expired.status).toBe(410);
     expect(expired.body.error.code).toBe('CODE_EXPIRED');
+  });
+
+  describe('verification', () => {
+    const claimed = () => {
+      f.orgs.set('verif1', {
+        name: 'Soweto High School',
+        type: 'school',
+        ownerUid: 'rep',
+        verified: false,
+        claimStatus: 'claimed',
+        source: 'staff_import',
+        createdAt: 't',
+        updatedAt: 't',
+      });
+      f.entries.set('rep', {
+        uid: 'rep',
+        role: 'organisation',
+        displayName: 'Soweto High School',
+        sports: [],
+        province: 'Gauteng',
+        city: 'Soweto',
+        headline: null,
+        tags: [],
+        orgId: 'verif1',
+        verified: false,
+        claimed: true,
+        updatedAt: 't',
+      });
+      f.orgListings.set('l1', { orgId: 'verif1', orgVerified: false });
+      f.orgListings.set('l2', { orgId: 'verif1', orgVerified: false });
+      f.orgListings.set('other', { orgId: 'someone-else', orgVerified: false });
+    };
+
+    it('staff verify an organisation: the organisation, all its listings and its directory entry change together, and nobody else’s do', async () => {
+      claimed();
+      const r = await post('/api/admin/organisations/verif1/verify', 't-staff', {
+        note: 'Phoned the principal; school number matches the DBE list.',
+      });
+      expect(r.status).toBe(200);
+      expect(f.orgs.get('verif1')).toMatchObject({ verified: true });
+      expect(f.orgs.get('verif1')!.verifiedAt).toBeTruthy();
+      expect(f.orgListings.get('l1')!.orgVerified).toBe(true);
+      expect(f.orgListings.get('l2')!.orgVerified).toBe(true);
+      expect(f.orgListings.get('other')!.orgVerified).toBe(false);
+      expect(f.entries.get('rep')!.verified).toBe(true);
+      expect(f.verifications.get('verif1')).toEqual({
+        verified: true,
+        note: 'Phoned the principal; school number matches the DBE list.',
+        decidedBy: 'staff',
+      });
+      expect(f.audits.at(-1)).toMatchObject({
+        type: 'organisation.verified',
+        organisationName: 'Soweto High School',
+        by: 'staff',
+        note: 'Phoned the principal; school number matches the DBE list.',
+      });
+    });
+
+    it('tells the owner, without revealing the staff note', async () => {
+      claimed();
+      await post('/api/admin/organisations/verif1/verify', 't-staff', { note: 'internal remark' });
+      const n = f.sent.filter((s) => s.uid === 'rep').at(-1)!.notification;
+      expect(n).toMatchObject({
+        type: 'organisation.verification',
+        title: 'Your organisation is now verified',
+        link: '/app/profile',
+      });
+      expect(JSON.stringify(n)).not.toContain('internal remark');
+    });
+
+    it('removing verification reverses everything it changed', async () => {
+      claimed();
+      await post('/api/admin/organisations/verif1/verify', 't-staff');
+      expect(
+        (
+          await post('/api/admin/organisations/verif1/unverify', 't-staff', {
+            note: 'Contact details could not be confirmed.',
+          })
+        ).status,
+      ).toBe(200);
+      expect(f.orgs.get('verif1')).toMatchObject({ verified: false, verifiedAt: null });
+      expect(f.orgListings.get('l1')!.orgVerified).toBe(false);
+      expect(f.entries.get('rep')!.verified).toBe(false);
+      expect(f.sent.filter((s) => s.uid === 'rep').at(-1)!.notification.title).toBe('Verification removed');
+      expect(f.audits.at(-1)).toMatchObject({ type: 'organisation.unverified' });
+    });
+
+    it('only staff can verify', async () => {
+      claimed();
+      for (const t of ['t-rep', 't-athlete']) {
+        expect((await post('/api/admin/organisations/verif1/verify', t)).status).toBe(403);
+        expect((await post('/api/admin/organisations/verif1/unverify', t)).status).toBe(403);
+      }
+      expect((await request(app).post('/api/admin/organisations/verif1/verify')).status).toBe(401);
+      expect(f.orgs.get('verif1')!.verified).toBe(false);
+    });
+
+    it('refuses organisations nobody has claimed, repeats, missing organisations and over-long notes', async () => {
+      const { id } = await addSchool();
+      expect((await post(`/api/admin/organisations/${id}/verify`, 't-staff')).body.error.code).toBe(
+        'UNCLAIMED',
+      );
+      claimed();
+      expect((await post('/api/admin/organisations/verif1/unverify', 't-staff')).body.error.code).toBe(
+        'NOT_VERIFIED',
+      );
+      expect(
+        (await post('/api/admin/organisations/verif1/verify', 't-staff', { note: 'x'.repeat(301) })).status,
+      ).toBe(400);
+      await post('/api/admin/organisations/verif1/verify', 't-staff');
+      expect((await post('/api/admin/organisations/verif1/verify', 't-staff')).body.error.code).toBe(
+        'ALREADY_VERIFIED',
+      );
+      expect((await post('/api/admin/organisations/nosuchorg/verify', 't-staff')).status).toBe(404);
+      expect((await post('/api/admin/organisations/bad$id/verify', 't-staff')).status).toBe(400);
+    });
   });
 });

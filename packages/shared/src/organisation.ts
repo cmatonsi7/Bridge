@@ -101,6 +101,8 @@ export interface OrganisationFullDoc extends Partial<Omit<OrganisationProfileFie
   /** null while a staff-added organisation is unclaimed. */
   ownerUid: string | null;
   verified: boolean;
+  /** When staff last verified the organisation; null if it is not verified. */
+  verifiedAt?: string | null;
   privacy?: OrgPrivacy;
   /** Absent on organisations created at sign-up (treated as claimed, self-registered). */
   claimStatus?: 'unclaimed' | 'claimed';

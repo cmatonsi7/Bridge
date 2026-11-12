@@ -6,12 +6,20 @@ import {
   getDoc,
   getDocs,
   limit,
+  onSnapshot,
   orderBy,
   query,
   where,
   type Query,
 } from 'firebase/firestore';
-import { COLLECTIONS, isOpen, type ListingDoc, type UserDoc } from '@sportbridge/shared';
+import {
+  COLLECTIONS,
+  isOpen,
+  type ListingDoc,
+  type OrganisationFullDoc,
+  type UserDoc,
+} from '@sportbridge/shared';
+import { apiFetch } from '../../lib/apiClient';
 import { requireDb } from '../../lib/firebase';
 import type { Loadable } from '../athlete/athleteService';
 
@@ -104,6 +112,7 @@ export interface ActivityEntry {
   organisationName: string | null;
   organisationId: string | null;
   source: string | null;
+  note: string | null;
 }
 
 /** Only these events are staff-relevant onboarding actions. Other audit entries concern families and are not listed here. */
@@ -141,6 +150,7 @@ export async function loadActivity(): Promise<ActivityEntry[]> {
     organisationName: typeof r.organisationName === 'string' ? r.organisationName : null,
     organisationId: typeof r.organisationId === 'string' ? r.organisationId : null,
     source: typeof r.source === 'string' ? r.source : null,
+    note: typeof r.note === 'string' ? r.note : null,
   }));
 }
 
@@ -176,9 +186,104 @@ export function describeActivity(e: ActivityEntry): string {
       return `${who} created a new claim code for ${what}`;
     case 'organisation.removed':
       return `${who} removed ${what}`;
+    case 'organisation.verified':
+      return `${who} verified ${what}${e.note ? ` (note: ${e.note})` : ''}`;
+    case 'organisation.unverified':
+      return `${who} removed the verification from ${what}${e.note ? ` (note: ${e.note})` : ''}`;
     case 'organisation.claimed':
       return `${e.byName ?? 'A representative'} claimed ${what}`;
     default:
       return e.type;
   }
 }
+
+export interface QueueItem extends OrganisationFullDoc {
+  id: string;
+  listingCount: number;
+}
+export interface VerificationQueue {
+  awaiting: QueueItem[];
+  verified: QueueItem[];
+}
+
+/**
+ * Organisations that have an owner, split into awaiting and verified. Updates live. An organisation nobody has
+ * claimed is left out: there is nobody yet whose claim could be checked.
+ */
+export function useVerificationQueue(): Loadable<VerificationQueue> {
+  const [state, setState] = useState<{ awaiting: QueueItem[]; verified: QueueItem[] } | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let awaiting: Array<OrganisationFullDoc & { id: string }> | null = null;
+    let verified: Array<OrganisationFullDoc & { id: string }> | null = null;
+    let counts = new Map<string, number>();
+    const publish = () => {
+      if (!awaiting || !verified) return;
+      const withCount = (o: OrganisationFullDoc & { id: string }): QueueItem => ({
+        ...o,
+        listingCount: counts.get(o.id) ?? 0,
+      });
+      setState({
+        awaiting: awaiting.map(withCount).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+        verified: verified
+          .map(withCount)
+          .sort((a, b) => (b.verifiedAt ?? '').localeCompare(a.verifiedAt ?? '')),
+      });
+    };
+    const fail = () => setError('We couldn’t load organisations. Check your connection and refresh.');
+    let db;
+    try {
+      db = requireDb();
+    } catch {
+      fail();
+      return;
+    }
+    const orgs = collection(db, COLLECTIONS.organisations);
+    const owned = (snap: { docs: Array<{ id: string; data: () => unknown }> }) =>
+      snap.docs.map((d) => ({ id: d.id, ...(d.data() as OrganisationFullDoc) })).filter((o) => !!o.ownerUid);
+    const u1 = onSnapshot(
+      query(orgs, where('verified', '==', false), limit(500)),
+      (snap) => {
+        awaiting = owned(snap);
+        publish();
+      },
+      fail,
+    );
+    const u2 = onSnapshot(
+      query(orgs, where('verified', '==', true), limit(500)),
+      (snap) => {
+        verified = owned(snap);
+        publish();
+      },
+      fail,
+    );
+    getDocs(query(collection(db, 'listings'), limit(2000)))
+      .then((snap) => {
+        counts = new Map();
+        for (const d of snap.docs) {
+          const id = (d.data() as ListingDoc).orgId;
+          counts.set(id, (counts.get(id) ?? 0) + 1);
+        }
+        publish();
+      })
+      .catch(() => undefined); // counts are a convenience; the queue still works without them
+    return () => {
+      u1();
+      u2();
+    };
+  }, []);
+  if (error) return { status: 'error', message: error };
+  return state ? { status: 'ready', data: state } : { status: 'loading' };
+}
+
+/** Staff only (the server checks). The note is internal and is never shown to the organisation. */
+export const verifyOrganisation = (id: string, note: string) =>
+  apiFetch<{ ok: true; name: string }>(`/admin/organisations/${id}/verify`, {
+    method: 'POST',
+    json: { note },
+  });
+export const removeVerification = (id: string, note: string) =>
+  apiFetch<{ ok: true; name: string }>(`/admin/organisations/${id}/unverify`, {
+    method: 'POST',
+    json: { note },
+  });

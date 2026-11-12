@@ -892,3 +892,70 @@ describe('admin dashboard reads (Phase 4)', () => {
     await assertFails(deleteDoc(doc(staff(), 'auditLogs/a1')));
   });
 });
+
+describe('verification (Phase 4)', () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'organisations/vorg'), {
+        name: 'Verified FC',
+        type: 'club',
+        ownerUid: 'bob',
+        verified: true,
+        verifiedAt: now,
+        claimStatus: 'claimed',
+        createdAt: now,
+        updatedAt: now,
+      });
+      await setDoc(doc(db, 'organisationVerifications/vorg'), {
+        orgId: 'vorg',
+        verified: true,
+        decidedBy: 'staff',
+        decidedAt: now,
+        note: 'internal note',
+      });
+    });
+  });
+  const staff = () => as('staff', { role: 'admin', admin: true });
+
+  it('staff read the verification record and its internal note; the organisation cannot', async () => {
+    await assertSucceeds(getDoc(doc(staff(), 'organisationVerifications/vorg')));
+    await assertFails(getDoc(doc(as('bob', { role: 'organisation' }), 'organisationVerifications/vorg')));
+    await assertFails(getDoc(doc(as('alice', { role: 'athlete' }), 'organisationVerifications/vorg')));
+    await assertFails(getDoc(doc(anon(), 'organisationVerifications/vorg')));
+  });
+  it('nobody can write a verification record from a browser, staff included', async () => {
+    await assertFails(
+      setDoc(doc(staff(), 'organisationVerifications/vorg'), {
+        orgId: 'vorg',
+        verified: false,
+        decidedBy: 'staff',
+        decidedAt: now,
+        note: null,
+      }),
+    );
+    await assertFails(
+      setDoc(doc(as('bob', { role: 'organisation' }), 'organisationVerifications/mine'), {
+        orgId: 'mine',
+        verified: true,
+        decidedBy: 'bob',
+        decidedAt: now,
+        note: null,
+      }),
+    );
+    await assertFails(deleteDoc(doc(staff(), 'organisationVerifications/vorg')));
+  });
+  it('an owner cannot change their own badge or its date', async () => {
+    const bob = as('bob', { role: 'organisation' });
+    await assertFails(updateDoc(doc(bob, 'organisations/vorg'), { verified: false, updatedAt: now }));
+    await assertFails(
+      updateDoc(doc(bob, 'organisations/vorg'), { verifiedAt: '2030-01-01T00:00:00.000Z', updatedAt: now }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(bob, 'organisations/vorg'), { description: 'Updated by the owner.', updatedAt: now }),
+    );
+  });
+  it('staff cannot change the badge from a browser either: it only happens through the server', async () => {
+    await assertFails(updateDoc(doc(staff(), 'organisations/vorg'), { verified: false, updatedAt: now }));
+  });
+});

@@ -26,7 +26,13 @@ function Stat({
 }
 
 /** Real figures only. A figure that could not be read shows as "—", never as a made-up zero. */
-export default function AdminOverview({ onOpenSchools }: { onOpenSchools: () => void }) {
+export default function AdminOverview({
+  onOpenSchools,
+  onOpenVerification,
+}: {
+  onOpenSchools: () => void;
+  onOpenVerification: () => void;
+}) {
   const o = useOverview();
   if (o.status === 'loading') return <BootScreen label="Loading the overview…" />;
   if (o.status === 'error')
@@ -54,7 +60,12 @@ export default function AdminOverview({ onOpenSchools }: { onOpenSchools: () => 
         <Stat
           label="Organisations awaiting verification"
           value={n(d.organisationsUnverified)}
-          note="Verification tools arrive in a later update. Until then every organisation shows “Not yet verified”."
+          note="Organisations with an owner that SportBridge has not verified yet."
+          action={
+            <button type="button" className="sb-btn" style={{ marginTop: 8 }} onClick={onOpenVerification}>
+              Review organisations
+            </button>
+          }
         />
         <Stat
           label="Live opportunities"
@@ -65,14 +76,16 @@ export default function AdminOverview({ onOpenSchools }: { onOpenSchools: () => 
         <Stat label="Applications in the last 7 days" value={n(d.applicationsThisWeek)} />
       </div>
 
-      <div className="sb-section-title" style={{ margin: '30px 0 12px' }}>
-        <h2>Accounts</h2>
-      </div>
-      <div className="sb-stat-grid">
-        <Stat label="Athletes" value={n(d.accounts.athlete)} />
-        <Stat label="Parents & guardians" value={n(d.accounts.guardian)} />
-        <Stat label="Coaches" value={n(d.accounts.coach)} />
-        <Stat label="Organisations" value={n(d.accounts.organisation)} />
+      <div style={{ marginTop: 32 }}>
+        <div className="sb-section-title">
+          <h2>Accounts</h2>
+        </div>
+        <div className="sb-stat-grid">
+          <Stat label="Athletes" value={n(d.accounts.athlete)} />
+          <Stat label="Parents & guardians" value={n(d.accounts.guardian)} />
+          <Stat label="Coaches" value={n(d.accounts.coach)} />
+          <Stat label="Organisations" value={n(d.accounts.organisation)} />
+        </div>
       </div>
     </>
   );

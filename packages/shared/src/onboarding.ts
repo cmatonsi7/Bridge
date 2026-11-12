@@ -55,3 +55,25 @@ export const claimRequestSchema = z.object({
 
 /** Directory key for an organisation nobody owns yet. */
 export const unclaimedEntryId = (orgId: string) => `org_${orgId}`;
+
+/** Optional internal note when staff verify or un-verify an organisation. Visible to staff only, never to the organisation. */
+export const verifyRequestSchema = z.object({
+  note: z
+    .string()
+    .trim()
+    .max(300, 'Keep the note under 300 characters')
+    .transform((v) => (v === '' ? null : v))
+    .nullable()
+    .optional()
+    .transform((v) => v ?? null),
+});
+export type VerifyRequestInput = z.input<typeof verifyRequestSchema>;
+
+/** organisationVerifications/{orgId}: staff-only record of the latest verification decision. */
+export interface VerificationDoc {
+  orgId: string;
+  verified: boolean;
+  decidedBy: string;
+  decidedAt: string;
+  note: string | null;
+}
