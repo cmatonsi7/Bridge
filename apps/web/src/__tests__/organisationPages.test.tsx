@@ -48,6 +48,9 @@ vi.mock('../features/athlete/athleteService', () => ({
   usePrivateDetails: () => ({ status: 'ready', data: { dateOfBirth: '1980-01-01', mobile: '0821234567' } }),
   saveMobile: vi.fn(async () => {}),
 }));
+vi.mock('../features/directory/directoryService', () => ({
+  syncDirectory: vi.fn(async () => ({ listed: true })),
+}));
 vi.mock('../features/organisation/orgService', () => ({
   useOrganisation: () => ({ status: 'ready', data: st.org }),
   saveOrganisation: vi.fn(async () => {}),
@@ -113,9 +116,7 @@ describe('OrgSettingsPage', () => {
   it('saves a privacy switch against the organisation', async () => {
     renderIn(<OrgSettingsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Privacy' }));
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'List my organisation in the SportBridge directory' }),
-    );
+    fireEvent.click(screen.getByRole('switch', { name: 'List my organisation in the Talent Directory' }));
     await waitFor(() =>
       expect(os.saveOrgPrivacy).toHaveBeenCalledWith('org1', {
         listed: true,

@@ -108,6 +108,7 @@ const router = createBrowserRouter([
         ),
       },
       { path: 'listings/:listingId', element: page(() => import('../pages/app/listings/ListingDetailPage')) },
+      { path: 'directory/:uid', element: page(() => import('../pages/app/directory/DirectoryProfilePage')) },
       {
         path: 'children/:childUid',
         element: (

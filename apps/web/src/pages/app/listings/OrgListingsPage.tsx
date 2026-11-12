@@ -11,12 +11,22 @@ import { OrgUnavailable } from '../../../features/organisation/OrgUnavailable';
 import { useToast } from '../../../components/Toast';
 import { BootScreen } from '../../../app/guards';
 
+/**
+ * Three different things, which used to look the same on screen:
+ * a draft, a live listing, one whose closing date has passed, and one closed by hand.
+ */
 const status = (l: ListingWithId) =>
   l.status === 'draft'
-    ? { label: 'Draft', cls: 'pending' }
-    : isOpen(l)
-      ? { label: 'Published', cls: 'ok' }
-      : { label: 'Closed', cls: 'pending' };
+    ? { label: 'Draft', cls: 'pending', hint: 'Only you can see this' }
+    : l.status === 'closed'
+      ? { label: 'Closed', cls: 'pending', hint: 'You closed this listing' }
+      : isOpen(l)
+        ? { label: 'Published', cls: 'ok', hint: '' }
+        : {
+            label: 'Date passed',
+            cls: 'pending',
+            hint: 'Edit it and set a future closing date to list it again',
+          };
 
 /** An organisation's own listings of one kind, with create / edit / close / delete. */
 export function OrgListingsPage({ kind }: { kind: ListingKind }) {
@@ -118,6 +128,7 @@ export function OrgListingsPage({ kind }: { kind: ListingKind }) {
                     </td>
                     <td style={{ padding: 12 }}>
                       <span className={`v-badge ${s.cls}`}>{s.label}</span>
+                      {s.hint && <div className="sb-meta">{s.hint}</div>}
                     </td>
                     <td style={{ padding: 12 }} className="sb-meta">
                       {formatDate(l.deadline)}
@@ -130,7 +141,7 @@ export function OrgListingsPage({ kind }: { kind: ListingKind }) {
                       >
                         Edit
                       </button>{' '}
-                      {l.status === 'published' && (
+                      {l.status === 'published' && isOpen(l) && (
                         <button type="button" className="sb-btn" onClick={() => void close(l)}>
                           Close
                         </button>

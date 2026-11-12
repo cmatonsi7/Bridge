@@ -12,6 +12,7 @@ export type AppSection =
   | 'membership'
   | 'settings'
   | 'directory'
+  | 'connections'
   | 'applications'
   | 'sponsorship'
   | 'admin';
@@ -130,6 +131,15 @@ export const NAV_ITEMS: NavItem[] = [
       "Explore athlete, coach and organisation profiles. Visibility follows each profile's privacy setting.",
   },
   {
+    section: 'connections',
+    label: 'Connections',
+    icon: 'users',
+    phase: 3,
+    eyebrow: 'CONNECTIONS',
+    title: 'Connections',
+    description: 'Coach and athlete connections.',
+  },
+  {
     section: 'applications',
     label: 'My Applications',
     icon: 'clipboard-check',
@@ -159,6 +169,7 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 const COMMON: AppSection[] = [
+  'connections',
   'dashboard',
   'opportunities',
   'programmes',

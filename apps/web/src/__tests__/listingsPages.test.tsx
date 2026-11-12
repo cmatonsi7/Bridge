@@ -86,6 +86,7 @@ vi.mock('../features/listings/listingsService', () => ({
   deleteDraft: vi.fn(async () => {}),
 }));
 
+vi.mock('../features/auth/AuthProvider', () => ({ useAuth: () => ({ state: { status: 'signedOut' } }) }));
 vi.mock('../features/applications/applicationsService', () => ({
   useApplicationsBy: () => ({ status: 'ready', data: [] }),
   applyTo: vi.fn(async () => ({ id: 'x' })),
@@ -169,6 +170,22 @@ describe('SavedPage', () => {
 });
 
 describe('organisation listings', () => {
+  it('tells an expired listing apart from one closed by hand, and offers Close only when it is live', () => {
+    st.uid = 'o1';
+    st.mine = [
+      L('live', { title: 'Live Trial' }),
+      L('old', { title: 'Expired Trial', deadline: '2020-01-01' }),
+      L('shut', { title: 'Closed Trial', status: 'closed' }),
+    ];
+    at('/', <OrgListingsPage kind="opportunity" />);
+    expect(screen.getByText('Published')).toBeTruthy();
+    expect(screen.getByText('Date passed')).toBeTruthy();
+    expect(screen.getByText('Closed')).toBeTruthy();
+    expect(screen.getByText(/set a future closing date/)).toBeTruthy();
+    // only the live one can be closed
+    expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
+  });
+
   it('lists own listings with the right actions', () => {
     st.uid = 'o1';
     st.mine = [L('p', { title: 'Live Trial' }), L('d', { title: 'My Draft', status: 'draft' })];
@@ -217,5 +234,10 @@ describe('PublicListingsGrid', () => {
     st.published = [L('a', { title: 'Holiday Camp', kind: 'programme', isFree: false, priceZar: 850 })];
     at('/', <PublicListingsGrid kind="programme" />);
     expect(screen.getByText('Holiday Camp')).toBeTruthy();
+  });
+  it('offers sign-up to visitors on the public empty state', () => {
+    at('/', <PublicListingsGrid kind="programme" />);
+    expect(screen.getByRole('button', { name: 'Create Account' })).toBeTruthy();
+    expect(screen.getByText(/Create a free account/)).toBeTruthy();
   });
 });

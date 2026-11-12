@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { ROLE_LABELS } from '@sportbridge/shared';
 import { NotificationsBell } from '../features/applications/NotificationsBell';
+import { useDirectoryReconcile } from '../features/directory/useDirectoryReconcile';
 import { effectiveRole, useAuth } from '../features/auth/AuthProvider';
 import { navFor } from '../config/navigation';
 
@@ -53,6 +54,7 @@ export function AppShell() {
   if (state.status !== 'signedIn') return null;
 
   const role = effectiveRole(state.claims);
+  useDirectoryReconcile(state.user.uid, role);
   const profile = typeof state.profile === 'object' ? state.profile : null;
   const name = profile?.displayName ?? state.user.displayName ?? state.user.email ?? '';
   const initials = name

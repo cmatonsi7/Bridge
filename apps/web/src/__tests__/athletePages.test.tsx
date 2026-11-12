@@ -9,6 +9,9 @@ import AthleteProgressPage from '../pages/app/athlete/AthleteProgressPage';
 import AthleteSettingsPage from '../pages/app/athlete/AthleteSettingsPage';
 
 vi.mock('../features/auth/AuthProvider', async () => (await import('./athleteMocks')).authMock());
+vi.mock('../features/directory/directoryService', () => ({
+  syncDirectory: vi.fn(async () => ({ listed: true })),
+}));
 vi.mock('../features/athlete/athleteService', async () => (await import('./athleteMocks')).serviceMock());
 
 const renderIn = (el: JSX.Element) => render(<MemoryRouter>{el}</MemoryRouter>);
@@ -116,9 +119,7 @@ describe('AthleteSettingsPage', () => {
   it('saves a privacy toggle', async () => {
     renderIn(<AthleteSettingsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Privacy' }));
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'Make my profile discoverable to coaches and clubs' }),
-    );
+    fireEvent.click(screen.getByRole('switch', { name: 'List me in the Talent Directory' }));
     await waitFor(() => expect(service.savePrivacy).toHaveBeenCalled());
     expect(vi.mocked(service.savePrivacy).mock.calls[0]![1]).toEqual({
       discoverable: true,

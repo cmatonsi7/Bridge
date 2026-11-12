@@ -1,3 +1,4 @@
+import { refreshDirectoryQuietly } from '../directory/useDirectoryReconcile';
 import { useState, type FormEvent } from 'react';
 import {
   AGE_GROUPS,
@@ -56,6 +57,7 @@ export function OrgProfileForm({ orgId, org, onSaved, onCancel }: Props) {
     setStatus(null);
     try {
       await saveOrganisation(orgId, { ...f, province: f.province || null });
+      refreshDirectoryQuietly();
       setErrors({});
       setStatus({ kind: 'ok', text: 'Organisation saved.' });
       onSaved?.();

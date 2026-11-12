@@ -1,6 +1,6 @@
 # PROJECT_STATUS — SportBridge
 
-_Last updated: 2026-11-04 · Phases 1, 2 and 3a accepted. Phase 3b (Applications) code complete on `phase-3-applications`, awaiting review. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
+_Last updated: 2026-11-05 · Phases 1, 2, 3a and 3b accepted. Phase 3c (Directory & connections) code complete on `phase-3-directory`, awaiting review. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
 
 ## Phase progress
 | Phase | Status |
@@ -11,14 +11,17 @@ _Last updated: 2026-11-04 · Phases 1, 2 and 3a accepted. Phase 3b (Applications
 | 2c Coach dashboard | Accepted (credentials self-declared) |
 | 2d Organisation dashboard | Accepted |
 | 3a Listings (opportunities, programmes, saved) | Accepted |
-| 3b Applications | Code complete, awaiting review (branch `phase-3-applications`) |
-| 3c Directory & connections | Not started |
+| 3b Applications | Accepted |
+| 3c Directory & connections | Code complete, awaiting review (branch `phase-3-directory`) |
 | 3d Sponsorship & calendar | Not started |
 | 4 Membership & payments | Blocked on client pricing |
 | 5 Messaging & admin dashboard | Not started |
 | 6 Production readiness | Not started |
 
 ## Key decisions
+- **Pricing confirmed by the client (2026-11-11):** Starter free; Pro R149/month or R1 490/year; Organisation R499/month or R4 990/year. Annual = **two months free** (replaces the 20% discount). The Monthly/Annual toggle on the home page switches the displayed prices (it was highlight-only before). Organisation trial is **30 days**, opt-in to a paid subscription afterwards, **no automatic billing** — the trial and billing rules are implemented in Phase 4.
+- **Photography (2026-11-11):** the AI-generated placeholders were replaced with the client's real photography. Same file names, so no code changes; each image keeps its original aspect ratio and is cropped slightly above centre. New per-sport photos added for football, tennis, basketball, cycling, squash, rowing and martial arts.
+- **Site footer** (prototype `.footer-v2`) added to every public page. Legal links (Safety & Child Protection, Privacy & POPIA, Terms of Use) are **plain text until the documents exist**; a test asserts every footer link points at a real route.
 - **Host:** Render (Railway had sign-ups disabled during its October incident). Same code runs on either.
 - **Database:** Firebase, region africa-south1. Firestore rules deployed; Storage not yet (needs Blaze plan).
 - **Fixed lists** (sports, skills, interests, provinces) live in `packages/shared/src/athlete.ts`. The Firestore rules repeat them, so change both together.
@@ -31,7 +34,7 @@ _Last updated: 2026-11-04 · Phases 1, 2 and 3a accepted. Phase 3b (Applications
 - **Coach fixed lists** (coaching levels, specialisations, services, age groups) live in `packages/shared/src/coach.ts`. The Firestore rules repeat them, so change both together.
 
 ## Open client decisions
-- Membership plan names, prices and benefits (the prototype's public and in-app prices disagree).
+- Coach onboarding approach and POPIA sign-off (see the onboarding plan); who the client's admin users will be.
 - Legal documents: privacy policy, terms, POPIA notice. Terms version is `2026-11-draft` until these arrive.
 - Confirm age rules: minimum self-registration age 13; under-18s may only be athletes.
 - Whether public listings show real data or sample cards until Phase 3.
@@ -51,6 +54,20 @@ _Last updated: 2026-11-04 · Phases 1, 2 and 3a accepted. Phase 3b (Applications
 5. Applications: optional note plus a profile snapshot; applicants can withdraw; organisations see applicants only for their own listings.
 6. Notifications: in-app only.
 7. Sponsorship: request and express interest only; SportBridge handles no money. **Client to confirm.**
+
+## Phase 3c (Directory & connections) summary
+- **Talent Directory** (`directoryProfiles`, server-written): a separate collection holding only safe fields — name, role, sports, province, city, headline, tags. **No contact details, no date of birth, and never an under-18 athlete**, enforced in `buildEntry` on the server, so tampering with the browser cannot list a child. Signed-in members only; signed-out visitors cannot read it.
+- People appear only if they opt in (athlete/coach "discoverable", organisation "listed"); turning it off deletes the entry. `POST /api/directory/sync` rebuilds the caller's own entry and runs after every privacy change.
+- **Athlete privacy:** for under-18s the directory switch is shown disabled with "Not available for under-18 accounts", rather than silently ignored.
+- **Connections** (`connections/{coachUid}_{athleteUid}`, server-written): a coach requests; an **adult athlete** answers for themselves; for a **child the parent answers** and the child is told but cannot accept. Coach, adult athlete or parent can end an accepted connection. Declined/ended requests may be sent again; a live one may not.
+- Coach dashboard "My Athletes" now shows real connections. New Connections page per role. Notifications for request, answer and ending.
+- Rules: directory readable by any signed-in member, never written from the browser; a connection readable by its coach, the athlete and the athlete's verified parents only.
+- **Listing is self-healing and explained** (added after live testing): each signed-in session quietly re-syncs the person's own listing (fixes a switch turned on before the directory existed), profile saves refresh it, and flipping the directory switch reports either "You're now listed" or the plain reason ("under 18", "account not active", "profile not set up"). The server returns `{ listed, reason }`; failures of the directory step are shown, never swallowed.
+- **Families and the directory:** under-18s browse **coaches and organisations only** — enforced in the Firestore rule (a child's list query must be limited to `role in ['coach','organisation']`) and in the UI. An organisation's directory profile lists its **open opportunities and programmes** with a "View and apply" button, giving families a path from discovery to applying. Profile wording is role-aware (a parent viewing a coach is told coaches reach out through SportBridge and that messaging for families is coming).
+- Open for the client: whether coaches should be able to ask a child's parent to connect (today coaches cannot find children, so no request can start from the app); parent-initiated enquiries arrive with messaging (Phase 5).
+- Known gap: the organisation "Show contact details publicly" switch is saved but not yet used (the directory never shows contact details).
+- Decisions (approved 2026-11-05): athletes cannot request coaches (coaches ask, families decide); a connected coach sees the child's profile but never contact details; sponsorship and calendar remain in 3d.
+- Deferred: messaging (Phase 5); a parent with several children sees the first child's requests on the Connections page and the rest on each child's page; search still filters on the device (fine for hundreds).
 
 ## Phase 3b (Applications) summary
 - Athletes apply (opportunities) or express interest (programmes) from the listing page with an optional note. The panel says exactly what the organisation will see. One application per person per listing (id `{listingId}_{applicantUid}`).

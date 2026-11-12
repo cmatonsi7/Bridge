@@ -21,7 +21,7 @@ export default function DiscoverPage() {
               <input
                 id="discoverSearch"
                 onInput={a.filterDiscover}
-                placeholder="Search athletes, coaches, organisations\u2026"
+                placeholder="Search athletes, coaches, organisations…"
                 type="search"
               />
               <button className="btn green" onClick={a.filterDiscover} type="button">

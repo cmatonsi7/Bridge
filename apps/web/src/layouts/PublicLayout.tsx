@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import HomeCta from './HomeCta';
+import { SiteFooter } from './SiteFooter';
 
 /** Public site frame: prototype header, page content, and the shared "Join SportBridge" call to action. */
 export function PublicLayout({ showCta = true }: { showCta?: boolean }) {
@@ -28,6 +29,7 @@ export function PublicLayout({ showCta = true }: { showCta?: boolean }) {
         <Outlet />
       </main>
       {showCta && <HomeCta />}
+      <SiteFooter />
     </>
   );
 }

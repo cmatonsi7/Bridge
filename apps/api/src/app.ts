@@ -7,6 +7,8 @@ import type { AuthPort, UserRepoPort } from './services/ports.js';
 import { onboardingRouter } from './routes/onboarding.js';
 import { guardianRouter } from './routes/guardian.js';
 import { applicationsRouter } from './routes/applications.js';
+import { directoryRouter } from './routes/directory.js';
+import type { DirectoryRepoPort } from './services/directory.js';
 import type { ApplicationsRepoPort } from './services/applications.js';
 import type { GuardianRepoPort } from './services/guardian.js';
 import { errorHandler, notFound } from './middleware/errors.js';
@@ -16,6 +18,7 @@ export interface AppDeps {
   users: UserRepoPort;
   guardians: GuardianRepoPort;
   applications: ApplicationsRepoPort;
+  directory: DirectoryRepoPort;
   webDistDir?: string;
   trustProxyHops?: number;
 }
@@ -74,6 +77,7 @@ export function createApp(deps: AppDeps) {
   api.use(onboardingRouter(deps));
   api.use(guardianRouter(deps));
   api.use(applicationsRouter(deps));
+  api.use(directoryRouter(deps));
   api.use(notFound);
   app.use('/api', api);
 

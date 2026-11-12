@@ -6,6 +6,8 @@ import { createApp } from './app.js';
 import type { AuthPort, OnboardingWrite, UserRepoPort } from './services/ports.js';
 import type { GuardianRepoPort } from './services/guardian.js';
 import type { ApplicationsRepoPort, ApplicantRecords, Outbox } from './services/applications.js';
+import type { DirectoryRepoPort, DirectorySubject } from './services/directory.js';
+import type { ConnectionDoc, DirectoryEntryDoc } from '@sportbridge/shared';
 import type { ApplicationDoc, GuardianLinkDoc, ListingDoc } from '@sportbridge/shared';
 
 type Token = Partial<DecodedIdToken> & { uid: string; role?: string; admin?: boolean };
@@ -81,6 +83,38 @@ function fakes() {
       audits.push(r.audit);
     },
   };
+  const subjects = new Map<string, DirectorySubject>();
+  const entries = new Map<string, DirectoryEntryDoc>();
+  const connections = new Map<string, ConnectionDoc>();
+  const directory: DirectoryRepoPort = {
+    async getSubject(uid) {
+      return subjects.get(uid) ?? null;
+    },
+    async putEntry(uid, entry) {
+      entries.set(uid, entry);
+    },
+    async removeEntry(uid) {
+      entries.delete(uid);
+    },
+    async getConnection(id) {
+      return connections.get(id) ?? null;
+    },
+    async createConnection(id, doc, outbox, audit) {
+      const ex = connections.get(id);
+      if (ex && ['pending', 'accepted'].includes(ex.status)) throw new Error('ALREADY_EXISTS');
+      connections.set(id, doc);
+      sent.push(...outbox);
+      audits.push(audit);
+    },
+    async mutateConnection(id, decide) {
+      const conn = connections.get(id) ?? null;
+      const g = conn ? (subjects.get(conn.athleteUid)?.user.guardianUids ?? []) : [];
+      const r = decide(conn ? structuredClone(conn) : null, g);
+      connections.set(id, { ...conn!, ...r.changes });
+      sent.push(...r.outbox);
+      audits.push(r.audit);
+    },
+  };
   return {
     tokens,
     claims,
@@ -90,6 +124,10 @@ function fakes() {
     repo,
     guardians,
     applications,
+    directory,
+    subjects,
+    entries,
+    connections,
     listings,
     applicants,
     apps,
@@ -123,7 +161,13 @@ describe('API', () => {
   let app: ReturnType<typeof createApp>;
   beforeEach(() => {
     f = fakes();
-    app = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians, applications: f.applications });
+    app = createApp({
+      auth: f.auth,
+      users: f.repo,
+      guardians: f.guardians,
+      applications: f.applications,
+      directory: f.directory,
+    });
     f.tokens.set('t-jordan', { uid: 'u1', email: 'Jordan@Example.com', email_verified: false });
     f.tokens.set('t-teen', { uid: 'u2', email: 'teen@example.com' });
     f.tokens.set('t-admin', { uid: 'u3', email: 'admin@example.com', role: 'admin', admin: true });
@@ -362,7 +406,13 @@ describe('guardian links', () => {
   };
   beforeEach(() => {
     f = fakes();
-    app = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians, applications: f.applications });
+    app = createApp({
+      auth: f.auth,
+      users: f.repo,
+      guardians: f.guardians,
+      applications: f.applications,
+      directory: f.directory,
+    });
     f.links.set('L1', { ...pending });
     f.athletes.set('kid', { guardianUids: [], status: 'restricted' });
     f.tokens.set('t-mom', { uid: 'mom', email: 'Mom@Example.com', email_verified: true, role: 'guardian' });
@@ -495,7 +545,13 @@ describe('applications', () => {
   });
   beforeEach(() => {
     f = fakes();
-    app = createApp({ auth: f.auth, users: f.repo, guardians: f.guardians, applications: f.applications });
+    app = createApp({
+      auth: f.auth,
+      users: f.repo,
+      guardians: f.guardians,
+      applications: f.applications,
+      directory: f.directory,
+    });
     f.listings.set('L1', { ...listing });
     f.listings.set('LD', { ...listing, status: 'draft' });
     f.listings.set('LC', { ...listing, status: 'closed' });
@@ -618,5 +674,200 @@ describe('applications', () => {
     expect((await post('/api/applications/../x/withdraw', 't-adult')).status).toBe(404);
     expect((await post('/api/applications/bad$id/withdraw', 't-adult')).status).toBe(400);
     expect((await request(app).post('/api/applications').send({ listingId: 'L1' })).status).toBe(401);
+  });
+});
+
+describe('directory and connections', () => {
+  let f: ReturnType<typeof fakes>;
+  let app: ReturnType<typeof createApp>;
+  const subject = (
+    uid: string,
+    role: string,
+    over: Record<string, unknown> = {},
+    profiles: Record<string, unknown> = {},
+  ): DirectorySubject => ({
+    user: {
+      uid,
+      email: `${uid}@example.com`,
+      firstName: 'A',
+      surname: 'B',
+      displayName: `${uid} B`,
+      role: role as never,
+      status: 'active',
+      isMinor: false,
+      onboardingComplete: true,
+      termsVersion: 'v',
+      termsAcceptedAt: 't',
+      createdAt: 't',
+      updatedAt: 't',
+      ...over,
+    },
+    athlete: null,
+    coach: null,
+    organisation: null,
+    ...profiles,
+  });
+  const athleteProfile = (discoverable: boolean) => ({
+    athlete: {
+      uid: 'x',
+      displayName: 'x',
+      visibility: 'members',
+      createdAt: 't',
+      updatedAt: 't',
+      sport: 'Football',
+      position: 'Wing',
+      province: 'Gauteng',
+      city: 'Soweto',
+      skills: ['Teamwork'],
+      privacy: { discoverable, showAchievements: false, allowEnquiries: false },
+    },
+  });
+  beforeEach(() => {
+    f = fakes();
+    app = createApp({
+      auth: f.auth,
+      users: f.repo,
+      guardians: f.guardians,
+      applications: f.applications,
+      directory: f.directory,
+    });
+    f.subjects.set('adult', subject('adult', 'athlete', {}, athleteProfile(true)));
+    f.subjects.set('shy', subject('shy', 'athlete', {}, athleteProfile(false)));
+    f.subjects.set(
+      'kid',
+      subject('kid', 'athlete', { isMinor: true, guardianUids: ['mom'] }, athleteProfile(true)),
+    );
+    f.subjects.set(
+      'lonekid',
+      subject('lonekid', 'athlete', { isMinor: true, guardianUids: [] }, athleteProfile(true)),
+    );
+    f.subjects.set(
+      'coach1',
+      subject(
+        'coach1',
+        'coach',
+        {},
+        {
+          coach: {
+            uid: 'coach1',
+            displayName: 'Coach One',
+            visibility: 'members',
+            createdAt: 't',
+            updatedAt: 't',
+            sports: ['Football'],
+            coachingLevel: 'Club',
+            privacy: { discoverable: true, showQualifications: false, allowEnquiries: true },
+          },
+        },
+      ),
+    );
+    for (const [t, uid, role] of [
+      ['t-adult', 'adult', 'athlete'],
+      ['t-kid', 'kid', 'athlete'],
+      ['t-coach', 'coach1', 'coach'],
+      ['t-mom', 'mom', 'guardian'],
+      ['t-stranger', 'stranger', 'guardian'],
+      ['t-shy', 'shy', 'athlete'],
+    ] as const) {
+      f.tokens.set(t, { uid, email: `${uid}@example.com`, email_verified: true, role });
+    }
+  });
+  const post = (path: string, token: string, body: unknown = {}) =>
+    request(app)
+      .post(path)
+      .set('Authorization', `Bearer ${token}`)
+      .send(body as object);
+
+  it('lists a discoverable adult athlete but never a child, whatever their settings say', async () => {
+    expect((await post('/api/directory/sync', 't-adult')).body).toEqual({ listed: true, reason: null });
+    expect(f.entries.get('adult')).toMatchObject({
+      role: 'athlete',
+      sports: ['Football'],
+      province: 'Gauteng',
+    });
+    // the child has discoverable: true and is still refused
+    f.tokens.set('t-kid2', { uid: 'kid', email: 'kid@example.com', email_verified: true, role: 'athlete' });
+    expect((await post('/api/directory/sync', 't-kid2')).body).toEqual({ listed: false, reason: 'UNDER_18' });
+    expect(f.entries.has('kid')).toBe(false);
+  });
+
+  it('never lists someone who has not opted in, and removes them when they opt out', async () => {
+    expect((await post('/api/directory/sync', 't-shy')).body).toEqual({
+      listed: false,
+      reason: 'SWITCH_OFF',
+    });
+    await post('/api/directory/sync', 't-adult');
+    expect(f.entries.has('adult')).toBe(true);
+    f.subjects.set('adult', subject('adult', 'athlete', {}, athleteProfile(false)));
+    expect((await post('/api/directory/sync', 't-adult')).body).toEqual({
+      listed: false,
+      reason: 'SWITCH_OFF',
+    });
+    expect(f.entries.has('adult')).toBe(false);
+  });
+
+  it('says why someone is not listed: inactive account or missing profile', async () => {
+    f.subjects.set('new', subject('new', 'athlete', { status: 'restricted' }, athleteProfile(true)));
+    f.tokens.set('t-new', { uid: 'new', email: 'new@example.com', email_verified: true, role: 'athlete' });
+    expect((await post('/api/directory/sync', 't-new')).body.reason).toBe('NOT_ACTIVE');
+    f.subjects.set('noprof', subject('noprof', 'athlete'));
+    f.tokens.set('t-noprof', {
+      uid: 'noprof',
+      email: 'n@example.com',
+      email_verified: true,
+      role: 'athlete',
+    });
+    expect((await post('/api/directory/sync', 't-noprof')).body.reason).toBe('NO_PROFILE');
+  });
+
+  it('a directory entry never carries contact details or a date of birth', async () => {
+    await post('/api/directory/sync', 't-adult');
+    const e = f.entries.get('adult')!;
+    expect(JSON.stringify(e)).not.toMatch(/@example\.com/);
+    expect(e).not.toHaveProperty('email');
+    expect(e).not.toHaveProperty('dateOfBirth');
+  });
+
+  it("a coach requests a connection; a child's request goes to the parent, who accepts", async () => {
+    expect(
+      (await post('/api/connections', 't-coach', { athleteUid: 'kid', message: 'Saw you at trials' })).status,
+    ).toBe(201);
+    expect(f.connections.get('coach1_kid')).toMatchObject({ status: 'pending', athleteIsMinor: true });
+    expect(f.sent.map((s) => s.uid).sort()).toEqual(['kid', 'mom']);
+    // the child cannot answer for themselves
+    expect((await post('/api/connections/coach1_kid/accept', 't-kid')).status).toBe(403);
+    expect((await post('/api/connections/coach1_kid/accept', 't-stranger')).status).toBe(403);
+    expect((await post('/api/connections/coach1_kid/accept', 't-mom')).status).toBe(200);
+    expect(f.connections.get('coach1_kid')).toMatchObject({
+      status: 'accepted',
+      decidedByRole: 'guardian',
+      decidedByUid: 'mom',
+    });
+  });
+
+  it('an adult athlete answers for themselves and can end the connection', async () => {
+    await post('/api/connections', 't-coach', { athleteUid: 'adult' });
+    expect((await post('/api/connections/coach1_adult/accept', 't-mom')).status).toBe(403);
+    expect((await post('/api/connections/coach1_adult/accept', 't-adult')).status).toBe(200);
+    expect((await post('/api/connections/coach1_adult/accept', 't-adult')).status).toBe(409);
+    expect((await post('/api/connections/coach1_adult/end', 't-adult')).status).toBe(200);
+    expect(f.connections.get('coach1_adult')!.status).toBe('ended');
+  });
+
+  it('refuses non-coaches, self-connections, duplicates and children with no confirmed parent', async () => {
+    expect((await post('/api/connections', 't-adult', { athleteUid: 'kid' })).status).toBe(403);
+    expect((await post('/api/connections', 't-coach', { athleteUid: 'coach1' })).status).toBe(400); // self-connection
+    expect((await post('/api/connections', 't-coach', { athleteUid: 'lonekid' })).body.error.code).toBe(
+      'NO_GUARDIAN',
+    );
+    await post('/api/connections', 't-coach', { athleteUid: 'adult' });
+    expect((await post('/api/connections', 't-coach', { athleteUid: 'adult' })).status).toBe(409);
+  });
+
+  it("a parent can end their child's connection; a stranger cannot", async () => {
+    await post('/api/connections', 't-coach', { athleteUid: 'kid' });
+    await post('/api/connections/coach1_kid/accept', 't-mom');
+    expect((await post('/api/connections/coach1_kid/end', 't-stranger')).status).toBe(404);
+    expect((await post('/api/connections/coach1_kid/end', 't-mom')).status).toBe(200);
   });
 });
