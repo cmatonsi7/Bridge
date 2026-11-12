@@ -170,6 +170,22 @@ describe('SavedPage', () => {
 });
 
 describe('organisation listings', () => {
+  it('tells an expired listing apart from one closed by hand, and offers Close only when it is live', () => {
+    st.uid = 'o1';
+    st.mine = [
+      L('live', { title: 'Live Trial' }),
+      L('old', { title: 'Expired Trial', deadline: '2020-01-01' }),
+      L('shut', { title: 'Closed Trial', status: 'closed' }),
+    ];
+    at('/', <OrgListingsPage kind="opportunity" />);
+    expect(screen.getByText('Published')).toBeTruthy();
+    expect(screen.getByText('Date passed')).toBeTruthy();
+    expect(screen.getByText('Closed')).toBeTruthy();
+    expect(screen.getByText(/set a future closing date/)).toBeTruthy();
+    // only the live one can be closed
+    expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
+  });
+
   it('lists own listings with the right actions', () => {
     st.uid = 'o1';
     st.mine = [L('p', { title: 'Live Trial' }), L('d', { title: 'My Draft', status: 'draft' })];
