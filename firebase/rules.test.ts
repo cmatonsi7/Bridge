@@ -4,7 +4,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   assertFails,
   assertSucceeds,
@@ -779,10 +779,11 @@ describe('organisation onboarding: unclaimed schools and claim codes (Phase 4)',
       }),
     );
   });
-  it('the directory shows the unclaimed school to everyone signed in, children included', async () => {
+  it('the directory shows the unclaimed school to everyone, signed in or not, children included', async () => {
     await assertSucceeds(getDoc(doc(as('alice', { role: 'athlete' }), 'directoryProfiles/org_school1')));
     await assertSucceeds(getDoc(doc(as('kid6', { role: 'athlete' }), 'directoryProfiles/org_school1')));
-    await assertFails(getDoc(doc(anon(), 'directoryProfiles/org_school1')));
+    // organisations are public now (Phase 4 public pages): a visitor can see an organisation's entry
+    await assertSucceeds(getDoc(doc(anon(), 'directoryProfiles/org_school1')));
   });
   it('once claimed, the owner edits their profile but cannot change the claim fields', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
@@ -1006,5 +1007,142 @@ describe('spreadsheet import records (Phase 4)', () => {
     );
     await assertFails(updateDoc(doc(staff(), 'importBatches/b1'), { status: 'undone' }));
     await assertFails(deleteDoc(doc(staff(), 'importBatches/b1')));
+  });
+});
+
+describe('public pages (Phase 4): organisations are public, people are not', () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      const entry = (uid: string, role: string, extra: Record<string, unknown> = {}) => ({
+        uid,
+        role,
+        displayName: uid,
+        sports: ['Football'],
+        province: 'Gauteng',
+        city: 'Soweto',
+        headline: null,
+        tags: [],
+        updatedAt: now,
+        ...extra,
+      });
+      await setDoc(
+        doc(db, 'directoryProfiles/org_pub1'),
+        entry('org_pub1', 'organisation', { orgId: 'pub1', verified: false, claimed: false }),
+      );
+      await setDoc(
+        doc(db, 'directoryProfiles/orgowner'),
+        entry('orgowner', 'organisation', { orgId: 'pub2', verified: true, claimed: true }),
+      );
+      await setDoc(doc(db, 'directoryProfiles/ath1'), entry('ath1', 'athlete'));
+      await setDoc(doc(db, 'directoryProfiles/coach1'), entry('coach1', 'coach'));
+      await setDoc(doc(db, 'listings/open1'), {
+        orgId: 'pub2',
+        status: 'published',
+        title: 'Trials',
+        kind: 'opportunity',
+      });
+      await setDoc(doc(db, 'listings/draft1'), {
+        orgId: 'pub2',
+        status: 'draft',
+        title: 'Secret draft',
+        kind: 'opportunity',
+      });
+      await setDoc(doc(db, 'organisations/pub2'), {
+        name: 'Org Two',
+        type: 'club',
+        ownerUid: 'orgowner',
+        verified: true,
+        contactEmail: 'private@example.com',
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+  });
+
+  it('a visitor who is not signed in can read and list organisations', async () => {
+    await assertSucceeds(getDoc(doc(anon(), 'directoryProfiles/org_pub1')));
+    await assertSucceeds(getDoc(doc(anon(), 'directoryProfiles/orgowner')));
+    const list = await assertSucceeds(
+      getDocs(
+        query(collection(anon(), 'directoryProfiles'), where('role', '==', 'organisation'), limit(500)),
+      ),
+    );
+    expect(list.size).toBe(2);
+  });
+
+  it('a visitor cannot read athletes or coaches, one by one or in a list', async () => {
+    await assertFails(getDoc(doc(anon(), 'directoryProfiles/ath1')));
+    await assertFails(getDoc(doc(anon(), 'directoryProfiles/coach1')));
+    await assertFails(
+      getDocs(query(collection(anon(), 'directoryProfiles'), where('role', '==', 'athlete'), limit(50))),
+    );
+    await assertFails(
+      getDocs(query(collection(anon(), 'directoryProfiles'), where('role', '==', 'coach'), limit(50))),
+    );
+    await assertFails(
+      getDocs(
+        query(
+          collection(anon(), 'directoryProfiles'),
+          where('role', 'in', ['coach', 'organisation']),
+          limit(50),
+        ),
+      ),
+    );
+    await assertFails(getDocs(query(collection(anon(), 'directoryProfiles'), limit(50)))); // an unfiltered list would expose people
+  });
+
+  it('signed-in members and children see exactly what they saw before', async () => {
+    await assertSucceeds(getDoc(doc(as('alice', { role: 'athlete' }), 'directoryProfiles/ath1')));
+    await assertSucceeds(getDoc(doc(as('alice', { role: 'athlete' }), 'directoryProfiles/coach1')));
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users/kid7'), user('kid7', { isMinor: true }));
+    });
+    const kid = as('kid7', { role: 'athlete' });
+    await assertFails(getDoc(doc(kid, 'directoryProfiles/ath1')));
+    await assertSucceeds(getDoc(doc(kid, 'directoryProfiles/coach1')));
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(kid, 'directoryProfiles'),
+          where('role', 'in', ['coach', 'organisation']),
+          limit(50),
+        ),
+      ),
+    );
+  });
+
+  it('nobody can change the public directory from a browser', async () => {
+    await assertFails(
+      setDoc(doc(anon(), 'directoryProfiles/org_forged'), {
+        uid: 'org_forged',
+        role: 'organisation',
+        displayName: 'Fake School',
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(as('orgowner', { role: 'organisation' }), 'directoryProfiles/orgowner'), {
+        verified: true,
+      }),
+    );
+  });
+
+  it('a visitor sees an organisation’s published listings, never drafts or its private record', async () => {
+    const open = await assertSucceeds(
+      getDocs(
+        query(
+          collection(anon(), 'listings'),
+          where('orgId', '==', 'pub2'),
+          where('status', '==', 'published'),
+          limit(50),
+        ),
+      ),
+    );
+    expect(open.size).toBe(1);
+    await assertFails(getDoc(doc(anon(), 'listings/draft1')));
+    await assertFails(
+      getDocs(query(collection(anon(), 'listings'), where('orgId', '==', 'pub2'), limit(50))),
+    );
+    await assertFails(getDoc(doc(anon(), 'organisations/pub2')));
   });
 });

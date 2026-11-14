@@ -301,8 +301,11 @@ service cloud.firestore {
         && userDoc(request.auth.uid).get('isMinor', false) == true;
     }
     match /directoryProfiles/{uid} {
-      allow read: if signedIn()
-        && (resource.data.role in ['coach', 'organisation'] || !isMinorUser());
+      // Organisations are public: a school or club wants to be found, and its entry holds nothing personal.
+      // Athletes and coaches chose to be found by signed-in members, not by the open internet, so they stay behind
+      // sign-in, and a child still never sees another athlete.
+      allow read: if resource.data.role == 'organisation'
+        || (signedIn() && (resource.data.role in ['coach', 'organisation'] || !isMinorUser()));
       allow write: if false;
     }
 

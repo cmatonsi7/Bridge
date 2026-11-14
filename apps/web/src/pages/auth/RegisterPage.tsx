@@ -69,6 +69,7 @@ export default function RegisterPage({ mode = 'signup' }: { mode?: 'signup' | 'f
     guardianEmail: '',
     guardianRelationship: '',
     guardianConsentAcknowledged: false,
+    adultConfirmed: false,
     password: '',
     confirmPassword: '',
     termsAccepted: false,
@@ -79,7 +80,8 @@ export default function RegisterPage({ mode = 'signup' }: { mode?: 'signup' | 'f
     const d = parseIsoDate(f.dateOfBirth);
     return d ? ageOn(d, new Date()) : null;
   }, [f.dateOfBirth]);
-  const isMinor = age !== null && age < 18;
+  const isOrganisation = f.role === 'organisation';
+  const isMinor = !isOrganisation && age !== null && age < 18;
   const showGuardian = isMinor && (f.role === 'athlete' || f.role === '');
   const roleHint = ROLE_OPTIONS.find((r) => r.value === f.role)?.hint;
 
@@ -88,11 +90,15 @@ export default function RegisterPage({ mode = 'signup' }: { mode?: 'signup' | 'f
       firstName: f.firstName,
       surname: f.surname,
       mobile: f.mobile,
-      dateOfBirth: f.dateOfBirth,
+      ...(isOrganisation ? {} : { dateOfBirth: f.dateOfBirth }),
       role: f.role,
       termsAccepted: f.termsAccepted,
-      ...(f.role === 'organisation'
-        ? { organisationName: f.organisationName, organisationType: f.organisationType || undefined }
+      ...(isOrganisation
+        ? {
+            organisationName: f.organisationName,
+            organisationType: f.organisationType || undefined,
+            adultConfirmed: f.adultConfirmed,
+          }
         : {}),
       ...(isMinor
         ? {
@@ -117,9 +123,11 @@ export default function RegisterPage({ mode = 'signup' }: { mode?: 'signup' | 'f
       if (!f.guardianConsentAcknowledged)
         extra.guardianConsentAcknowledged = 'Confirm the guardian consent process';
     }
-    if (f.role === 'organisation') {
+    if (isOrganisation) {
       if (!f.organisationName.trim()) extra.organisationName = 'Organisation name is required';
       if (!f.organisationType) extra.organisationType = 'Select an organisation type';
+      if (!f.adultConfirmed)
+        extra.adultConfirmed = 'Confirm you are 18 or over and authorised to act for this organisation';
     }
     if (mode === 'signup') {
       if (!/^\S+@\S+\.\S+$/.test(f.email.trim())) extra.email = 'Enter a valid email address';
@@ -209,27 +217,6 @@ export default function RegisterPage({ mode = 'signup' }: { mode?: 'signup' | 'f
             onChange={(e) => set('email', e.target.value)}
           />
         )}
-        <div className="form-grid">
-          <TextField
-            id="mobile"
-            label="Mobile number"
-            type="tel"
-            autoComplete="tel"
-            placeholder="e.g. 071 234 5678"
-            value={f.mobile}
-            error={errors.mobile}
-            onChange={(e) => set('mobile', e.target.value)}
-          />
-          <TextField
-            id="dob"
-            label="Date of birth"
-            type="date"
-            max={today()}
-            value={f.dateOfBirth}
-            error={errors.dateOfBirth}
-            onChange={(e) => set('dateOfBirth', e.target.value)}
-          />
-        </div>
         <SelectField
           id="accountRole"
           label="How will you use SportBridge?"
@@ -245,33 +232,70 @@ export default function RegisterPage({ mode = 'signup' }: { mode?: 'signup' | 'f
           ))}
         </SelectField>
 
+        <div className="form-grid">
+          <TextField
+            id="mobile"
+            label="Mobile number"
+            type="tel"
+            autoComplete="tel"
+            placeholder="e.g. 071 234 5678"
+            value={f.mobile}
+            error={errors.mobile}
+            onChange={(e) => set('mobile', e.target.value)}
+          />
+          {/* Organisations give no date of birth: they confirm they are an adult acting for the organisation. */}
+          {!isOrganisation && (
+            <TextField
+              id="dob"
+              label="Date of birth"
+              type="date"
+              max={today()}
+              value={f.dateOfBirth}
+              error={errors.dateOfBirth}
+              onChange={(e) => set('dateOfBirth', e.target.value)}
+            />
+          )}
+        </div>
+
         {f.role && (
           <div className="role-setup" id="roleSetup">
-            {f.role === 'organisation' && (
-              <div className="form-grid">
-                <TextField
-                  id="organisationName"
-                  label="Organisation name"
-                  placeholder="e.g. Soweto FC"
-                  value={f.organisationName}
-                  error={errors.organisationName}
-                  onChange={(e) => set('organisationName', e.target.value)}
-                />
-                <SelectField
-                  id="organisationType"
-                  label="Organisation type"
-                  value={f.organisationType}
-                  error={errors.organisationType}
-                  onChange={(e) => set('organisationType', e.target.value)}
-                >
-                  <option value="">Select type</option>
-                  {ORGANISATION_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {ORGANISATION_TYPE_LABELS[t]}
-                    </option>
-                  ))}
-                </SelectField>
-              </div>
+            {isOrganisation && (
+              <>
+                <div className="form-grid">
+                  <TextField
+                    id="organisationName"
+                    label="Organisation name"
+                    placeholder="e.g. Soweto FC"
+                    value={f.organisationName}
+                    error={errors.organisationName}
+                    onChange={(e) => set('organisationName', e.target.value)}
+                  />
+                  <SelectField
+                    id="organisationType"
+                    label="Organisation type"
+                    value={f.organisationType}
+                    error={errors.organisationType}
+                    onChange={(e) => set('organisationType', e.target.value)}
+                  >
+                    <option value="">Select type</option>
+                    {ORGANISATION_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {ORGANISATION_TYPE_LABELS[t]}
+                      </option>
+                    ))}
+                  </SelectField>
+                </div>
+                <label className="auth-consent" htmlFor="adultConfirmed" style={{ marginTop: 10 }}>
+                  <input
+                    id="adultConfirmed"
+                    type="checkbox"
+                    checked={f.adultConfirmed}
+                    onChange={(e) => set('adultConfirmed', e.target.checked)}
+                  />
+                  <span>I am 18 or over and authorised to act for this organisation.</span>
+                </label>
+                {errors.adultConfirmed && <span className="field-error">{errors.adultConfirmed}</span>}
+              </>
             )}
             <div className="role-setup-hint" id="roleSetupHint">
               {roleHint}

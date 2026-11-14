@@ -1,326 +1,209 @@
-// Migrated from the SportBridge HTML prototype (rendered markup) by tools/html_to_jsx.py. Maintained by hand.
-import { Check, MapPin, Search } from 'lucide-react';
-import { useLegacyActions } from '../../features/marketing/useLegacyActions';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Search } from 'lucide-react';
+import { ORGANISATION_TYPES, ORGANISATION_TYPE_LABELS, PROVINCES, SPORTS } from '@sportbridge/shared';
+import { useAuth } from '../../features/auth/AuthProvider';
+import { PublicOrgCard } from '../../features/public/PublicOrgCard';
+import {
+  NO_FILTERS,
+  filterOrganisations,
+  sortOrganisations,
+  usePublicOrganisations,
+} from '../../features/public/publicDirectory';
 
+type Tab = 'organisations' | 'athletes' | 'coaches';
+const TABS: Array<{ key: Tab; label: string }> = [
+  { key: 'organisations', label: 'Organisations' },
+  { key: 'athletes', label: 'Athletes' },
+  { key: 'coaches', label: 'Coaches' },
+];
+
+/**
+ * Public Discover page. It shows real, listed organisations only. Athletes and coaches chose to be found by
+ * signed-in members, not by the open internet, so for them this page points to sign-in.
+ */
 export default function DiscoverPage() {
-  const a = useLegacyActions();
+  const [tab, setTab] = useState<Tab>('organisations');
+  const [filters, setFilters] = useState(NO_FILTERS);
+  const orgs = usePublicOrganisations();
+  const { state: auth } = useAuth();
+  const signedIn = auth.status === 'signedIn';
+  const set = (k: keyof typeof NO_FILTERS, v: string) => setFilters((f) => ({ ...f, [k]: v }));
+  const filtered = orgs.status === 'ready' ? sortOrganisations(filterOrganisations(orgs.data, filters)) : [];
+  const anyFilter = Object.values(filters).some(Boolean);
+
   return (
-    <>
-      <section className="page active" id="discover">
-        <div className="discover-hero">
-          <div className="wrap">
-            <span className="eyebrow">DISCOVER SPORTBRIDGE</span>
-            <h1>
-              Discover. <span>Connect. Grow.</span>
-            </h1>
-            <p>Explore athletes, coaches and organisations across the SportBridge community.</p>
-            <div className="discover-search">
-              <span>
-                <Search className="icon" aria-hidden="true" />
-              </span>
-              <input
-                id="discoverSearch"
-                onInput={a.filterDiscover}
-                placeholder="Search athletes, coaches, organisations…"
-                type="search"
-              />
-              <button className="btn green" onClick={a.filterDiscover} type="button">
-                Search
-              </button>
-            </div>
+    <section className="page active" id="discover">
+      <div className="discover-hero">
+        <div className="wrap">
+          <span className="eyebrow">DISCOVER SPORTBRIDGE</span>
+          <h1>
+            Discover. <span>Connect. Grow.</span>
+          </h1>
+          <p>Explore the schools, clubs and academies on SportBridge.</p>
+          <div className="discover-search">
+            <span>
+              <Search className="icon" aria-hidden="true" />
+            </span>
+            <input
+              id="discoverSearch"
+              type="search"
+              aria-label="Search organisations"
+              placeholder="Search by name, town or sport…"
+              value={filters.q}
+              onChange={(e) => {
+                set('q', e.target.value);
+                setTab('organisations');
+              }}
+            />
+            <button
+              className="btn green"
+              type="button"
+              onClick={() =>
+                document.getElementById('discoverResults')?.scrollIntoView?.({ behavior: 'smooth' })
+              }
+            >
+              Search
+            </button>
           </div>
         </div>
-        <section className="section">
-          <div className="wrap">
-            <div className="discover-tabs" role="tablist">
-              <button className="active" data-tab="all" onClick={a.discoverTab('all')} type="button">
-                All
+      </div>
+
+      <section className="section" id="discoverResults">
+        <div className="wrap">
+          <div className="discover-tabs" role="tablist" aria-label="What to discover">
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.key}
+                className={tab === t.key ? 'active' : ''}
+                onClick={() => setTab(t.key)}
+              >
+                {t.label}
               </button>
-              <button data-tab="athletes" onClick={a.discoverTab('athletes')} type="button">
-                Athletes
-              </button>
-              <button data-tab="coaches" onClick={a.discoverTab('coaches')} type="button">
-                Coaches
-              </button>
-              <button data-tab="organisations" onClick={a.discoverTab('organisations')} type="button">
-                Organisations
-              </button>
-            </div>
-            <div className="section-head discover-heading">
-              <span className="eyebrow">MEET THE COMMUNITY</span>
-              <h2>People and organisations worth discovering.</h2>
-              <p>Public profiles are shown only when people and organisations choose to be discoverable.</p>
-            </div>
-            <div className="discover-grid" id="discoverGrid">
-              <article
-                className="discover-card"
-                data-name="Thabo Mokoena football johannesburg"
-                data-type="athletes"
-              >
-                <img src="/images/athlete-profile.webp" alt="" loading="lazy" />
-                <div className="discover-body">
-                  <div className="discover-top">
-                    <span className="tag">ATHLETE</span>
-                    <span className="verified">
-                      <Check className="icon" aria-hidden="true" /> Sample profile
-                    </span>
-                  </div>
-                  <h3>Thabo Mokoena</h3>
-                  <p>Football • U17</p>
-                  <span className="discover-meta">
-                    <MapPin className="icon" aria-hidden="true" /> Johannesburg, Gauteng
-                  </span>
-                  <span className="link">View profile →</span>
-                </div>
-              </article>
-              <article
-                className="discover-card"
-                data-name="Lerato Dlamini athletics cape town"
-                data-type="athletes"
-              >
-                <img src="/images/athletes.webp" alt="" loading="lazy" />
-                <div className="discover-body">
-                  <div className="discover-top">
-                    <span className="tag">ATHLETE</span>
-                    <span className="verified">
-                      <Check className="icon" aria-hidden="true" /> Sample profile
-                    </span>
-                  </div>
-                  <h3>Lerato Dlamini</h3>
-                  <p>Athletics • U19</p>
-                  <span className="discover-meta">
-                    <MapPin className="icon" aria-hidden="true" /> Cape Town, Western Cape
-                  </span>
-                  <span className="link">View profile →</span>
-                </div>
-              </article>
-              <article
-                className="discover-card"
-                data-name="Anele Ndlovu swimming durban"
-                data-type="athletes"
-              >
-                <img src="/images/swim.webp" alt="" loading="lazy" />
-                <div className="discover-body">
-                  <div className="discover-top">
-                    <span className="tag">ATHLETE</span>
-                    <span className="verified">
-                      <Check className="icon" aria-hidden="true" /> Sample profile
-                    </span>
-                  </div>
-                  <h3>Anele Ndlovu</h3>
-                  <p>Swimming • U17</p>
-                  <span className="discover-meta">
-                    <MapPin className="icon" aria-hidden="true" /> Durban, KwaZulu-Natal
-                  </span>
-                  <span className="link">View profile →</span>
-                </div>
-              </article>
-              <article
-                className="discover-card"
-                data-name="Sibusiso Khumalo football durban"
-                data-type="coaches"
-              >
-                <img src="/images/coaches.webp" alt="" loading="lazy" />
-                <div className="discover-body">
-                  <div className="discover-top">
-                    <span className="tag">COACH</span>
-                    <span className="verified">
-                      <Check className="icon" aria-hidden="true" /> Sample profile
-                    </span>
-                  </div>
-                  <h3>Sibusiso Khumalo</h3>
-                  <p>Football Coach & Mentor</p>
-                  <span className="discover-meta">
-                    <MapPin className="icon" aria-hidden="true" /> Durban, KwaZulu-Natal
-                  </span>
-                  <span className="link">View profile →</span>
-                </div>
-              </article>
-              <article
-                className="discover-card"
-                data-name="Naledi Molefe athletics johannesburg"
-                data-type="coaches"
-              >
-                <img src="/images/coaching.webp" alt="" loading="lazy" />
-                <div className="discover-body">
-                  <div className="discover-top">
-                    <span className="tag">COACH</span>
-                    <span className="verified">
-                      <Check className="icon" aria-hidden="true" /> Sample profile
-                    </span>
-                  </div>
-                  <h3>Naledi Molefe</h3>
-                  <p>Athletics Coach</p>
-                  <span className="discover-meta">
-                    <MapPin className="icon" aria-hidden="true" /> Johannesburg, Gauteng
-                  </span>
-                  <span className="link">View profile →</span>
-                </div>
-              </article>
-              <article
-                className="discover-card"
-                data-name="National Sports Academy johannesburg"
-                data-type="organisations"
-              >
-                <img src="/images/academy.webp" alt="" loading="lazy" />
-                <div className="discover-body">
-                  <div className="discover-top">
-                    <span className="tag">ORGANISATION</span>
-                    <span className="verified">
-                      <Check className="icon" aria-hidden="true" /> Sample profile
-                    </span>
-                  </div>
-                  <h3>National Sports Academy</h3>
-                  <p>Academy • Talent Development</p>
-                  <span className="discover-meta">
-                    <MapPin className="icon" aria-hidden="true" /> Johannesburg, Gauteng
-                  </span>
-                  <span className="link">View organisation →</span>
-                </div>
-              </article>
-              <article
-                className="discover-card"
-                data-name="Game On Tennis cape town"
-                data-type="organisations"
-              >
-                <img src="/images/tennis.webp" alt="" loading="lazy" />
-                <div className="discover-body">
-                  <div className="discover-top">
-                    <span className="tag">ORGANISATION</span>
-                    <span className="verified">
-                      <Check className="icon" aria-hidden="true" /> Sample profile
-                    </span>
-                  </div>
-                  <h3>Game On Tennis</h3>
-                  <p>Academy • Tennis Development</p>
-                  <span className="discover-meta">
-                    <MapPin className="icon" aria-hidden="true" /> Cape Town, Western Cape
-                  </span>
-                  <span className="link">View organisation →</span>
-                </div>
-              </article>
-              <article className="discover-card" data-name="Aqua Elite durban" data-type="organisations">
-                <img src="/images/swim-fitness.webp" alt="" loading="lazy" />
-                <div className="discover-body">
-                  <div className="discover-top">
-                    <span className="tag">ORGANISATION</span>
-                    <span className="verified">
-                      <Check className="icon" aria-hidden="true" /> Sample profile
-                    </span>
-                  </div>
-                  <h3>Aqua Elite</h3>
-                  <p>Programme Provider • Swimming</p>
-                  <span className="discover-meta">
-                    <MapPin className="icon" aria-hidden="true" /> Durban, KwaZulu-Natal
-                  </span>
-                  <span className="link">View organisation →</span>
-                </div>
-              </article>
-              <article
-                className="discover-card"
-                data-name="Sipho Dlamini rugby gqeberha eastern cape"
-                data-type="athletes"
-              >
-                <img alt="Rugby athlete" src="/images/coach-athlete.webp" loading="lazy" />
-                <div className="discover-body">
-                  <div className="discover-top">
-                    <span className="tag">ATHLETE</span>
-                    <span className="verified">
-                      <Check className="icon" aria-hidden="true" /> Sample profile
-                    </span>
-                  </div>
-                  <h3>Sipho Dlamini</h3>
-                  <p>Rugby • U19</p>
-                  <span className="discover-meta">
-                    <MapPin className="icon" aria-hidden="true" /> Gqeberha, Eastern Cape
-                  </span>
-                  <span className="link">View profile →</span>
-                </div>
-              </article>
-              <article
-                className="discover-card"
-                data-name="Zanele Mkhize hockey durban kwaZulu natal"
-                data-type="coaches"
-              >
-                <img alt="Hockey coach" src="/images/coaching.webp" loading="lazy" />
-                <div className="discover-body">
-                  <div className="discover-top">
-                    <span className="tag">COACH</span>
-                    <span className="verified">
-                      <Check className="icon" aria-hidden="true" /> Sample profile
-                    </span>
-                  </div>
-                  <h3>Zanele Mkhize</h3>
-                  <p>Hockey Coach & Mentor</p>
-                  <span className="discover-meta">
-                    <MapPin className="icon" aria-hidden="true" /> Durban, KwaZulu-Natal
-                  </span>
-                  <span className="link">View profile →</span>
-                </div>
-              </article>
-              <article
-                className="discover-card"
-                data-name="Lerato Jacobs golf cape town western cape"
-                data-type="athletes"
-              >
-                <img alt="Golf athlete" src="/images/opportunities.webp" loading="lazy" />
-                <div className="discover-body">
-                  <div className="discover-top">
-                    <span className="tag">ATHLETE</span>
-                    <span className="verified">
-                      <Check className="icon" aria-hidden="true" /> Sample profile
-                    </span>
-                  </div>
-                  <h3>Lerato Jacobs</h3>
-                  <p>Golf • U18</p>
-                  <span className="discover-meta">
-                    <MapPin className="icon" aria-hidden="true" /> Cape Town, Western Cape
-                  </span>
-                  <span className="link">View profile →</span>
-                </div>
-              </article>
-              <article
-                className="discover-card"
-                data-name="coastal cricket academy cricket durban"
-                data-type="organisations"
-              >
-                <img alt="Cricket academy" src="/images/camp.webp" loading="lazy" />
-                <div className="discover-body">
-                  <div className="discover-top">
-                    <span className="tag">ORGANISATION</span>
-                    <span className="verified">
-                      <Check className="icon" aria-hidden="true" /> Sample profile
-                    </span>
-                  </div>
-                  <h3>Coastal Cricket Academy</h3>
-                  <p>Academy • Cricket Development</p>
-                  <span className="discover-meta">
-                    <MapPin className="icon" aria-hidden="true" /> Durban, KwaZulu-Natal
-                  </span>
-                  <span className="link">View organisation →</span>
-                </div>
-              </article>
-            </div>
-            <div className="discover-empty" id="discoverEmpty">
-              No matching profiles found. Try another search.
-            </div>
+            ))}
           </div>
-        </section>
-        <section className="discover-cta">
-          <div className="wrap discover-cta-inner">
-            <div>
-              <span className="eyebrow">JOIN SPORTBRIDGE</span>
-              <h2>Your next connection could change everything.</h2>
-              <p>Create your profile and become part of the sporting ecosystem.</p>
+
+          {tab === 'organisations' ? (
+            <>
+              <div className="section-head discover-heading">
+                <span className="eyebrow">SCHOOLS, CLUBS AND ACADEMIES</span>
+                <h2>Organisations on SportBridge.</h2>
+                <p>
+                  Each one is marked Verified once SportBridge has checked it, or “Added by SportBridge” until
+                  its representative takes it over.
+                </p>
+              </div>
+
+              <div className="discover-filters">
+                <select
+                  aria-label="Sport"
+                  value={filters.sport}
+                  onChange={(e) => set('sport', e.target.value)}
+                >
+                  <option value="">All sports</option>
+                  {SPORTS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label="Province"
+                  value={filters.province}
+                  onChange={(e) => set('province', e.target.value)}
+                >
+                  <option value="">All provinces</option>
+                  {PROVINCES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+                <select aria-label="Type" value={filters.type} onChange={(e) => set('type', e.target.value)}>
+                  <option value="">All types</option>
+                  {ORGANISATION_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {ORGANISATION_TYPE_LABELS[t]}
+                    </option>
+                  ))}
+                </select>
+                {anyFilter && (
+                  <button type="button" className="btn" onClick={() => setFilters(NO_FILTERS)}>
+                    Clear filters
+                  </button>
+                )}
+              </div>
+
+              {orgs.status === 'loading' ? (
+                <p className="meta">Loading organisations…</p>
+              ) : orgs.status === 'error' ? (
+                <p className="meta" role="alert">
+                  {orgs.message}
+                </p>
+              ) : orgs.data.length === 0 ? (
+                <div className="discover-empty">
+                  <h3>No organisations are listed yet</h3>
+                  <p>
+                    Schools, clubs and academies are being added now. Create a free account to be ready when
+                    they appear.
+                  </p>
+                  <Link className="btn green" to="/register">
+                    Create a free account
+                  </Link>
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="discover-empty">
+                  <h3>No organisations match</h3>
+                  <p>Try a different sport or province, or clear the filters.</p>
+                  <button type="button" className="btn green" onClick={() => setFilters(NO_FILTERS)}>
+                    Clear filters
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <p className="meta" role="status">
+                    Showing {filtered.length} of {orgs.data.length}{' '}
+                    {orgs.data.length === 1 ? 'organisation' : 'organisations'}
+                  </p>
+                  <div className="discover-grid" id="discoverGrid">
+                    {filtered.map((o) => (
+                      <PublicOrgCard key={o.id} org={o} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div className="discover-empty">
+              <h3>{tab === 'athletes' ? 'Athletes' : 'Coaches'} are visible to signed-in members</h3>
+              <p>
+                {tab === 'athletes' ? 'Athletes' : 'Coaches'} choose to be found by other SportBridge members,
+                not by the whole internet. Under-18s are never listed at all.
+                {signedIn
+                  ? ' Open the Talent Directory to search.'
+                  : ' Sign in to search the Talent Directory.'}
+              </p>
+              {signedIn ? (
+                <Link className="btn green" to="/app/directory">
+                  Open the Talent Directory
+                </Link>
+              ) : (
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <Link className="btn green" to="/sign-in">
+                    Sign in
+                  </Link>
+                  <Link className="btn" to="/register">
+                    Create a free account
+                  </Link>
+                </div>
+              )}
             </div>
-            <div className="cta-actions">
-              <button className="btn green" onClick={a.register} type="button">
-                Create Your Profile →
-              </button>
-            </div>
-          </div>
-        </section>
+          )}
+        </div>
       </section>
-    </>
+    </section>
   );
 }

@@ -24,9 +24,19 @@ export function buildOnboardingWrite(
   now: Date,
   newId: (collection: string) => string,
 ): OnboardingWrite {
-  const dob = parseIsoDate(input.dateOfBirth);
-  if (!dob) throw new HttpError(400, 'INVALID_DOB', 'Enter a valid date of birth');
-  const minor = isMinor(dob, now);
+  // Organisation accounts give no date of birth: SportBridge does not need an administrator's birth date.
+  // They confirm they are an adult acting for the organisation, and that confirmation is required here too.
+  const isOrganisation = input.role === 'organisation';
+  if (isOrganisation && input.adultConfirmed !== true) {
+    throw new HttpError(
+      400,
+      'ADULT_NOT_CONFIRMED',
+      'Confirm you are 18 or over and authorised to act for this organisation',
+    );
+  }
+  const dob = isOrganisation ? null : parseIsoDate(input.dateOfBirth ?? '');
+  if (!isOrganisation && !dob) throw new HttpError(400, 'INVALID_DOB', 'Enter a valid date of birth');
+  const minor = dob ? isMinor(dob, now) : false;
   if (minor && input.role !== 'athlete') {
     throw new HttpError(400, 'MINOR_ROLE', 'Under-18 accounts can only be athlete accounts');
   }
@@ -53,7 +63,9 @@ export function buildOnboardingWrite(
   const write: OnboardingWrite = {
     uid,
     user,
-    privateDetails: { dateOfBirth: input.dateOfBirth, mobile: input.mobile },
+    privateDetails: isOrganisation
+      ? { mobile: input.mobile }
+      : { dateOfBirth: input.dateOfBirth!, mobile: input.mobile },
     audit: { type: 'account.onboarded', uid, role: input.role, isMinor: minor, at: ts },
   };
 

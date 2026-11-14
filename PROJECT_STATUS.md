@@ -55,6 +55,22 @@ _Last updated: 2026-11-12 · Phases 1–3 accepted. Admin Dashboard and onboardi
 6. Notifications: in-app only.
 7. Sponsorship: request and express interest only; SportBridge handles no money. **Client to confirm.**
 
+## Organisations are not asked for a date of birth (branch `phase-4-onboarding`)
+The client asked that organisations not be asked for a birth date. A date of birth did exactly one job for an organisation: proving an adult was setting it up (under-18s can only be athletes). It is replaced, for organisations only, by a required confirmation: **"I am 18 or over and authorised to act for this organisation."**
+- Sign-up asks **"How will you use SportBridge?" first**; the date of birth field is then hidden for organisations and the confirmation shown in its place. Athletes, parents and coaches are unchanged.
+- The **server enforces** the confirmation and **stores no date of birth** for an organisation (`privateDetails` holds the mobile only). An organisation is never treated as a minor, even if an old client still sends a birth date.
+- Existing organisation accounts may still hold a stored birth date from before this change: `scripts/clear-org-dob.cjs` removes them (dry run by default, `--apply` to change). Needs the service account key in the environment.
+- Tests: 4 new web (the sign-up form had none at all before), 3 new API, shared schema tests updated.
+- Legal question 20 added.
+
+## Public pages show real data (branch `phase-4-onboarding`)
+- **Discover** now lists real, listed **organisations only** (schools, clubs, academies) with sport / province / type filters and search; **verified first**, then organisations with an owner, then "Added by SportBridge". Honest empty, no-match and error states. The invented cards ("Thabo Mokoena", "National Sports Academy", "Sample profile") are gone. The **Athletes and Coaches tabs show no one**: they say these are visible to signed-in members and point to sign-in or the Talent Directory. Under-18s are never listed anywhere.
+- **Public organisation page** (`/organisations/:key`): name, type, location, sports, one-line description, who vouches for it (Verified / Added by SportBridge / Not yet verified) and its **open** listings; an unclaimed organisation says it has not been claimed and how its representative can claim it. A visitor is offered sign-up; a member is offered "Open in SportBridge". Contact details are never shown.
+- **Rules:** `directoryProfiles` entries with `role == 'organisation'` are now readable by anyone; athletes and coaches stay behind sign-in and a child still sees only coaches and organisations. A list query must filter on `role == 'organisation'`; an unfiltered public list is refused. 5 new rules tests.
+- **Removed from Home:** the three invented testimonials (named people) and the invented "Sport changed my life" quote. Nothing replaces them until there are real, permitted quotes.
+- `/athletes`, `/coaches`, `/clubs` (previously a heading and one sentence) now redirect to the fuller `/features/*` pages. Unused legacy Discover helpers removed.
+- Legal questions 18 and 19 added.
+
 ## Admin Dashboard (one staff area, branch `phase-4-onboarding`)
 One **Admin** item in the sidebar (visible only to accounts with the administrator claim) opens a single dashboard with sections. **Sections appear only once they exist**, so staff never open an empty tab; new ones (Import, Coaches, Sponsorship approvals, Verification, Users) are added as they are built.
 - **Overview:** real figures only — schools added by SportBridge (waiting / claimed), organisations awaiting verification, live opportunities and programmes, applications in the last 7 days, and account counts by role. A figure that cannot be read shows "—", never a made-up zero.
@@ -74,7 +90,7 @@ The client wants real schools, clubs and coaches on the platform instead of an e
 - Unclaimed organisations cannot post (no owner) and show a notice on their directory profile. The organisation dashboard offers a claim card to self-registered, unverified organisations.
 - Organisation dashboard now shows **real** counts of live/draft opportunities and programmes and applications waiting (the "coming in the next release" text was stale).
 - **To make a staff account:** `npm run grant-admin -w apps/api -- person@example.com` (needs the service account key in the environment; the person signs out and in again).
-- Rules: 61 tests. API: 60 tests. Web: 125 tests. Shared: 64 tests.
+- Rules: 66 tests. API: 62 tests. Web: 147 tests. Shared: 66 tests.
 - Decisions pending from the client: where the school/coach lists come from; coach vetting for those connecting with children; who the admin users are; POPIA sign-off for listing coaches.
 - Step B (CSV import with preview, duplicate detection and undo) and step C (coaches) follow.
 

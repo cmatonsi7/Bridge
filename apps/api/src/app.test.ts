@@ -409,16 +409,60 @@ describe('API', () => {
     expect(b.status).toBe(400);
   });
 
-  it('creates an organisation owned by the caller', async () => {
+  it('creates an organisation owned by the caller, with no date of birth asked for or stored', async () => {
+    const { dateOfBirth: _dob, ...noDob } = adult as Record<string, unknown>;
     const r = await request(app)
       .post('/api/onboarding')
       .set('Authorization', 'Bearer t-jordan')
-      .send({ ...adult, role: 'organisation', organisationName: 'Soweto FC', organisationType: 'club' });
+      .send({
+        ...noDob,
+        role: 'organisation',
+        organisationName: 'Soweto FC',
+        organisationType: 'club',
+        adultConfirmed: true,
+      });
     expect(r.status).toBe(201);
     const w = f.writes[0]!;
     expect(w.organisation?.data).toMatchObject({ ownerUid: 'u1', name: 'Soweto FC', verified: false });
     expect(r.body.user.organisationId).toBe(w.organisation?.id);
     expect(w.roleProfile).toBeUndefined();
+    // nothing about a birth date is kept for an organisation
+    expect(w.privateDetails).toEqual({ mobile: (adult as { mobile: string }).mobile.replace(/\s/g, '') });
+    expect(JSON.stringify(w)).not.toContain('dateOfBirth');
+    expect(w.user.isMinor).toBe(false);
+  });
+
+  it('refuses an organisation that does not confirm an adult is setting it up', async () => {
+    const { dateOfBirth: _dob, ...noDob } = adult as Record<string, unknown>;
+    const org = { ...noDob, role: 'organisation', organisationName: 'Soweto FC', organisationType: 'club' };
+    const missing = await request(app)
+      .post('/api/onboarding')
+      .set('Authorization', 'Bearer t-jordan')
+      .send(org);
+    expect(missing.status).toBe(400);
+    const refused = await request(app)
+      .post('/api/onboarding')
+      .set('Authorization', 'Bearer t-jordan')
+      .send({ ...org, adultConfirmed: false });
+    expect(refused.status).toBe(400);
+    expect(f.writes).toHaveLength(0);
+  });
+
+  it('an organisation is never treated as a minor, even if an old client still sends a birth date', async () => {
+    const r = await request(app)
+      .post('/api/onboarding')
+      .set('Authorization', 'Bearer t-jordan')
+      .send({
+        ...adult,
+        dateOfBirth: '2015-01-01',
+        role: 'organisation',
+        organisationName: 'Soweto FC',
+        organisationType: 'club',
+        adultConfirmed: true,
+      });
+    expect(r.status).toBe(201);
+    expect(f.writes[0]!.user).toMatchObject({ isMinor: false, status: 'active' });
+    expect(JSON.stringify(f.writes[0]!)).not.toContain('2015-01-01');
   });
 
   it('is idempotent and cannot be used to change role', async () => {

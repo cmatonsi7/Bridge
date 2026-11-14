@@ -69,18 +69,41 @@ describe('onboardingSchema', () => {
       false,
     );
   });
-  it('requires organisation details', () => {
-    expect(
-      onboardingSchema.safeParse({ ...base, role: 'organisation', dateOfBirth: yearsAgo(30) }).success,
-    ).toBe(false);
-    expect(
-      onboardingSchema.safeParse({
-        ...base,
-        role: 'organisation',
-        dateOfBirth: yearsAgo(30),
-        organisationName: 'Soweto FC',
-        organisationType: 'club',
-      }).success,
-    ).toBe(true);
+  it('requires organisation details, and an organisation gives no date of birth', () => {
+    const org = { ...base, role: 'organisation', organisationName: 'Soweto FC', organisationType: 'club' };
+    // name and type are still required
+    expect(onboardingSchema.safeParse({ ...base, role: 'organisation', adultConfirmed: true }).success).toBe(
+      false,
+    );
+    // no date of birth needed, but the adult confirmation is
+    expect(onboardingSchema.safeParse(org).success).toBe(false);
+    const refused = onboardingSchema.safeParse(org);
+    expect(refused.success ? [] : refused.error.issues.map((i) => i.path.join('.'))).toContain(
+      'adultConfirmed',
+    );
+    expect(onboardingSchema.safeParse({ ...org, adultConfirmed: true }).success).toBe(true);
+    expect(onboardingSchema.safeParse({ ...org, adultConfirmed: false }).success).toBe(false);
+  });
+
+  it('an organisation that still sends a date of birth is accepted, and age rules do not apply to it', () => {
+    const org = {
+      ...base,
+      role: 'organisation',
+      organisationName: 'Soweto FC',
+      organisationType: 'club',
+      adultConfirmed: true,
+    };
+    expect(onboardingSchema.safeParse({ ...org, dateOfBirth: yearsAgo(30) }).success).toBe(true);
+    // an organisation is never treated as a minor: the confirmation is what counts
+    expect(onboardingSchema.safeParse({ ...org, dateOfBirth: yearsAgo(14) }).success).toBe(true);
+  });
+
+  it('every other role still needs a date of birth, and the adult confirmation does not replace it', () => {
+    const { dateOfBirth: _d, ...noDob } = { ...base, dateOfBirth: yearsAgo(25) };
+    for (const role of ['athlete', 'guardian', 'coach'] as const) {
+      const r = onboardingSchema.safeParse({ ...noDob, role, adultConfirmed: true });
+      expect(r.success).toBe(false);
+      expect(r.success ? [] : r.error.issues.map((i) => i.path.join('.'))).toContain('dateOfBirth');
+    }
   });
 });

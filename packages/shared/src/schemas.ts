@@ -28,10 +28,13 @@ export const onboardingSchema = z
     firstName: name,
     surname: name,
     mobile,
-    dateOfBirth: dob,
+    /** Not asked of organisation accounts: they confirm they are 18 or over instead. */
+    dateOfBirth: dob.optional(),
     role: z.enum(SELF_SERVICE_ROLES),
     organisationName: z.string().trim().max(120).optional(),
     organisationType: z.enum(ORGANISATION_TYPES).optional(),
+    /** Organisation accounts only: the person confirms they are an adult acting for the organisation. */
+    adultConfirmed: z.boolean().optional(),
     guardianEmail: z.string().trim().toLowerCase().email('Enter a valid email address').optional(),
     guardianRelationship: z.enum(GUARDIAN_RELATIONSHIPS).optional(),
     guardianConsentAcknowledged: z.boolean().optional(),
@@ -40,7 +43,39 @@ export const onboardingSchema = z
     }),
   })
   .superRefine((v, ctx) => {
-    const d = parseIsoDate(v.dateOfBirth);
+    // An organisation gives no date of birth: it confirms an adult is setting it up instead.
+    if (v.role === 'organisation') {
+      if (!v.organisationName)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['organisationName'],
+          message: 'Organisation name is required',
+        });
+      if (!v.organisationType)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['organisationType'],
+          message: 'Select an organisation type',
+        });
+      if (v.adultConfirmed !== true) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['adultConfirmed'],
+          message: 'Confirm you are 18 or over and authorised to act for this organisation',
+        });
+      }
+    } else if (!v.dateOfBirth) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dateOfBirth'],
+        message: 'Enter a valid date of birth',
+      });
+    }
+
+    // Age rules never apply to an organisation: the adult confirmation above is what counts, and an
+    // organisation that still sends a date of birth (an older client) is accepted without one.
+    if (v.role === 'organisation') return;
+    const d = v.dateOfBirth ? parseIsoDate(v.dateOfBirth) : null;
     if (!d) return;
     const age = ageOn(d, new Date());
     if (age < MINIMUM_SELF_REGISTRATION_AGE) {
@@ -77,20 +112,6 @@ export const onboardingSchema = z
           message: 'Confirm the guardian consent process',
         });
       }
-    }
-    if (v.role === 'organisation') {
-      if (!v.organisationName)
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['organisationName'],
-          message: 'Organisation name is required',
-        });
-      if (!v.organisationType)
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['organisationType'],
-          message: 'Select an organisation type',
-        });
     }
   });
 
