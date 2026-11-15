@@ -55,6 +55,15 @@ _Last updated: 2026-11-12 · Phases 1–3 accepted. Admin Dashboard and onboardi
 6. Notifications: in-app only.
 7. Sponsorship: request and express interest only; SportBridge handles no money. **Client to confirm.**
 
+## Fixes after live testing of the public pages (branch `phase-4-onboarding`)
+- **Hidden messages (my mistake):** the prototype stylesheet has `.discover-empty { display: none }`, and the new public pages reused that class for their messages, so the Athletes/Coaches sign-in message, "no organisations match", the unclaimed-school explanation, the organisation page's sign-up box and "not listed" were all invisible. Renamed to `.public-note`. A new test fails if any class in the public-page styles is already defined by the prototype stylesheet (tests cannot see styles, so the check compares class names).
+- Link buttons inside those messages no longer show as blue underlined text.
+- The in-app organisation profile now says Verified / Not yet verified / Added by SportBridge, like the cards and the public page.
+- The organisation dashboard's Verification card no longer says staff will review "once verification opens" (it opened days ago).
+- Admin → Verification: the "Verified" heading is no longer squashed against the card above (the prototype's admin stylesheet overrode its margin).
+- The Activity log says "1 school or organisation", not "1 schools".
+- Live check (signed out): Discover and a public organisation page confirmed working.
+
 ## Organisations are not asked for a date of birth (branch `phase-4-onboarding`)
 The client asked that organisations not be asked for a birth date. A date of birth did exactly one job for an organisation: proving an adult was setting it up (under-18s can only be athletes). It is replaced, for organisations only, by a required confirmation: **"I am 18 or over and authorised to act for this organisation."**
 - Sign-up asks **"How will you use SportBridge?" first**; the date of birth field is then hidden for organisations and the confirmation shown in its place. Athletes, parents and coaches are unchanged.
@@ -90,7 +99,7 @@ The client wants real schools, clubs and coaches on the platform instead of an e
 - Unclaimed organisations cannot post (no owner) and show a notice on their directory profile. The organisation dashboard offers a claim card to self-registered, unverified organisations.
 - Organisation dashboard now shows **real** counts of live/draft opportunities and programmes and applications waiting (the "coming in the next release" text was stale).
 - **To make a staff account:** `npm run grant-admin -w apps/api -- person@example.com` (needs the service account key in the environment; the person signs out and in again).
-- Rules: 66 tests. API: 62 tests. Web: 147 tests. Shared: 66 tests.
+- Rules: 66 tests. API: 62 tests. Web: 151 tests. Shared: 66 tests.
 - Decisions pending from the client: where the school/coach lists come from; coach vetting for those connecting with children; who the admin users are; POPIA sign-off for listing coaches.
 - Step B (CSV import with preview, duplicate detection and undo) and step C (coaches) follow.
 

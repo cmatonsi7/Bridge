@@ -45,7 +45,7 @@ export default function OrganisationPage() {
   if (!entry) {
     return (
       <section className="section">
-        <div className="wrap discover-empty">
+        <div className="wrap public-note">
           <h1>This organisation isn’t listed</h1>
           <p>It may have been removed, or the address may be wrong.</p>
           <Link className="btn green" to="/discover">
@@ -95,7 +95,7 @@ export default function OrganisationPage() {
         </div>
 
         {unclaimed ? (
-          <div className="discover-empty" style={{ marginTop: 22 }}>
+          <div className="public-note" style={{ marginTop: 22 }}>
             <h3>Added by SportBridge</h3>
             <p>
               This organisation hasn’t been claimed yet, so it can’t post opportunities. If you represent it,
@@ -123,7 +123,7 @@ export default function OrganisationPage() {
           </div>
         )}
 
-        <div className="discover-empty" style={{ marginTop: 32 }}>
+        <div className="public-note" style={{ marginTop: 32 }}>
           <h3>{signedIn ? 'See more in SportBridge' : 'Want to apply or get in touch?'}</h3>
           <p>
             {signedIn

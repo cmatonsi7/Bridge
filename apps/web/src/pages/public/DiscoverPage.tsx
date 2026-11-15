@@ -144,7 +144,7 @@ export default function DiscoverPage() {
                   {orgs.message}
                 </p>
               ) : orgs.data.length === 0 ? (
-                <div className="discover-empty">
+                <div className="public-note">
                   <h3>No organisations are listed yet</h3>
                   <p>
                     Schools, clubs and academies are being added now. Create a free account to be ready when
@@ -155,7 +155,7 @@ export default function DiscoverPage() {
                   </Link>
                 </div>
               ) : filtered.length === 0 ? (
-                <div className="discover-empty">
+                <div className="public-note">
                   <h3>No organisations match</h3>
                   <p>Try a different sport or province, or clear the filters.</p>
                   <button type="button" className="btn green" onClick={() => setFilters(NO_FILTERS)}>
@@ -177,7 +177,7 @@ export default function DiscoverPage() {
               )}
             </>
           ) : (
-            <div className="discover-empty">
+            <div className="public-note">
               <h3>{tab === 'athletes' ? 'Athletes' : 'Coaches'} are visible to signed-in members</h3>
               <p>
                 {tab === 'athletes' ? 'Athletes' : 'Coaches'} choose to be found by other SportBridge members,

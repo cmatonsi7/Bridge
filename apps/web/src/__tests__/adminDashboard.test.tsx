@@ -183,4 +183,11 @@ describe('describeActivity', () => {
       describeActivity(entry({ type: 'organisation.import_undone', removedCount: 118, keptCount: 2 })),
     ).toBe('Bongiwe N undid an import: 118 removed, 2 kept because they were already claimed');
   });
+  it('says "1 school or organisation", not "1 schools"', () => {
+    expect(
+      describeActivity(
+        entry({ type: 'organisation.import_batch', createdCount: 1, skippedCount: 4, source: 'Test' }),
+      ),
+    ).toBe('Bongiwe N imported 1 school or organisation from a spreadsheet (4 skipped) (source: Test)');
+  });
 });

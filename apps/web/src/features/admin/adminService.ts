@@ -195,7 +195,7 @@ export function describeActivity(e: ActivityEntry): string {
     case 'organisation.removed':
       return `${who} removed ${what}`;
     case 'organisation.import_batch':
-      return `${who} imported ${e.createdCount ?? 0} schools and organisations from a spreadsheet${e.skippedCount ? ` (${e.skippedCount} skipped)` : ''}${e.source ? ` (source: ${e.source})` : ''}`;
+      return `${who} imported ${e.createdCount ?? 0} ${e.createdCount === 1 ? 'school or organisation' : 'schools and organisations'} from a spreadsheet${e.skippedCount ? ` (${e.skippedCount} skipped)` : ''}${e.source ? ` (source: ${e.source})` : ''}`;
     case 'organisation.import_undone':
       return `${who} undid an import: ${e.removedCount ?? 0} removed${e.keptCount ? `, ${e.keptCount} kept because they were already claimed` : ''}`;
     case 'organisation.verified':

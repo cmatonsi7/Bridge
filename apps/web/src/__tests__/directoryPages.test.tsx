@@ -162,6 +162,35 @@ describe('DirectoryProfilePage', () => {
     at('/app/directory/a2', <DirectoryProfilePage />, '/app/directory/:uid');
     expect(screen.queryByRole('button', { name: 'Ask to connect' })).toBeNull();
   });
+  it('says who vouches for an organisation, as the cards and the public page do', () => {
+    st.dir = [
+      entry({ uid: 'o1', role: 'organisation', displayName: 'Verified School', orgId: 'x1', verified: true }),
+      entry({
+        uid: 'o2',
+        role: 'organisation',
+        displayName: 'Plain Club',
+        orgId: 'x2',
+        verified: false,
+        claimed: true,
+      }),
+      entry({
+        uid: 'o3',
+        role: 'organisation',
+        displayName: 'Imported School',
+        orgId: 'x3',
+        verified: false,
+        claimed: false,
+      }),
+    ];
+    const first = at('/app/directory/o1', <DirectoryProfilePage />, '/app/directory/:uid');
+    expect(screen.getByText('Verified organisation')).toBeTruthy();
+    first.unmount();
+    const second = at('/app/directory/o2', <DirectoryProfilePage />, '/app/directory/:uid');
+    expect(screen.getByText('Not yet verified')).toBeTruthy();
+    second.unmount();
+    at('/app/directory/o3', <DirectoryProfilePage />, '/app/directory/:uid');
+    expect(screen.getAllByText('Added by SportBridge').length).toBeGreaterThan(0);
+  });
 });
 
 describe('ConnectionsPage', () => {

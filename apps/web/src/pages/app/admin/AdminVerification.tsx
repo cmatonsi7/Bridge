@@ -171,18 +171,20 @@ export default function AdminVerification() {
         </div>
       )}
 
-      <div className="sb-section-title" style={{ margin: '28px 0 12px' }}>
-        <h2>Verified ({verified.length})</h2>
-      </div>
-      {verified.length === 0 ? (
-        <div className="sb-card sb-empty">No organisation is verified yet.</div>
-      ) : (
-        <div style={{ display: 'grid', gap: 12 }}>
-          {verified.map((o) => (
-            <OrganisationCard key={o.id} org={o} verified />
-          ))}
+      <div style={{ marginTop: 32 }}>
+        <div className="sb-section-title">
+          <h2>Verified ({verified.length})</h2>
         </div>
-      )}
+        {verified.length === 0 ? (
+          <div className="sb-card sb-empty">No organisation is verified yet.</div>
+        ) : (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {verified.map((o) => (
+              <OrganisationCard key={o.id} org={o} verified />
+            ))}
+          </div>
+        )}
+      </div>
     </>
   );
 }

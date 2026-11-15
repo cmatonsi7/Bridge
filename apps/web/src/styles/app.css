@@ -500,14 +500,14 @@ button.sb-switch {
   font-weight: 700;
   color: #6b7a71;
 }
-.discover-empty {
+.public-note {
   text-align: center;
   padding: 34px 20px;
   border: 1px dashed #cfd9d3;
   border-radius: 14px;
   background: #fff;
 }
-.discover-empty p {
+.public-note p {
   max-width: 560px;
   margin: 8px auto 16px;
   color: #53645a;
@@ -518,4 +518,8 @@ button.sb-switch {
   gap: 6px;
   flex-wrap: wrap;
   margin: 10px 0;
+}
+.public-note a {
+  text-decoration: none;
+  color: inherit;
 }

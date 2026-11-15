@@ -325,3 +325,25 @@ describe('organisation filtering and order', () => {
     ]);
   });
 });
+
+describe('styles: new public-page classes never collide with the prototype stylesheet', () => {
+  // The prototype's stylesheet hides some class names (for example `.discover-empty { display: none }`).
+  // Reusing one of them silently makes a message invisible, and tests cannot see stylesheets, so check the names.
+  it('defines no class that the prototype stylesheet already defines', () => {
+    const app = readFileSync(resolve(process.cwd(), 'src/styles/app.css'), 'utf8');
+    const legacy = readFileSync(resolve(process.cwd(), 'src/styles/legacy.css'), 'utf8');
+    const block = app.slice(app.indexOf('/* ---- Public Discover and organisation pages ---- */'));
+    expect(block.length).toBeGreaterThan(50);
+    const classes = [...new Set([...block.matchAll(/\.([a-z][a-z0-9-]*)/g)].map((m) => m[1]!))];
+    expect(classes).toContain('public-note');
+    const clashes = classes.filter((c) => new RegExp(`\\.${c}\\b`).test(legacy));
+    expect(clashes, `already styled (and possibly hidden) by the prototype: ${clashes.join(', ')}`).toEqual(
+      [],
+    );
+  });
+
+  it('the messages the public pages rely on are not hidden by any prototype rule', () => {
+    const legacy = readFileSync(resolve(process.cwd(), 'src/styles/legacy.css'), 'utf8');
+    expect(legacy).not.toMatch(/\.public-note\b/);
+  });
+});
