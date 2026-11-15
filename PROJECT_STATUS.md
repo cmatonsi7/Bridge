@@ -69,7 +69,8 @@ Public pages, administrator, under-18 athlete, parent, coach, organisation and a
 - **Wording that promised unbuilt features corrected:** messaging (Phase 5), coaching roles, "smart matching", coach feedback, "Verified & Safe", "POPIA-conscious" and the prototype's "The demo shows…" FAQ text. The FAQ now quotes the real prices from the same `PLANS` constants as the pricing section and says nothing is charged yet.
 - **Directory cards** show a green "Verified organisation" badge for verified organisations (live-checked).
 - **Test hardening:** Testing Library waits up to 5 s (`asyncUtilTimeout`), because the first lazy-loaded Admin section compiled slowly on a cold cache and failed a correct test.
-- **Still open:** the pricing buttons ("Get Started", "Get Pro", "Get Organisation") have no action; the plan feature lists mention things not built yet (priority support, insights, advanced profile features). Both wait for Phase 4 and the client's say-so.
+- **Pricing buttons** (branch `pricing-buttons`): all three now lead to sign-up ("Get Started", "Start free", "Create an organisation account"), and a note under the plans says paid plans are not open yet and nothing is charged. Pro and Organisation no longer say "Get Pro"/"Get Organisation", because nothing can be bought yet.
+- **Still open:** the plan feature lists mention things not built yet (priority support, insights and reporting, advanced profile features, featured listings, premium programmes); they wait for Phase 4 and the client's say-so. The Home page card "Nationwide Reach: connect across all 9 provinces…" is a marketing claim nobody has substantiated (see legal question 19).
 - Old tests done live: re-import of the same spreadsheet imports nothing; undo kept the claimed school; `scripts/clear-org-dob.cjs` cleared 4 stored organisation birth dates.
 
 ## Fixes after live testing of the public pages (branch `phase-4-onboarding`)
@@ -116,7 +117,7 @@ The client wants real schools, clubs and coaches on the platform instead of an e
 - Unclaimed organisations cannot post (no owner) and show a notice on their directory profile. The organisation dashboard offers a claim card to self-registered, unverified organisations.
 - Organisation dashboard now shows **real** counts of live/draft opportunities and programmes and applications waiting (the "coming in the next release" text was stale).
 - **To make a staff account:** `npm run grant-admin -w apps/api -- person@example.com` (needs the service account key in the environment; the person signs out and in again).
-- Rules: 66 tests. API: 62 tests. Web: 168 tests. Shared: 66 tests.
+- Rules: 66 tests. API: 62 tests. Web: 172 tests. Shared: 66 tests.
 - Decisions pending from the client: where the school/coach lists come from; coach vetting for those connecting with children; who the admin users are; POPIA sign-off for listing coaches.
 - Step B (CSV import with preview, duplicate detection and undo) and step C (coaches) follow.
 

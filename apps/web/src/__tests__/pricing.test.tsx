@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import HomePage from '../pages/public/HomePage';
 
 vi.mock('../features/auth/AuthProvider', () => ({ useAuth: () => ({ state: { status: 'signedOut' } }) }));
@@ -45,4 +45,33 @@ describe('membership pricing (client figures, 2026-11-11)', () => {
     home();
     expect(screen.getByText(/30-day free trial for approved organisations/)).toBeTruthy();
   });
+});
+
+describe('pricing buttons lead somewhere honest', () => {
+  const at = () =>
+    render(
+      <MemoryRouter>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/register" element={<p>REGISTER PAGE</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+  it('says paid plans are not open yet, and does not pretend to sell them', () => {
+    at();
+    // once under the plans, once in the FAQ
+    expect(screen.getAllByText(/Paid plans are not open yet, so nothing is charged today/)).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: /Get Pro/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Get Organisation/ })).toBeNull();
+  });
+
+  it.each(['Get Started →', 'Start free →', 'Create an organisation account →'])(
+    '“%s” takes the visitor to sign-up',
+    (label) => {
+      at();
+      fireEvent.click(screen.getByRole('button', { name: label }));
+      expect(screen.getByText('REGISTER PAGE')).toBeTruthy();
+    },
+  );
 });

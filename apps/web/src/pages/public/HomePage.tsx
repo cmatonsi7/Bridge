@@ -443,7 +443,7 @@ export default function HomePage() {
                   <li>Access holiday programmes</li>
                   <li>Basic progress tracking</li>
                 </ul>
-                <button className="btn" type="button">
+                <button className="btn" onClick={a.register} type="button">
                   Get Started →
                 </button>
               </div>
@@ -470,8 +470,8 @@ export default function HomePage() {
                   <li>Access premium holiday programmes</li>
                   <li>Priority support</li>
                 </ul>
-                <button className="btn green" type="button">
-                  Get Pro →
+                <button className="btn green" onClick={a.register} type="button">
+                  Start free →
                 </button>
               </div>
               <div className="plan">
@@ -498,11 +498,15 @@ export default function HomePage() {
                   <li>Access insights and reporting</li>
                   <li>Priority support</li>
                 </ul>
-                <button className="btn" type="button">
-                  Get Organisation →
+                <button className="btn" onClick={a.register} type="button">
+                  Create an organisation account →
                 </button>
               </div>
             </div>
+            <p className="meta" style={{ textAlign: 'center', marginTop: 20 }}>
+              Paid plans are not open yet, so nothing is charged today. Create a free account now; what each
+              paid plan includes is still being finalised.
+            </p>
           </div>
         </section>
         <section className="section" id="faq">
