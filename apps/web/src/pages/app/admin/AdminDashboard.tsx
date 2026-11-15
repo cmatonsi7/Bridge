@@ -6,6 +6,7 @@ import AdminOverview from './AdminOverview';
 const AdminSchoolsSection = lazy(() => import('./AdminSchoolsSection'));
 const AdminImport = lazy(() => import('./AdminImport'));
 const AdminVerification = lazy(() => import('./AdminVerification'));
+const AdminSponsorship = lazy(() => import('./AdminSponsorship'));
 const AdminActivity = lazy(() => import('./AdminActivity'));
 
 /** Sections appear here only once they exist, so staff never open a tab that leads nowhere. */
@@ -14,6 +15,7 @@ const TABS = [
   { key: 'schools', label: 'Schools & organisations' },
   { key: 'import', label: 'Import' },
   { key: 'verification', label: 'Verification' },
+  { key: 'sponsorship', label: 'Sponsorship' },
   { key: 'activity', label: 'Activity log' },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
@@ -61,6 +63,7 @@ export default function AdminDashboard() {
         {tab === 'schools' && <AdminSchoolsSection />}
         {tab === 'import' && <AdminImport />}
         {tab === 'verification' && <AdminVerification />}
+        {tab === 'sponsorship' && <AdminSponsorship />}
         {tab === 'activity' && <AdminActivity />}
       </Suspense>
     </section>

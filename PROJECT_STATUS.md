@@ -13,7 +13,7 @@ _Last updated: 2026-11-12 · Phases 1–3 accepted. Admin Dashboard and onboardi
 | 3a Listings (opportunities, programmes, saved) | Accepted |
 | 3b Applications | Accepted |
 | 3c Directory & connections | Code complete, awaiting review (branch `phase-3-directory`) |
-| 3d Sponsorship & calendar | Not started |
+| 3d Sponsorship & calendar | Sponsorship built (branch `sponsorship`); calendar not started |
 | 4 Membership & payments | Blocked on client pricing |
 | 5 Messaging & admin dashboard | Not started |
 | 6 Production readiness | Not started |
@@ -53,7 +53,21 @@ _Last updated: 2026-11-12 · Phases 1–3 accepted. Admin Dashboard and onboardi
 4. Under-18 athletes never appear in the directory or search. Organisations see a child only after the child applies to their listing.
 5. Applications: optional note plus a profile snapshot; applicants can withdraw; organisations see applicants only for their own listings.
 6. Notifications: in-app only.
-7. Sponsorship: request and express interest only; SportBridge handles no money. **Client to confirm.**
+7. Sponsorship: request and offer only; SportBridge handles no money. Built 2026-11-16 (see below). Requests for children are switched off until legal question 6 is answered.
+
+## Sponsorship (Phase 3d), branch `sponsorship`
+- **Who can ask:** adult athletes, for themselves. Their request goes live at once for 30 days, showing first name and surname initial, age band, sport and province only. One open request at a time; they can close it sooner.
+- **Children:** a child can never ask. A parent asking for a child is built (it waits for staff approval in Admin → Sponsorship, and shows no name) but is **switched off** by `CHILD_SPONSORSHIP_ENABLED = false` in `packages/shared/src/sponsorship.ts` until legal question 6 is answered. Turning it on also needs a parent screen, which is not built yet.
+- **Who can offer:** adult athletes, coaches and organisations ("Support athletes" in their sidebar). Parents and children cannot. Under-18s cannot see requests at all (Firestore rules).
+- **Introductions:** nobody sees an email until the athlete accepts an offer; then each side sees the other's email. SportBridge handles no money and says so on every accepted offer.
+- **Safety:** anyone signed in can report a request; reported requests appear in Admin → Sponsorship, where staff can take them down. Everything is written by the server and logged in the audit log.
+- **Firestore rules changed:** new `sponsorshipRequests` and `sponsorshipOffers` (server-written only). Run `npm run test:rules` before deploying them.
+- **Not built yet:** the Home page sponsorship band (removed earlier) can come back now that the feature exists, if the client wants it.
+
+## Decisions recorded 2026-11-16
+- The three organisations awaiting verification have been verified by Calvin.
+- Under-18 accounts may keep a phone number in Settings (it is never shown to organisations or on public pages).
+- Legal questions are being collected and will be answered at the end, before launch.
 
 ## Review pass of every role on the live site (after the Home page fix)
 Public pages, administrator, under-18 athlete, parent, coach, organisation and adult athlete were each walked through on the live site: no errors, nothing invented. Polish found and fixed on branch `role-polish`:
@@ -61,7 +75,7 @@ Public pages, administrator, under-18 athlete, parent, coach, organisation and a
 - **Claim-code card** on the organisation dashboard now shows only while there are no listings or applications (the server already refused the rest).
 - **Child page** wording no longer says "when Discovery launches".
 - **Resources page** has real content. **Every public page** has its own browser tab title.
-- **Still open:** should an under-18 account be able to store a phone number (Settings shows "Update phone number")? Left as is. Legal question 21 added (consent is recorded against the draft terms). Three organisations are awaiting verification in Admin.
+- **Decided:** under-18 accounts may keep a phone number. Legal question 21 added (consent is recorded against the draft terms). Three organisations are awaiting verification in Admin.
 
 ## Home page content made honest (after the merge of `phase-4-onboarding` to `main`)
 - **Featured opportunities** now shows up to four real open listings (same grid as `/opportunities`), with honest empty, loading and error states. The four invented cards ("National Sports Academy" and others) are gone.
@@ -117,7 +131,7 @@ The client wants real schools, clubs and coaches on the platform instead of an e
 - Unclaimed organisations cannot post (no owner) and show a notice on their directory profile. The organisation dashboard offers a claim card to self-registered, unverified organisations.
 - Organisation dashboard now shows **real** counts of live/draft opportunities and programmes and applications waiting (the "coming in the next release" text was stale).
 - **To make a staff account:** `npm run grant-admin -w apps/api -- person@example.com` (needs the service account key in the environment; the person signs out and in again).
-- Rules: 66 tests. API: 62 tests. Web: 172 tests. Shared: 66 tests.
+- Rules: 70 tests (4 new for sponsorship, run on your Mac). API: 73 tests. Web: 180 tests. Shared: 72 tests.
 - Decisions pending from the client: where the school/coach lists come from; coach vetting for those connecting with children; who the admin users are; POPIA sign-off for listing coaches.
 - Step B (CSV import with preview, duplicate detection and undo) and step C (coaches) follow.
 

@@ -88,7 +88,14 @@ describe('AdminDashboard', () => {
       within(nav)
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual(['Overview', 'Schools & organisations', 'Import', 'Verification', 'Activity log']);
+    ).toEqual([
+      'Overview',
+      'Schools & organisations',
+      'Import',
+      'Verification',
+      'Sponsorship',
+      'Activity log',
+    ]);
   });
 
   it('moves between sections, and the selected one is marked', async () => {

@@ -193,9 +193,9 @@ export const ROLE_SECTIONS: Record<Role, AppSection[]> = {
     'connections',
     'settings',
   ],
-  // Coaches connect with athletes; they do not apply to listings or ask for sponsorship.
-  coach: [...COMMON, 'calendar', 'directory'],
-  // Organisations review applications they receive; they have no coach connections, saved items or sponsorship.
+  // Coaches connect with athletes and may offer sponsorship; they do not apply to listings.
+  coach: [...COMMON, 'calendar', 'directory', 'sponsorship'],
+  // Organisations review applications they receive and may offer sponsorship; no coach connections or saved items.
   organisation: [
     'dashboard',
     'opportunities',
@@ -207,6 +207,7 @@ export const ROLE_SECTIONS: Record<Role, AppSection[]> = {
     'settings',
     'directory',
     'applications',
+    'sponsorship',
   ],
   // Staff see what they use: browsing (to check what families see) and the Admin dashboard.
   admin: ['opportunities', 'programmes', 'directory', 'admin'],
@@ -215,7 +216,8 @@ export const ROLE_SECTIONS: Record<Role, AppSection[]> = {
 /** Where the same page means something different to a role, the sidebar says so. */
 const ROLE_LABELS: Partial<Record<Role, Partial<Record<AppSection, string>>>> = {
   guardian: { applications: 'Children’s applications', connections: 'Coach requests' },
-  organisation: { applications: 'Applications' },
+  coach: { sponsorship: 'Support athletes' },
+  organisation: { applications: 'Applications', sponsorship: 'Support athletes' },
 };
 
 export function navFor(role: Role | undefined): NavItem[] {

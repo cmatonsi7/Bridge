@@ -29,18 +29,20 @@ describe('each role’s sidebar shows only what applies to it', () => {
       expect(canAccess('guardian', s)).toBe(false);
   });
 
-  it('a coach does not get applications or sponsorship, but keeps connections and a profile', () => {
+  it('a coach does not get applications, but keeps connections and a profile, and can support athletes', () => {
     expect(canAccess('coach', 'applications')).toBe(false);
-    expect(canAccess('coach', 'sponsorship')).toBe(false);
+    expect(canAccess('coach', 'sponsorship')).toBe(true);
+    expect(labels('coach')).toContain('Support athletes');
     expect(canAccess('coach', 'connections')).toBe(true);
     expect(canAccess('coach', 'profile')).toBe(true);
   });
 
-  it('an organisation reviews “Applications”, with no coach connections, saved items or sponsorship', () => {
+  it('an organisation reviews “Applications” and can support athletes, with no coach connections or saved items', () => {
     expect(labels('organisation')).toContain('Applications');
     expect(labels('organisation')).not.toContain('My Applications');
-    for (const s of ['connections', 'saved', 'sponsorship', 'progress'] as const)
+    for (const s of ['connections', 'saved', 'progress'] as const)
       expect(canAccess('organisation', s)).toBe(false);
+    expect(labels('organisation')).toContain('Support athletes');
     expect(canAccess('organisation', 'applications')).toBe(true);
   });
 

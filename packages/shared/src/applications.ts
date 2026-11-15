@@ -106,7 +106,10 @@ export type NotificationType =
   | 'application.child_applied'
   | 'application.status'
   | 'application.withdrawn'
-  | 'organisation.verification';
+  | 'organisation.verification'
+  | 'sponsorship.offer'
+  | 'sponsorship.response'
+  | 'sponsorship.reviewed';
 
 /** users/{uid}/notifications/{id}. Written by the server; the owner may only mark it read or delete it. */
 export interface NotificationDoc {
