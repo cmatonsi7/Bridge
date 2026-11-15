@@ -170,8 +170,8 @@ export default function ChildProfilePage() {
         </h3>
         <p className="sb-meta" style={{ lineHeight: 1.6 }}>
           Consent recorded {link.verifiedAt ? new Date(link.verifiedAt).toLocaleDateString('en-ZA') : ''}{' '}
-          (terms version {link.consentVersion}). Your child’s profile stays private; who can see it will be
-          controlled here when Discovery launches.
+          (terms version {link.consentVersion}). Your child’s profile stays private: under-18s are never
+          listed in the Talent Directory, and their contact details are never shown.
         </p>
         {error && (
           <p className="sb-form-status err" role="alert">

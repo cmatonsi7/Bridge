@@ -183,16 +183,48 @@ const COMMON: AppSection[] = [
 /** Per-role pages, as defined by the prototype's applyRoleNavigation(). */
 export const ROLE_SECTIONS: Record<Role, AppSection[]> = {
   athlete: [...COMMON, 'progress', 'calendar', 'directory', 'applications', 'sponsorship'],
-  guardian: [...COMMON, 'progress', 'calendar', 'directory', 'applications', 'sponsorship'],
-  coach: [...COMMON, 'calendar', 'directory', 'applications', 'sponsorship'],
-  organisation: [...COMMON, 'calendar', 'directory', 'applications', 'sponsorship'],
+  // A parent's account is about their children: no personal profile, progress, saved items or sponsorship.
+  guardian: [
+    'dashboard',
+    'opportunities',
+    'programmes',
+    'directory',
+    'applications',
+    'connections',
+    'settings',
+  ],
+  // Coaches connect with athletes; they do not apply to listings or ask for sponsorship.
+  coach: [...COMMON, 'calendar', 'directory'],
+  // Organisations review applications they receive; they have no coach connections, saved items or sponsorship.
+  organisation: [
+    'dashboard',
+    'opportunities',
+    'programmes',
+    'messages',
+    'profile',
+    'calendar',
+    'membership',
+    'settings',
+    'directory',
+    'applications',
+  ],
   // Staff see what they use: browsing (to check what families see) and the Admin dashboard.
   admin: ['opportunities', 'programmes', 'directory', 'admin'],
 };
 
+/** Where the same page means something different to a role, the sidebar says so. */
+const ROLE_LABELS: Partial<Record<Role, Partial<Record<AppSection, string>>>> = {
+  guardian: { applications: 'Children’s applications', connections: 'Coach requests' },
+  organisation: { applications: 'Applications' },
+};
+
 export function navFor(role: Role | undefined): NavItem[] {
-  const allowed = new Set(ROLE_SECTIONS[role ?? 'athlete']);
-  return NAV_ITEMS.filter((i) => allowed.has(i.section));
+  const r = role ?? 'athlete';
+  const allowed = new Set(ROLE_SECTIONS[r]);
+  return NAV_ITEMS.filter((i) => allowed.has(i.section)).map((i) => {
+    const label = ROLE_LABELS[r]?.[i.section];
+    return label ? { ...i, label } : i;
+  });
 }
 
 export function canAccess(role: Role | undefined, section: AppSection): boolean {
