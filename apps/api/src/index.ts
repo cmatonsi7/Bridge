@@ -10,6 +10,7 @@ import { firestoreApplicationsRepo } from './services/firebaseApplicationsRepo.j
 import { firestoreDirectoryRepo } from './services/firebaseDirectoryRepo.js';
 import { firestoreOrgOnboardingRepo } from './services/firebaseOrgOnboardingRepo.js';
 import { firestoreOrgImportRepo } from './services/firebaseOrgImportRepo.js';
+import { firestoreSponsorshipRepo } from './services/firebaseSponsorshipRepo.js';
 import { createApp } from './app.js';
 
 const env = loadEnv();
@@ -25,6 +26,7 @@ const app = createApp({
   directory: firestoreDirectoryRepo(getFirestore(firebaseApp)),
   orgOnboarding: firestoreOrgOnboardingRepo(getFirestore(firebaseApp)),
   orgImport: firestoreOrgImportRepo(getFirestore(firebaseApp)),
+  sponsorship: firestoreSponsorshipRepo(getFirestore(firebaseApp)),
   webDistDir,
   trustProxyHops: env.TRUST_PROXY_HOPS,
 });

@@ -326,6 +326,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---- Sponsorship (Phase 3d). Written only by the server. Open requests are visible to signed-in adults and
+    // parents, never to children; the asker always sees their own; staff see everything.
+    match /sponsorshipRequests/{requestId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.requesterUid == request.auth.uid)
+        || (signedIn() && resource.data.status == 'open' && !isMinorUser());
+      allow write: if false;
+    }
+    // An offer, and any contact details it carries after acceptance, is visible only to the two people involved.
+    match /sponsorshipOffers/{offerId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.requesterUid == request.auth.uid)
+        || (signedIn() && resource.data.offererUid == request.auth.uid);
+      allow write: if false;
+    }
+
     // ---- Guardian links: visible to the athlete it concerns, the linked guardian, and admins. Server-written. ----
     match /guardianLinks/{linkId} {
       allow read: if isAdmin()

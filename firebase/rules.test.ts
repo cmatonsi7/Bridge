@@ -1146,3 +1146,82 @@ describe('public pages (Phase 4): organisations are public, people are not', () 
     await assertFails(getDoc(doc(anon(), 'organisations/pub2')));
   });
 });
+
+describe('sponsorship (Phase 3d)', () => {
+  const req = (over: Record<string, unknown> = {}) => ({
+    requesterUid: 'alice',
+    athleteUid: 'alice',
+    forChild: false,
+    displayName: 'A B.',
+    status: 'open',
+    title: 'Boots',
+    ...over,
+  });
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'sponsorshipRequests/open1'), req());
+      await setDoc(
+        doc(db, 'sponsorshipRequests/pending1'),
+        req({ requesterUid: 'mom', athleteUid: 'teen', forChild: true, status: 'pending_review' }),
+      );
+      await setDoc(doc(db, 'sponsorshipOffers/open1_bob'), {
+        requestId: 'open1',
+        requesterUid: 'alice',
+        offererUid: 'bob',
+        status: 'accepted',
+        contacts: { requesterEmail: 'alice@example.com', offererEmail: 'bob@example.com' },
+      });
+      await setDoc(doc(db, 'users/mom'), user('mom', { role: 'guardian' }));
+    });
+  });
+
+  it('signed-in adults see open requests; children and the signed-out world do not', async () => {
+    await assertSucceeds(getDoc(doc(as('bob', { role: 'coach' }), 'sponsorshipRequests/open1')));
+    await assertSucceeds(
+      getDocs(
+        query(collection(as('bob', { role: 'coach' }), 'sponsorshipRequests'), where('status', '==', 'open')),
+      ),
+    );
+    await assertFails(getDoc(doc(as('teen', { role: 'athlete' }), 'sponsorshipRequests/open1')));
+    await assertFails(getDoc(doc(anon(), 'sponsorshipRequests/open1')));
+  });
+
+  it('a request waiting for review is seen only by the person who asked and by staff', async () => {
+    await assertSucceeds(getDoc(doc(as('mom', { role: 'guardian' }), 'sponsorshipRequests/pending1')));
+    await assertSucceeds(
+      getDoc(doc(as('staff', { role: 'admin', admin: true }), 'sponsorshipRequests/pending1')),
+    );
+    await assertFails(getDoc(doc(as('bob', { role: 'coach' }), 'sponsorshipRequests/pending1')));
+    await assertFails(
+      getDocs(
+        query(
+          collection(as('bob', { role: 'coach' }), 'sponsorshipRequests'),
+          where('status', '==', 'pending_review'),
+        ),
+      ),
+    );
+  });
+
+  it('an offer, with its contact details, is seen only by the two people involved and staff', async () => {
+    await assertSucceeds(getDoc(doc(as('alice'), 'sponsorshipOffers/open1_bob')));
+    await assertSucceeds(getDoc(doc(as('bob', { role: 'coach' }), 'sponsorshipOffers/open1_bob')));
+    await assertSucceeds(getDoc(doc(as('staff', { admin: true }), 'sponsorshipOffers/open1_bob')));
+    await assertFails(getDoc(doc(as('mom', { role: 'guardian' }), 'sponsorshipOffers/open1_bob')));
+    await assertFails(
+      getDocs(
+        query(
+          collection(as('mom', { role: 'guardian' }), 'sponsorshipOffers'),
+          where('requestId', '==', 'open1'),
+        ),
+      ),
+    );
+  });
+
+  it('nobody writes sponsorship records from the browser', async () => {
+    await assertFails(setDoc(doc(as('alice'), 'sponsorshipRequests/mine'), req()));
+    await assertFails(updateDoc(doc(as('alice'), 'sponsorshipRequests/open1'), { status: 'closed' }));
+    await assertFails(updateDoc(doc(as('alice'), 'sponsorshipOffers/open1_bob'), { status: 'declined' }));
+    await assertFails(deleteDoc(doc(as('bob', { role: 'coach' }), 'sponsorshipOffers/open1_bob')));
+  });
+});
