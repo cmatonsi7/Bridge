@@ -1,11 +1,9 @@
 // Migrated from the SportBridge HTML prototype (rendered markup) by tools/html_to_jsx.py. Maintained by hand.
 import {
   Building2,
-  Calendar,
   Footprints,
   Globe,
   GraduationCap,
-  MapPin,
   Rocket,
   ShieldCheck,
   Star,
@@ -15,6 +13,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useState } from 'react';
+import { PublicListingsGrid } from '../../features/listings/PublicListingsGrid';
 import { useLegacyActions } from '../../features/marketing/useLegacyActions';
 
 /**
@@ -298,96 +297,9 @@ export default function HomePage() {
             <div className="section-head">
               <span className="eyebrow">FEATURED OPPORTUNITIES</span>
               <h2>Find your next opportunity.</h2>
-              <p>Explore the latest trials, scholarships, coaching roles, events and more.</p>
+              <p>Explore the latest trials, scholarships, bursaries, talent ID days and events.</p>
             </div>
-            <div className="feature-grid">
-              <article className="op-card">
-                <img src="/images/opportunities.webp" alt="" loading="lazy" />
-                <div className="op-body">
-                  <span className="tag">TRIALS</span>
-                  <h3>U17 Provincial Trials</h3>
-                  <div className="meta">
-                    Western Province Rugby
-                    <br />
-                    <MapPin className="icon" aria-hidden="true" /> Cape Town, Western Cape
-                    <br />
-                    <Calendar className="icon" aria-hidden="true" /> 15 Nov 2026
-                  </div>
-                  <div className="op-footer">
-                    <span className="link">View details →</span>
-                  </div>
-                </div>
-              </article>
-              <article className="op-card">
-                <img src="/images/football-bursary.webp" alt="" loading="lazy" />
-                <div className="op-body">
-                  <span className="tag">SCHOLARSHIP</span>
-                  <h3>Football Bursary 2027</h3>
-                  <div className="meta">
-                    National Sports Academy
-                    <br />
-                    <MapPin className="icon" aria-hidden="true" /> Johannesburg, Gauteng
-                    <br />
-                    <Calendar className="icon" aria-hidden="true" /> 30 Nov 2026
-                  </div>
-                  <div className="op-footer">
-                    <span className="link">View details →</span>
-                  </div>
-                </div>
-              </article>
-              <article className="op-card">
-                <img src="/images/coach-athlete.webp" alt="" loading="lazy" />
-                <div className="op-body">
-                  <span className="tag">COACHING</span>
-                  <h3>Assistant Coach Position</h3>
-                  <div className="meta">
-                    Elite Netball Academy
-                    <br />
-                    <MapPin className="icon" aria-hidden="true" /> Pretoria, Gauteng
-                    <br />
-                    <Calendar className="icon" aria-hidden="true" /> 22 Nov 2026
-                  </div>
-                  <div className="op-footer">
-                    <span className="link">View details →</span>
-                  </div>
-                </div>
-              </article>
-              <article className="op-card">
-                <img src="/images/athlete-journey.webp" alt="" loading="lazy" />
-                <div className="op-body">
-                  <span className="tag">TRIALS</span>
-                  <h3>U19 Athletics Selection</h3>
-                  <div className="meta">
-                    Athletics South Africa
-                    <br />
-                    <MapPin className="icon" aria-hidden="true" /> Durban, KwaZulu-Natal
-                    <br />
-                    <Calendar className="icon" aria-hidden="true" /> 8 Dec 2026
-                  </div>
-                  <div className="op-footer">
-                    <span className="link">View details →</span>
-                  </div>
-                </div>
-              </article>
-            </div>
-          </div>
-        </section>
-        <section className="section sb-support-cta">
-          <div className="wrap sb-support-cta-inner">
-            <div>
-              <span className="eyebrow">SUPPORT SHOULD NOT BE A BARRIER</span>
-              <h2>Need help covering sporting costs?</h2>
-              <p>
-                Submit a sponsorship support request for travel, equipment, training, competition fees or a
-                bursary. Requests can be reviewed by eligible coaches, clubs and sponsors; funding is not
-                guaranteed.
-              </p>
-            </div>
-            <div className="sb-sponsorship-actions">
-              <button className="btn green" onClick={a.supportAthlete} type="button">
-                Request Sponsorship Support →
-              </button>
-            </div>
+            <PublicListingsGrid kind="opportunity" max={4} />
           </div>
         </section>
         <section className="section">
@@ -401,30 +313,33 @@ export default function HomePage() {
                 <div className="step-no">01</div>
                 <h3>Create Your Profile</h3>
                 <p>
-                  Sign up as an athlete, parent, coach, club or programme provider. Get verified for a trusted
-                  presence.
+                  Sign up as an athlete, parent, coach, school, club or programme provider. Organisations can
+                  be verified by SportBridge staff.
                 </p>
               </div>
               <div className="step">
                 <div className="step-no">02</div>
                 <h3>Discover Opportunities</h3>
                 <p>
-                  Browse trials, scholarships, coaching roles and holiday programmes tailored to your sport
-                  and location.
+                  Browse trials, scholarships, bursaries and holiday programmes, and filter them by sport,
+                  province and age.
                 </p>
               </div>
               <div className="step">
                 <div className="step-no">03</div>
                 <h3>Connect & Apply</h3>
                 <p>
-                  Message coaches, clubs and programme providers directly and apply for the opportunities that
-                  fit you.
+                  Apply for the opportunities that fit you. Coaches can ask to connect, and you, or your
+                  parent if you are under 18, decide.
                 </p>
               </div>
               <div className="step">
                 <div className="step-no">04</div>
                 <h3>Track Your Growth</h3>
-                <p>Monitor progress, receive feedback and build a record that gets you discovered.</p>
+                <p>
+                  Record your achievements and skills, and build a profile that coaches and organisations can
+                  find.
+                </p>
               </div>
             </div>
           </div>
@@ -440,19 +355,25 @@ export default function HomePage() {
             </div>
             <div className="why">
               <div className="why-image">
-                <span className="eyebrow">SMART SPORT MANAGEMENT</span>
+                <span className="eyebrow">YOUR SPORTING PROFILE</span>
                 <h3>
-                  Track Progress.
+                  Build Your Record.
                   <br />
-                  Measure Impact.
+                  Be Found.
                 </h3>
-                <p>Performance tracking, coach feedback, achievement records and development insights.</p>
+                <p>
+                  Achievements, skills and a sporting profile in one place, visible only to the people you
+                  choose.
+                </p>
               </div>
               <div className="why-card">
                 <h3>
-                  <ShieldCheck className="icon" aria-hidden="true" /> Verified & Safe
+                  <ShieldCheck className="icon" aria-hidden="true" /> Verification & Child Protection
                 </h3>
-                <p>POPIA-conscious platform with verified profiles and child-safety controls built in.</p>
+                <p>
+                  SportBridge staff check an organisation before it is marked Verified. Under-18s are never
+                  listed, and need a parent’s confirmation before they can apply.
+                </p>
               </div>
               <div className="why-card">
                 <h3>
@@ -468,9 +389,9 @@ export default function HomePage() {
               </div>
               <div className="why-card">
                 <h3>
-                  <Zap className="icon" aria-hidden="true" /> Smart Matching
+                  <Zap className="icon" aria-hidden="true" /> Find What Fits
                 </h3>
-                <p>Surface relevant opportunities based on sport, location and profile information.</p>
+                <p>Browse and filter opportunities by sport, province, age group and cost.</p>
               </div>
             </div>
           </div>
@@ -606,8 +527,10 @@ export default function HomePage() {
                   Is SportBridge free to use?<span className="plus">+</span>
                 </button>
                 <div className="faq-a">
-                  The demo shows a free Starter tier alongside paid plans. Final membership rules and pricing
-                  are subject to SportBridge approval.
+                  Starter is free. Pro is {PLANS.pro.monthly} a month or {PLANS.pro.annual} a year, and
+                  Organisation is {PLANS.organisation.monthly} a month or {PLANS.organisation.annual} a year.
+                  Paying yearly gives two months free. Paid plans are not open yet, so nothing is charged
+                  today.
                 </div>
               </div>
               <div className="faq-item">
@@ -615,8 +538,9 @@ export default function HomePage() {
                   How does verification work?<span className="plus">+</span>
                 </button>
                 <div className="faq-a">
-                  Profiles and organisations can go through an administrative verification process.
-                  Qualification and safeguarding documents can be reviewed before verification is granted.
+                  SportBridge staff verify an organisation after checking that it is real and that the account
+                  represents it. Organisations that have not been checked say so. Coaches’ qualifications are
+                  shown as self-declared for now.
                 </div>
               </div>
               <div className="faq-item">
@@ -624,9 +548,9 @@ export default function HomePage() {
                   Is SportBridge POPIA compliant?<span className="plus">+</span>
                 </button>
                 <div className="faq-a">
-                  The product design includes privacy and child-safety controls intended to support
-                  POPIA-aligned operation. Final legal policies and implementation require SportBridge
-                  approval and legal review.
+                  The Privacy & POPIA notice has not been published yet. In the meantime, under-18s are never
+                  listed, organisations never see a child’s contact details, and contact details are never
+                  shown on public pages.
                 </div>
               </div>
               <div className="faq-item">
@@ -634,8 +558,8 @@ export default function HomePage() {
                   Can I post opportunities and programmes for free?<span className="plus">+</span>
                 </button>
                 <div className="faq-a">
-                  Organisation features and listing access can be controlled through configurable membership
-                  rules. The demo uses the Organisation plan as the example.
+                  Yes, for now. Organisations can post opportunities and programmes at no charge today. Paid
+                  Organisation plans open later, starting with a 30-day trial for approved organisations.
                 </div>
               </div>
               <div className="faq-item">
@@ -643,8 +567,8 @@ export default function HomePage() {
                   How are holiday programmes listed?<span className="plus">+</span>
                 </button>
                 <div className="faq-a">
-                  Providers can submit programme details including sport/activity, age group, location, dates,
-                  times, venue, duration, pricing and capacity. Listings can be reviewed before publication.
+                  Organisations add the details themselves, such as the sport, age group, location, dates and
+                  price. Each listing’s page shows whether the organisation has been verified by SportBridge.
                 </div>
               </div>
             </div>

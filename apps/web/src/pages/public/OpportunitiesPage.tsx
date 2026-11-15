@@ -10,7 +10,7 @@ export default function OpportunitiesPage() {
             <div className="section-head">
               <span className="eyebrow">OPPORTUNITIES</span>
               <h2>Featured Opportunities</h2>
-              <p>Explore trials, scholarships, coaching roles, events and more.</p>
+              <p>Explore trials, scholarships, bursaries, talent ID days and events.</p>
             </div>
             <PublicListingsGrid kind="opportunity" />
           </div>
