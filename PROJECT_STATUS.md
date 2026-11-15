@@ -55,6 +55,14 @@ _Last updated: 2026-11-12 · Phases 1–3 accepted. Admin Dashboard and onboardi
 6. Notifications: in-app only.
 7. Sponsorship: request and express interest only; SportBridge handles no money. **Client to confirm.**
 
+## Review pass of every role on the live site (after the Home page fix)
+Public pages, administrator, under-18 athlete, parent, coach, organisation and adult athlete were each walked through on the live site: no errors, nothing invented. Polish found and fixed on branch `role-polish`:
+- **Role-specific sidebars:** a parent sees only dashboard, opportunities, programmes, directory, "Children's applications", "Coach requests" and settings. Coaches no longer get applications or sponsorship. Organisations get "Applications" (was "My Applications") and no connections, saved items or sponsorship. Hidden pages are also blocked by URL, and send people to the dashboard.
+- **Claim-code card** on the organisation dashboard now shows only while there are no listings or applications (the server already refused the rest).
+- **Child page** wording no longer says "when Discovery launches".
+- **Resources page** has real content. **Every public page** has its own browser tab title.
+- **Still open:** should an under-18 account be able to store a phone number (Settings shows "Update phone number")? Left as is. Legal question 21 added (consent is recorded against the draft terms). Three organisations are awaiting verification in Admin.
+
 ## Home page content made honest (after the merge of `phase-4-onboarding` to `main`)
 - **Featured opportunities** now shows up to four real open listings (same grid as `/opportunities`), with honest empty, loading and error states. The four invented cards ("National Sports Academy" and others) are gone.
 - **Sponsorship band removed** from Home (sponsorship, phase 3d, is not built). Bring it back when it exists.
@@ -108,7 +116,7 @@ The client wants real schools, clubs and coaches on the platform instead of an e
 - Unclaimed organisations cannot post (no owner) and show a notice on their directory profile. The organisation dashboard offers a claim card to self-registered, unverified organisations.
 - Organisation dashboard now shows **real** counts of live/draft opportunities and programmes and applications waiting (the "coming in the next release" text was stale).
 - **To make a staff account:** `npm run grant-admin -w apps/api -- person@example.com` (needs the service account key in the environment; the person signs out and in again).
-- Rules: 66 tests. API: 62 tests. Web: 160 tests. Shared: 66 tests.
+- Rules: 66 tests. API: 62 tests. Web: 168 tests. Shared: 66 tests.
 - Decisions pending from the client: where the school/coach lists come from; coach vetting for those connecting with children; who the admin users are; POPIA sign-off for listing coaches.
 - Step B (CSV import with preview, duplicate detection and undo) and step C (coaches) follow.
 

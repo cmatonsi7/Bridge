@@ -132,7 +132,14 @@ export function OrgDashboard() {
           </button>
         </div>
       </div>
-      {o.source !== 'staff_import' && !o.verified && <ClaimOrganisationCard />}
+      {/* A claim code replaces an empty profile, and the server refuses it once there are listings,
+          so only offer it while there is nothing to lose. */}
+      {o.source !== 'staff_import' &&
+        !o.verified &&
+        mine.status === 'ready' &&
+        mine.data.length === 0 &&
+        apps.status === 'ready' &&
+        apps.data.length === 0 && <ClaimOrganisationCard />}
     </section>
   );
 }

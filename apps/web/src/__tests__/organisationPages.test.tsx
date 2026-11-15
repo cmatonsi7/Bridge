@@ -102,6 +102,19 @@ describe('OrgDashboard', () => {
     expect(screen.getByText(/haven’t created any opportunities yet/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Create your first opportunity' })).toBeTruthy();
   });
+  it('offers the claim code only while the profile has no listings or applications to lose', () => {
+    const first = renderIn(<OrgDashboard />);
+    expect(screen.getByRole('button', { name: 'Claim my organisation' })).toBeTruthy();
+    first.unmount();
+    dash.listings = [{ id: 'a', kind: 'opportunity', status: 'draft', deadline: '2099-01-01' }];
+    const second = renderIn(<OrgDashboard />);
+    expect(screen.queryByRole('button', { name: 'Claim my organisation' })).toBeNull();
+    second.unmount();
+    dash.listings = [];
+    dash.apps = [{ id: '1', status: 'submitted' }];
+    renderIn(<OrgDashboard />);
+    expect(screen.queryByRole('button', { name: 'Claim my organisation' })).toBeNull();
+  });
   it('reaches 100% with a complete profile', () => {
     st.org = fullOrg;
     renderIn(<OrgDashboard />);
