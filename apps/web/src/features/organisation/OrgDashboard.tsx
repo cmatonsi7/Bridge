@@ -95,7 +95,7 @@ export function OrgDashboard() {
           <p className="sb-meta" style={{ lineHeight: 1.7 }}>
             {o.verified
               ? 'SportBridge has verified your organisation.'
-              : 'Your organisation has not been verified yet. SportBridge staff will review organisations once verification opens; until then your profile shows as “Not yet verified”.'}
+              : 'Your organisation has not been verified yet. SportBridge staff check each organisation before verifying it; until then your profile shows as “Not yet verified”.'}
           </p>
         </div>
       </div>

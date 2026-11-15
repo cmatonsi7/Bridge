@@ -475,76 +475,6 @@ export default function HomePage() {
             </div>
           </div>
         </section>
-        <section className="section">
-          <div className="wrap">
-            <div className="section-head">
-              <span className="eyebrow">REAL PEOPLE. REAL IMPACT.</span>
-              <h2>See how SportBridge is changing lives.</h2>
-            </div>
-            <div className="testimonials">
-              <div className="testimonial">
-                <div className="stars">
-                  <Star className="icon fill" aria-hidden="true" />
-                  <Star className="icon fill" aria-hidden="true" />
-                  <Star className="icon fill" aria-hidden="true" />
-                  <Star className="icon fill" aria-hidden="true" />
-                  <Star className="icon fill" aria-hidden="true" />
-                </div>
-                <p>
-                  “SportBridge helped my son find a holiday programme that built his confidence and skills.
-                  The platform is easy to use and really puts children first.”
-                </p>
-                <div className="person">
-                  <span className="avatar">ND</span>
-                  <div>
-                    <b>Nomsa Dlamini</b>
-                    <small>Parent, Johannesburg</small>
-                  </div>
-                </div>
-              </div>
-              <div className="testimonial">
-                <div className="stars">
-                  <Star className="icon fill" aria-hidden="true" />
-                  <Star className="icon fill" aria-hidden="true" />
-                  <Star className="icon fill" aria-hidden="true" />
-                  <Star className="icon fill" aria-hidden="true" />
-                  <Star className="icon fill" aria-hidden="true" />
-                </div>
-                <p>
-                  “I was able to showcase my coaching experience and connect with talented athletes. It's a
-                  game-changer for grassroots coaches across South Africa.”
-                </p>
-                <div className="person">
-                  <span className="avatar">SK</span>
-                  <div>
-                    <b>Sibusiso Khumalo</b>
-                    <small>Coach, Durban</small>
-                  </div>
-                </div>
-              </div>
-              <div className="testimonial">
-                <div className="stars">
-                  <Star className="icon fill" aria-hidden="true" />
-                  <Star className="icon fill" aria-hidden="true" />
-                  <Star className="icon fill" aria-hidden="true" />
-                  <Star className="icon fill" aria-hidden="true" />
-                  <Star className="icon fill" aria-hidden="true" />
-                </div>
-                <p>
-                  “Through SportBridge, our academy has reached more young athletes and filled our holiday
-                  camps faster than ever before.”
-                </p>
-                <div className="person">
-                  <span className="avatar">LP</span>
-                  <div>
-                    <b>Lauren Peters</b>
-                    <small>Programme Provider, Stellenbosch</small>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
         <section className="section pricing" id="pricing">
           <div className="wrap">
             <div className="section-head">
@@ -651,10 +581,6 @@ export default function HomePage() {
                   Get Organisation →
                 </button>
               </div>
-            </div>
-            <div className="quote">
-              <p>“Sport changed my life. Now I want to help others find their opportunity.”</p>
-              <small>— Athlete, Cape Town</small>
             </div>
           </div>
         </section>

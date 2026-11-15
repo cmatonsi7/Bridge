@@ -37,7 +37,8 @@ export interface UserDoc {
 
 /** users/{uid}/private/details — never public. Owner, verified guardians (Phase 2) and admins only. */
 export interface PrivateDetailsDoc {
-  dateOfBirth: string; // YYYY-MM-DD
+  /** YYYY-MM-DD. Absent on organisation accounts, which give no date of birth. */
+  dateOfBirth?: string;
   mobile: string;
 }
 

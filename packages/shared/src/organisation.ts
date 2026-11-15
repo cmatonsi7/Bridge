@@ -103,6 +103,8 @@ export interface OrganisationFullDoc extends Partial<Omit<OrganisationProfileFie
   verified: boolean;
   /** When staff last verified the organisation; null if it is not verified. */
   verifiedAt?: string | null;
+  /** Set on organisations created by a spreadsheet import, so the whole upload can be undone. */
+  importBatchId?: string | null;
   privacy?: OrgPrivacy;
   /** Absent on organisations created at sign-up (treated as claimed, self-registered). */
   claimStatus?: 'unclaimed' | 'claimed';

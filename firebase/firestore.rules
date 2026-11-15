@@ -229,6 +229,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ---- Spreadsheet import batches (Phase 4): a record of each upload, so it can be reviewed or undone.
+    // Staff can read them; only the server writes them.
+    match /importBatches/{batchId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // ---- Verification decisions (Phase 4): staff-only record, with the internal note. Written only by the server;
     // the organisation can never read the note.
     match /organisationVerifications/{orgId} {
@@ -294,8 +301,11 @@ service cloud.firestore {
         && userDoc(request.auth.uid).get('isMinor', false) == true;
     }
     match /directoryProfiles/{uid} {
-      allow read: if signedIn()
-        && (resource.data.role in ['coach', 'organisation'] || !isMinorUser());
+      // Organisations are public: a school or club wants to be found, and its entry holds nothing personal.
+      // Athletes and coaches chose to be found by signed-in members, not by the open internet, so they stay behind
+      // sign-in, and a child still never sees another athlete.
+      allow read: if resource.data.role == 'organisation'
+        || (signedIn() && (resource.data.role in ['coach', 'organisation'] || !isMinorUser()));
       allow write: if false;
     }
 

@@ -1,13 +1,12 @@
 import { useMemo } from 'react';
-import type { MouseEvent, FormEvent } from 'react';
+import type { MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 
 /**
  * Interaction handlers for the marketing pages migrated from the prototype.
- * The FAQ, billing toggle and Discover filters act on the static marketing markup exactly as the
- * prototype did (class toggles scoped to the clicked section). Phase 3 replaces the Discover cards
- * with Firestore data and a stateful component.
+ * The FAQ and billing toggle act on the static marketing markup exactly as the
+ * prototype did (class toggles scoped to the clicked section).
  */
 export function useLegacyActions() {
   const navigate = useNavigate();
@@ -16,24 +15,6 @@ export function useLegacyActions() {
 
   return useMemo(() => {
     const go = (path: string) => () => navigate(path);
-
-    const filterDiscover = (e: FormEvent | MouseEvent) => {
-      const root = (e.currentTarget as HTMLElement).closest('section.page') ?? document;
-      const q = ((root.querySelector('#discoverSearch') as HTMLInputElement | null)?.value ?? '')
-        .toLowerCase()
-        .trim();
-      const active =
-        (root.querySelector('.discover-tabs button.active') as HTMLElement | null)?.dataset.tab ?? 'all';
-      let visible = 0;
-      root.querySelectorAll<HTMLElement>('.discover-card').forEach((card) => {
-        const show =
-          (active === 'all' || card.dataset.type === active) && (!q || (card.dataset.name ?? '').includes(q));
-        card.style.display = show ? 'block' : 'none';
-        if (show) visible++;
-      });
-      const empty = root.querySelector<HTMLElement>('#discoverEmpty');
-      if (empty) empty.style.display = visible ? 'none' : 'block';
-    };
 
     return {
       go,
@@ -66,13 +47,6 @@ export function useLegacyActions() {
         btn.parentElement?.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
       },
-      discoverTab: (_tab: string) => (e: MouseEvent<HTMLElement>) => {
-        const btn = e.currentTarget;
-        btn.parentElement?.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        filterDiscover(e);
-      },
-      filterDiscover,
     };
   }, [navigate, signedIn]);
 }

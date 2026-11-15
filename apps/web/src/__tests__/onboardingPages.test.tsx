@@ -216,6 +216,16 @@ describe('unclaimed organisations in the directory', () => {
     expect(screen.getByText('Added by SportBridge')).toBeTruthy();
     expect(screen.queryByText('Not yet verified')).toBeNull();
   });
+  it('a verified organisation is marked Verified on its card; others and people are not', () => {
+    const verified = { ...unclaimed, claimed: true, verified: true };
+    const v = r(<DirectoryCard entry={verified} />);
+    expect(screen.getByText('Verified organisation')).toBeTruthy();
+    expect(screen.queryByText('Not yet verified')).toBeNull();
+    expect(screen.queryByText('Added by SportBridge')).toBeNull();
+    v.unmount();
+    r(<DirectoryCard entry={{ ...verified, role: 'coach' }} />);
+    expect(screen.queryByText('Verified organisation')).toBeNull();
+  });
   it('the profile explains it cannot post yet and how a representative takes it over', () => {
     render(
       <MemoryRouter initialEntries={['/app/directory/org_org1']}>

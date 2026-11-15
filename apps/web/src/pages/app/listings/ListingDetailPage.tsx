@@ -64,14 +64,17 @@ export default function ListingDetailPage() {
                   This listing is closed.
                 </p>
               ) : null}
-              <button
-                type="button"
-                className="sb-btn"
-                aria-pressed={ids.has(l.id)}
-                onClick={() => void toggle(l)}
-              >
-                {ids.has(l.id) ? 'Saved ✓' : 'Save'}
-              </button>
+              {/* Staff are looking at what families see; they have no shortlist to save to. */}
+              {me?.user.role !== 'admin' && (
+                <button
+                  type="button"
+                  className="sb-btn"
+                  aria-pressed={ids.has(l.id)}
+                  onClick={() => void toggle(l)}
+                >
+                  {ids.has(l.id) ? 'Saved ✓' : 'Save'}
+                </button>
+              )}
             </>
           )
         }

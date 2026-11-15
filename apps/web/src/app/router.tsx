@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Outlet, RouterProvider, Navigate } from 'react-router-dom';
 import { PublicLayout } from '../layouts/PublicLayout';
 import { AppShell } from '../layouts/AppShell';
 import { BootScreen, GuestOnly, RequireAccount, RequireRole, RequireSection, SignedInOnly } from './guards';
@@ -44,9 +44,10 @@ const router = createBrowserRouter([
       { path: '/about', element: page(() => import('../pages/public/AboutPage')) },
       { path: '/opportunities', element: page(() => import('../pages/public/OpportunitiesPage')) },
       { path: '/programmes', element: page(() => import('../pages/public/ProgrammesPage')) },
-      { path: '/athletes', element: page(() => import('../pages/public/AthletesPage')) },
-      { path: '/coaches', element: page(() => import('../pages/public/CoachesPage')) },
-      { path: '/clubs', element: page(() => import('../pages/public/ClubsPage')) },
+      { path: '/athletes', element: <Navigate to="/features/athletes" replace /> },
+      { path: '/coaches', element: <Navigate to="/features/coaches" replace /> },
+      { path: '/clubs', element: <Navigate to="/features/organisations" replace /> },
+      { path: '/organisations/:key', element: page(() => import('../pages/public/OrganisationPage')) },
       { path: '/resources', element: page(() => import('../pages/public/ResourcesPage')) },
       {
         path: '/listings/:listingId',

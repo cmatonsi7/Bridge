@@ -30,6 +30,16 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(err.status).json({ error: { code: err.code, message: err.message, details: err.details } });
     return;
   }
+  if (err?.type === 'entity.too.large') {
+    res.status(413).json({
+      error: {
+        code: 'TOO_LARGE',
+        message:
+          'That request is too large. For spreadsheets, split the file into smaller ones (500 rows at most).',
+      },
+    });
+    return;
+  }
   if (err?.type === 'entity.parse.failed') {
     res.status(400).json({ error: { code: 'BAD_JSON', message: 'Request body is not valid JSON' } });
     return;

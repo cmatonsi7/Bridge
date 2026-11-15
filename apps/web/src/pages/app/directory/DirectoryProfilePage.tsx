@@ -69,6 +69,17 @@ export default function DirectoryProfilePage() {
         <div>
           <div className="sb-kicker">{ROLE_LABEL[e.role].toUpperCase()}</div>
           <h1>{e.displayName}</h1>
+          {e.role === 'organisation' && (
+            <p>
+              <span className={`v-badge ${e.verified ? 'ok' : 'pending'}`}>
+                {e.verified
+                  ? 'Verified organisation'
+                  : e.claimed === false
+                    ? 'Added by SportBridge'
+                    : 'Not yet verified'}
+              </span>
+            </p>
+          )}
           {e.headline && <p>{e.headline}</p>}
         </div>
         <button type="button" className="sb-btn" onClick={() => navigate('/app/directory')}>
