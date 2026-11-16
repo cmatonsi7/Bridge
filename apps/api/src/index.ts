@@ -15,6 +15,10 @@ import { firestoreMembershipRepo } from './services/firebaseMembershipRepo.js';
 import { firestoreMessagesRepo } from './services/firebaseMessagesRepo.js';
 import { firestoreCoachVerificationRepo } from './services/firebaseCoachVerificationRepo.js';
 import { getStorage } from 'firebase-admin/storage';
+import { firestoreEmailRepo } from './services/firebaseEmailRepo.js';
+import { deliverEmails } from './services/email.js';
+import { senderFromEnv } from './services/emailSenders.js';
+import { setNotificationDispatcher } from './services/notifier.js';
 import { createApp } from './app.js';
 
 const env = loadEnv();
@@ -23,6 +27,18 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const webDistDir = env.WEB_DIST_DIR ?? path.resolve(here, '../../web/dist');
 
 const messagesRepo = firestoreMessagesRepo(getFirestore(firebaseApp));
+const emailRepo = firestoreEmailRepo(getFirestore(firebaseApp));
+
+/**
+ * Email is wired here, once, and reached from the repositories through the notifier. Without a provider
+ * configured this logs instead of sending, which is the state the platform ships in today.
+ */
+setNotificationDispatcher((outbox) => {
+  void deliverEmails(
+    { repo: emailRepo, sender: senderFromEnv(), appUrl: process.env.APP_URL ?? 'https://bridge-ekz6.onrender.com' },
+    outbox,
+  );
+});
 
 const app = createApp({
   auth: firebaseAuthPort(getAuth(firebaseApp)),
@@ -35,6 +51,7 @@ const app = createApp({
   sponsorship: firestoreSponsorshipRepo(getFirestore(firebaseApp)),
   membership: firestoreMembershipRepo(getFirestore(firebaseApp)),
   messages: messagesRepo,
+  email: emailRepo,
   coachVerification: firestoreCoachVerificationRepo(
     getFirestore(firebaseApp),
     getStorage(firebaseApp),

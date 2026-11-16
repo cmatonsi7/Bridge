@@ -12,6 +12,7 @@ import type { Firestore, Transaction } from 'firebase-admin/firestore';
 import type { Outbox } from './applications.js';
 import type { DirectoryRepoPort } from './directory.js';
 import { COACH_VERIFICATIONS } from './firebaseCoachVerificationRepo.js';
+import { dispatchNotifications } from './notifier.js';
 
 const DIRECTORY = 'directoryProfiles';
 const CONNECTIONS = 'connections';
@@ -67,13 +68,15 @@ export function firestoreDirectoryRepo(db: Firestore): DirectoryRepoPort {
         writeOutbox(tx, outbox);
         tx.create(db.collection(COLLECTIONS.auditLogs).doc(), audit);
       });
+      dispatchNotifications(outbox);
     },
     async coachVerificationStatus(uid) {
       const s = await db.collection(COACH_VERIFICATIONS).doc(uid).get();
       return s.exists ? (s.data() as CoachVerificationDoc).status : undefined;
     },
     async mutateConnection(id, decide) {
-      await db.runTransaction(async (tx) => {
+      // Captured inside the transaction and emailed only once it has committed.
+      const delivered = await db.runTransaction(async (tx) => {
         const ref = db.collection(CONNECTIONS).doc(id);
         const snap = await tx.get(ref);
         const conn = snap.exists ? (snap.data() as ConnectionDoc) : null;
@@ -83,7 +86,9 @@ export function firestoreDirectoryRepo(db: Firestore): DirectoryRepoPort {
         tx.update(ref, r.changes);
         writeOutbox(tx, r.outbox);
         tx.create(db.collection(COLLECTIONS.auditLogs).doc(), r.audit);
+        return r.outbox;
       });
+      dispatchNotifications(delivered);
     },
   };
 }

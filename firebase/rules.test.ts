@@ -24,6 +24,7 @@ import {
   orderBy,
   limit,
   getCountFromServer,
+  type Firestore,
 } from 'firebase/firestore';
 import { deleteObject, getMetadata, ref, uploadString } from 'firebase/storage';
 
@@ -96,9 +97,24 @@ beforeEach(async () => {
   });
 });
 
-const as = (uid: string, claims: Record<string, unknown> = {}) =>
-  env.authenticatedContext(uid, claims).firestore();
-const anon = () => env.unauthenticatedContext().firestore();
+// Reuse one Firestore client per identity instead of minting a new
+// Firebase app on every call. Each test still gets a clean slate via
+// env.clearFirestore() in beforeEach — this only avoids piling up
+// hundreds of live, never-torn-down client instances across a run this
+// size, which is what was tripping "Firestore has already been started
+// and its settings can no longer be changed" late in the suite.
+const dbCache = new Map<string, Firestore>();
+const as = (uid: string, claims: Record<string, unknown> = {}) => {
+  const key = `${uid}:${JSON.stringify(claims)}`;
+  let db = dbCache.get(key);
+  if (!db) {
+    db = env.authenticatedContext(uid, claims).firestore();
+    dbCache.set(key, db);
+  }
+  return db;
+};
+let anonDb: Firestore | undefined;
+const anon = () => (anonDb ??= env.unauthenticatedContext().firestore());
 
 describe('users', () => {
   it('owner can read own doc; others and anonymous cannot', async () => {
@@ -1545,5 +1561,45 @@ describe('coach credential verification (Phase 5b)', () => {
     // Staff cannot write these either — only the server.
     const staff = as('staff', { role: 'admin', admin: true });
     await assertFails(updateDoc(doc(staff, 'coachVerifications/bob'), { status: 'verified' }));
+  });
+});
+
+describe('email preferences (Phase 6)', () => {
+  const prefs = { activity: true, messages: false };
+
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users/bob/emailPreferences/self'), prefs);
+      await setDoc(doc(db, 'emailThrottle/bob__t1'), {
+        uid: 'bob',
+        threadId: 't1',
+        at: now,
+      });
+    });
+  });
+
+  it('lets someone read and change their own, and nobody else’s', async () => {
+    await assertSucceeds(getDoc(doc(as('bob'), 'users/bob/emailPreferences/self')));
+    await assertSucceeds(setDoc(doc(as('bob'), 'users/bob/emailPreferences/self'), prefs));
+    await assertFails(getDoc(doc(as('alice'), 'users/bob/emailPreferences/self')));
+    await assertFails(setDoc(doc(as('alice'), 'users/bob/emailPreferences/self'), prefs));
+    await assertFails(getDoc(doc(anon(), 'users/bob/emailPreferences/self')));
+  });
+
+  it('refuses a shape that is not two booleans', async () => {
+    await assertFails(setDoc(doc(as('bob'), 'users/bob/emailPreferences/self'), { activity: 'yes', messages: true }));
+    await assertFails(setDoc(doc(as('bob'), 'users/bob/emailPreferences/self'), { activity: true }));
+    await assertFails(
+      setDoc(doc(as('bob'), 'users/bob/emailPreferences/self'), { ...prefs, admin: true }),
+    );
+    // One document per person, not a pile of them.
+    await assertFails(setDoc(doc(as('bob'), 'users/bob/emailPreferences/other'), prefs));
+  });
+
+  it('keeps the send log away from everyone, because it says who is talking to whom', async () => {
+    await assertFails(getDoc(doc(as('bob'), 'emailThrottle/bob__t1')));
+    await assertFails(setDoc(doc(as('bob'), 'emailThrottle/bob__t1'), { uid: 'bob', threadId: 't1', at: now }));
+    await assertFails(getDoc(doc(as('staff', { role: 'admin', admin: true }), 'emailThrottle/bob__t1')));
   });
 });

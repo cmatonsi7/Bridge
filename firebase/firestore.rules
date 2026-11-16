@@ -266,6 +266,23 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---- Email preferences (Phase 6). A person reads and writes only their own, and the shape is
+    // checked here because this is one of the few things a browser may write directly.
+    match /users/{uid}/emailPreferences/{docId} {
+      allow read: if isSelf(uid);
+      allow write: if isSelf(uid)
+        && docId == 'self'
+        && request.resource.data.keys().hasOnly(['activity', 'messages'])
+        && request.resource.data.activity is bool
+        && request.resource.data.messages is bool;
+    }
+
+    // Server-side bookkeeping for how recently somebody was emailed about a conversation. Nobody reads
+    // it from a browser: it would say who is talking to whom.
+    match /emailThrottle/{id} {
+      allow read, write: if false;
+    }
+
     // ---- Coach credential verification (Phase 5b). The coach reads their own status and the note
     // written for them; staff read all. Server-written only — a coach cannot verify themselves.
     match /coachVerifications/{uid} {

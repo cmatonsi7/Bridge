@@ -8,6 +8,7 @@ import {
 } from '@sportbridge/shared';
 import { type Firestore, type Transaction } from 'firebase-admin/firestore';
 import type { MessagesRepoPort, Outbox } from './messages.js';
+import { dispatchNotifications } from './notifier.js';
 
 export const MESSAGE_THREADS = 'messageThreads';
 export const MESSAGE_ENTRIES = 'entries';
@@ -88,6 +89,7 @@ export function firestoreMessagesRepo(db: Firestore): MessagesRepoPort {
         writeOutbox(tx, outbox);
         tx.create(db.collection(COLLECTIONS.auditLogs).doc(), audit);
       });
+      dispatchNotifications(outbox);
     },
 
     async updateThread(id, changes, audit) {

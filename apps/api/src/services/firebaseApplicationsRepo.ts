@@ -11,6 +11,7 @@ import {
 import type { Firestore, Transaction } from 'firebase-admin/firestore';
 import type { ApplicationsRepoPort, Outbox } from './applications.js';
 import { MEMBERSHIPS } from './firebaseMembershipRepo.js';
+import { dispatchNotifications } from './notifier.js';
 
 const APPLICATIONS = 'applications';
 const LISTINGS = 'listings';
@@ -62,9 +63,11 @@ export function firestoreApplicationsRepo(db: Firestore): ApplicationsRepoPort {
         writeOutbox(tx, outbox);
         tx.create(db.collection(COLLECTIONS.auditLogs).doc(), audit);
       });
+      dispatchNotifications(outbox);
     },
     async mutateApplication(id, decide) {
-      await db.runTransaction(async (tx) => {
+      // Captured inside the transaction and emailed only once it has committed.
+      const delivered = await db.runTransaction(async (tx) => {
         const ref = db.collection(APPLICATIONS).doc(id);
         const snap = await tx.get(ref);
         const app = snap.exists ? (snap.data() as ApplicationDoc) : null;
@@ -74,7 +77,9 @@ export function firestoreApplicationsRepo(db: Firestore): ApplicationsRepoPort {
         tx.update(ref, r.changes);
         writeOutbox(tx, r.outbox);
         tx.create(db.collection(COLLECTIONS.auditLogs).doc(), r.audit);
+        return r.outbox;
       });
+      dispatchNotifications(delivered);
     },
   };
 }

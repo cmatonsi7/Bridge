@@ -117,7 +117,9 @@ export type NotificationType =
   | 'sponsorship.response'
   | 'sponsorship.reviewed'
   | 'message.received'
-  | 'coach.verification';
+  | 'coach.verification'
+  | 'connection.request'
+  | 'connection.answer';
 
 /** users/{uid}/notifications/{id}. Written by the server; the owner may only mark it read or delete it. */
 export interface NotificationDoc {

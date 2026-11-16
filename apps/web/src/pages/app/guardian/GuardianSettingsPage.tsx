@@ -5,6 +5,7 @@ import { saveErrorMessage } from '../../../features/athlete/fieldErrors';
 import { ContactDetails } from '../../../features/account/ContactDetails';
 import { saveGuardianName } from '../../../features/guardian/guardianService';
 import { BootScreen } from '../../../app/guards';
+import { EmailPreferencesForm } from '../../../features/account/EmailPreferencesForm';
 
 function NameForm({ uid, firstName, surname }: { uid: string; firstName: string; surname: string }) {
   const [f, setF] = useState({ firstName, surname });
@@ -93,6 +94,9 @@ export default function GuardianSettingsPage() {
           mobile={priv.status === 'ready' ? (priv.data?.mobile ?? '') : ''}
         />
         <NameForm uid={u.uid} firstName={u.firstName} surname={u.surname} />
+      </div>
+      <div className="sb-card sb-form-card" style={{ marginTop: 16 }}>
+        <EmailPreferencesForm />
       </div>
     </section>
   );

@@ -7,6 +7,7 @@ import {
 } from '@sportbridge/shared';
 import { FieldValue, type Firestore, type Transaction } from 'firebase-admin/firestore';
 import type { Outbox, SponsorshipRepoPort } from './sponsorship.js';
+import { dispatchNotifications } from './notifier.js';
 
 export const SPONSORSHIP_REQUESTS = 'sponsorshipRequests';
 export const SPONSORSHIP_OFFERS = 'sponsorshipOffers';
@@ -48,18 +49,23 @@ export function firestoreSponsorshipRepo(db: Firestore): SponsorshipRepoPort {
         writeOutbox(tx, outbox);
         tx.create(db.collection(COLLECTIONS.auditLogs).doc(), audit);
       });
+      dispatchNotifications(outbox);
     },
     async mutateRequest(id, decide) {
-      await db.runTransaction(async (tx) => {
+      // Captured inside the transaction and emailed only once it has committed.
+      const delivered = await db.runTransaction(async (tx) => {
         const snap = await tx.get(requests.doc(id));
         const r = decide(snap.exists ? (snap.data() as SponsorshipRequestDoc) : null);
         tx.update(requests.doc(id), r.changes);
         writeOutbox(tx, r.outbox);
         tx.create(db.collection(COLLECTIONS.auditLogs).doc(), r.audit);
+        return r.outbox;
       });
+      dispatchNotifications(delivered);
     },
     async createOffer(id, requestId, build) {
-      await db.runTransaction(async (tx) => {
+      // Captured inside the transaction and emailed only once it has committed.
+      const delivered = await db.runTransaction(async (tx) => {
         const [req, existing] = await Promise.all([tx.get(requests.doc(requestId)), tx.get(offers.doc(id))]);
         const r = build(req.exists ? (req.data() as SponsorshipRequestDoc) : null);
         if (existing.exists) throw new Error('ALREADY_OFFERED');
@@ -67,10 +73,13 @@ export function firestoreSponsorshipRepo(db: Firestore): SponsorshipRepoPort {
         tx.update(requests.doc(requestId), { offerCount: FieldValue.increment(1) });
         writeOutbox(tx, r.outbox);
         tx.create(db.collection(COLLECTIONS.auditLogs).doc(), r.audit);
+        return r.outbox;
       });
+      dispatchNotifications(delivered);
     },
     async mutateOffer(id, decide) {
-      await db.runTransaction(async (tx) => {
+      // Captured inside the transaction and emailed only once it has committed.
+      const delivered = await db.runTransaction(async (tx) => {
         const snap = await tx.get(offers.doc(id));
         const o = snap.exists ? (snap.data() as SponsorshipOfferDoc) : null;
         const req = o ? await tx.get(requests.doc(o.requestId)) : null;
@@ -78,7 +87,9 @@ export function firestoreSponsorshipRepo(db: Firestore): SponsorshipRepoPort {
         tx.update(offers.doc(id), r.changes);
         writeOutbox(tx, r.outbox);
         tx.create(db.collection(COLLECTIONS.auditLogs).doc(), r.audit);
+        return r.outbox;
       });
+      dispatchNotifications(delivered);
     },
   };
 }

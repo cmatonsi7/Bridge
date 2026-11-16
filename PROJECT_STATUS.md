@@ -16,7 +16,7 @@ _Last updated: 2026-11-16 · Phases 1–4 accepted and live. Live at https://bri
 | 3d Sponsorship & calendar | Accepted, live (verified 2026-11-16 end-to-end on production) |
 | 4 Membership & payments | Accepted, live (verified 2026-11-16 on production: athlete Starter, organisation trial, interest recorded end-to-end). No payment provider yet — "I'm interested" is the seam |
 | 5 Messaging & coach credential verification | Messaging live. Coach verification built and live but **switched off** — needs Firebase Storage, which needs the paid Blaze plan |
-| 6 Production readiness | Not started |
+| 6 Production readiness | Email notifications built (branch `email`), provider not yet chosen. Error monitoring, performance and accessibility still to do |
 
 ## Key decisions
 - **Pricing confirmed by the client (2026-11-11):** Starter free; Pro R149/month or R1 490/year; Organisation R499/month or R4 990/year. Annual = **two months free** (replaces the 20% discount). The Monthly/Annual toggle on the home page switches the displayed prices (it was highlight-only before). Organisation trial is **30 days**, opt-in to a paid subscription afterwards, **no automatic billing** — the trial and billing rules are implemented in Phase 4.
@@ -40,7 +40,7 @@ _Last updated: 2026-11-16 · Phases 1–4 accepted and live. Live at https://bri
 - Whether public listings show real data or sample cards until Phase 3.
 
 ## Known gaps
-- Firestore and Storage rules tests run against the Firebase emulator with `npm run test:rules` (needs Java; installed via `conda install -c conda-forge openjdk=21`). All 34 passed on 2026-11-04; Phase 3b adds 4 more (38). Run them before every deploy of `firestore.rules`.
+- Firestore and Storage rules tests run against the Firebase emulator with `npm run test:rules` (needs Java; installed via `conda install -c conda-forge openjdk=21`). 91 tests as at 2026-11-16. Run them before every deploy of rules.
 - Storage uploads (photos, documents, media) are deferred until the Blaze plan.
 - Guardians cannot yet control what others see about their child (needs Phase 3 discovery).
 - Older test accounts created before the name-on-request change show "A SportBridge athlete".
@@ -54,6 +54,36 @@ _Last updated: 2026-11-16 · Phases 1–4 accepted and live. Live at https://bri
 5. Applications: optional note plus a profile snapshot; applicants can withdraw; organisations see applicants only for their own listings.
 6. Notifications: in-app only.
 7. Sponsorship: request and offer only; SportBridge handles no money. Built 2026-11-16 (see below). Requests for children are switched off until legal question 6 is answered.
+
+## Email (Phase 6), branch `email`
+Built 2026-11-16. Until now every notification lived inside the app, so a parent who did not log in never
+learned that a coach had asked to connect with their child. For a design that rests on a parent paying
+attention, that was a hole rather than a missing nicety.
+
+- **No provider is connected.** With no credentials set the server logs what it would have sent and
+  everything else behaves exactly as it will in production. Choosing a provider is an API key, a verified
+  sending domain and one function in `emailSenders.ts`. Resend is written; Postmark or SendGrid would be a
+  change to that one adapter. Set `EMAIL_PROVIDER`, `RESEND_API_KEY`, `EMAIL_FROM` and `APP_URL`.
+- **Email happens after the write commits, never inside the transaction.** A Firestore transaction can be
+  retried and an email cannot be unsent. Each repository hands its outbox to the notifier once its write
+  has succeeded. A test reads the repository sources and fails if an outbox is written without a matching
+  dispatch, or if a dispatch is nested inside a transaction — that is the realistic future bug, and nothing
+  else would catch it, because the service tests run against fakes.
+- **A provider outage cannot fail a request.** Delivery errors are swallowed on purpose; the in-app
+  notification is already written.
+- **Two switches, not twelve**, under Settings → Notifications for every role, and on a parent's account
+  page directly. A longer list invites people to switch everything off.
+- **Some emails ignore the switches** and the page says so plainly rather than hiding it: a coach asking to
+  connect with a child, anything a parent must act on, and decisions about an organisation or a coach's
+  credentials. These concern the safety or standing of the account.
+- **One email per conversation every 30 minutes.** The in-app notification is still written every time.
+- Connection notifications now use their own types rather than borrowing `application.status`, so a coach
+  request no longer arrives under the subject "An update on your application".
+
+### Still to do in Phase 6
+Error monitoring (there is none; Sentry's free tier would cover it), the slow Connections page seen in live
+testing, and an accessibility pass. Render's free tier also sleeps: the first visitor after a quiet period
+waits about 90 seconds, which reads as a broken site.
 
 ## Messaging & coach verification (Phase 5), branch `messaging`
 Built 2026-11-16. Two halves, shipped together because the second one gates the first.
@@ -257,7 +287,7 @@ The client wants real schools, clubs and coaches on the platform instead of an e
 - Unclaimed organisations cannot post (no owner) and show a notice on their directory profile. The organisation dashboard offers a claim card to self-registered, unverified organisations.
 - Organisation dashboard now shows **real** counts of live/draft opportunities and programmes and applications waiting (the "coming in the next release" text was stale).
 - **To make a staff account:** `npm run grant-admin -w apps/api -- person@example.com` (needs the service account key in the environment; the person signs out and in again).
-- Rules: 88 tests (15 new for Phase 5 — messaging, coach verification and Storage; run on your Mac). API: 120 tests. Web: 222 tests. Shared: 111 tests.
+- Rules: 91 tests (3 new for email preferences; run on your Mac). API: 150 tests. Web: 229 tests. Shared: 121 tests.
 - Decisions pending from the client: where the school/coach lists come from; coach vetting for those connecting with children; who the admin users are; POPIA sign-off for listing coaches.
 - Step B (CSV import with preview, duplicate detection and undo) and step C (coaches) follow.
 

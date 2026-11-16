@@ -8,8 +8,9 @@ import { OrgUnavailable } from '../../../features/organisation/OrgUnavailable';
 import { ContactDetails } from '../../../features/account/ContactDetails';
 import { NameForm } from '../../../features/account/NameForm';
 import { BootScreen } from '../../../app/guards';
+import { EmailPreferencesForm } from '../../../features/account/EmailPreferencesForm';
 
-const TABS = ['Account', 'Organisation', 'Privacy', 'Team', 'Membership'] as const;
+const TABS = ['Account', 'Organisation', 'Privacy', 'Notifications', 'Team', 'Membership'] as const;
 type Tab = (typeof TABS)[number];
 
 export default function OrgSettingsPage() {
@@ -68,6 +69,7 @@ export default function OrgSettingsPage() {
           )}
           {tab === 'Organisation' && <OrgProfileForm orgId={orgId} org={org.data} />}
           {tab === 'Privacy' && <OrgPrivacyForm orgId={orgId} value={org.data.privacy} />}
+          {tab === 'Notifications' && <EmailPreferencesForm />}
           {tab === 'Team' && (
             <div className="sb-empty">
               Each organisation has one owner for now. Adding team members with their own permissions is

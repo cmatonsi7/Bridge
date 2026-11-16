@@ -6,6 +6,7 @@ import { CoachProfileForm } from '../../../features/coach/CoachProfileForm';
 import { CoachPrivacyForm } from '../../../features/coach/CoachPrivacyForm';
 import { ContactDetails } from '../../../features/account/ContactDetails';
 import { BootScreen } from '../../../app/guards';
+import { EmailPreferencesForm } from '../../../features/account/EmailPreferencesForm';
 
 const TABS = ['Account', 'Privacy', 'Notifications', 'Membership'] as const;
 type Tab = (typeof TABS)[number];
@@ -62,7 +63,8 @@ export default function CoachSettingsPage() {
             </>
           )}
           {tab === 'Privacy' && <CoachPrivacyForm uid={ctx.uid} value={profile.data?.privacy} />}
-          {(tab === 'Notifications' || tab === 'Membership') && (
+          {tab === 'Notifications' && <EmailPreferencesForm />}
+          {tab === 'Membership' && (
             <div className="sb-empty">{tab} settings are coming in an upcoming release.</div>
           )}
         </div>

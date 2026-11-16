@@ -219,7 +219,7 @@ export async function requestConnection(
         ...guardians.map((g) => ({
           uid: g,
           notification: note(
-            'application.status',
+            'connection.request',
             `Coach request for ${athlete.user.displayName}`,
             body,
             '/app/connections',
@@ -229,7 +229,7 @@ export async function requestConnection(
         {
           uid: input.athleteUid,
           notification: note(
-            'application.status',
+            'connection.request',
             'A coach asked to connect',
             `${coach.user.displayName} asked to connect. Your parent or guardian will decide.`,
             '/app/connections',
@@ -240,7 +240,7 @@ export async function requestConnection(
     : [
         {
           uid: input.athleteUid,
-          notification: note('application.status', 'A coach asked to connect', body, '/app/connections', ts),
+          notification: note('connection.request', 'A coach asked to connect', body, '/app/connections', ts),
         },
       ];
 
@@ -294,7 +294,7 @@ export async function answerConnection(
       outbox: [
         {
           uid: conn.coachUid,
-          notification: note('application.status', 'Connection update', body, '/app/connections', ts),
+          notification: note('connection.answer', 'Connection update', body, '/app/connections', ts),
         },
       ],
       audit: { type: `connection.${status}`, connectionId: id, by: c.uid, as: who, at: ts },

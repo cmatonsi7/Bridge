@@ -14,10 +14,12 @@ import { sponsorshipRouter } from './routes/sponsorship.js';
 import { membershipRouter } from './routes/membership.js';
 import { messagesRouter } from './routes/messages.js';
 import { coachVerificationRouter } from './routes/coachVerification.js';
+import { emailPreferencesRouter } from './routes/emailPreferences.js';
 import type { SponsorshipRepoPort } from './services/sponsorship.js';
 import type { MembershipRepoPort } from './services/membership.js';
 import type { MessagesRepoPort } from './services/messages.js';
 import type { CoachVerificationRepoPort } from './services/coachVerification.js';
+import type { EmailRepoPort } from './services/email.js';
 import type { OrgImportRepoPort } from './services/orgImport.js';
 import type { OrgOnboardingRepoPort } from './services/orgOnboarding.js';
 import type { DirectoryRepoPort } from './services/directory.js';
@@ -37,6 +39,7 @@ export interface AppDeps {
   membership?: MembershipRepoPort;
   messages?: MessagesRepoPort;
   coachVerification?: CoachVerificationRepoPort;
+  email?: EmailRepoPort;
   webDistDir?: string;
   trustProxyHops?: number;
 }
@@ -106,6 +109,7 @@ export function createApp(deps: AppDeps) {
   if (deps.messages) api.use(messagesRouter({ auth: deps.auth, messages: deps.messages }));
   if (deps.coachVerification)
     api.use(coachVerificationRouter({ auth: deps.auth, coachVerification: deps.coachVerification }));
+  if (deps.email) api.use(emailPreferencesRouter({ auth: deps.auth, email: deps.email }));
   api.use(notFound);
   app.use('/api', api);
 

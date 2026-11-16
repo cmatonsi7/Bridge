@@ -16,3 +16,4 @@ export * from './calendar.js';
 export * from './membership.js';
 export * from './messages.js';
 export * from './coachVerification.js';
+export * from './email.js';

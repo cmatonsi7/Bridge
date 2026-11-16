@@ -2,6 +2,7 @@ import { COLLECTIONS, type CoachVerificationDoc, type CredentialDocRecord, type 
 import { FieldValue, type Firestore, type Transaction } from 'firebase-admin/firestore';
 import type { Storage } from 'firebase-admin/storage';
 import type { CoachVerificationRepoPort, Outbox } from './coachVerification.js';
+import { dispatchNotifications } from './notifier.js';
 
 export const COACH_VERIFICATIONS = 'coachVerifications';
 export const COACH_VERIFICATION_NOTES = 'coachVerificationNotes';
@@ -55,6 +56,7 @@ export function firestoreCoachVerificationRepo(db: Firestore, storage?: Storage)
         writeOutbox(tx, outbox);
         tx.create(db.collection(COLLECTIONS.auditLogs).doc(), audit);
       });
+      dispatchNotifications(outbox);
     },
 
     async putInternalNote(uid, note) {

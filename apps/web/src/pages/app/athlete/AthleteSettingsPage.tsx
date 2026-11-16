@@ -5,6 +5,7 @@ import { ContactDetails } from '../../../features/account/ContactDetails';
 import { AthleteProfileForm } from '../../../features/athlete/AthleteProfileForm';
 import { PrivacyForm } from '../../../features/athlete/PrivacyForm';
 import { BootScreen } from '../../../app/guards';
+import { EmailPreferencesForm } from '../../../features/account/EmailPreferencesForm';
 
 const TABS = ['Account', 'Privacy', 'Notifications', 'Membership', 'Connected Accounts'] as const;
 type Tab = (typeof TABS)[number];
@@ -68,7 +69,8 @@ export default function AthleteSettingsPage() {
           {tab === 'Privacy' && (
             <PrivacyForm uid={ctx.uid} value={profile.data?.privacy} isMinor={ctx.user.isMinor} />
           )}
-          {tab !== 'Account' && tab !== 'Privacy' && (
+          {tab === 'Notifications' && <EmailPreferencesForm />}
+          {tab !== 'Account' && tab !== 'Privacy' && tab !== 'Notifications' && (
             <div className="sb-empty">{tab} settings are coming in an upcoming release.</div>
           )}
         </div>
