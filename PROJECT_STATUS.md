@@ -15,7 +15,7 @@ _Last updated: 2026-11-16 · Phases 1–4 accepted and live. Live at https://bri
 | 3c Directory & connections | Accepted, live (verified 2026-11-16: Talent Directory and Connections both work on production) |
 | 3d Sponsorship & calendar | Accepted, live (verified 2026-11-16 end-to-end on production) |
 | 4 Membership & payments | Accepted, live (verified 2026-11-16 on production: athlete Starter, organisation trial, interest recorded end-to-end). No payment provider yet — "I'm interested" is the seam |
-| 5 Messaging & coach credential verification | Built (branch `messaging`); awaiting your test run and review |
+| 5 Messaging & coach credential verification | Messaging live. Coach verification built and live but **switched off** — needs Firebase Storage, which needs the paid Blaze plan |
 | 6 Production readiness | Not started |
 
 ## Key decisions
@@ -98,6 +98,34 @@ Built 2026-11-16. Two halves, shipped together because the second one gates the 
 covered Storage — but the rules denied everything. They now allow exactly one thing: a coach writing into
 `coachCredentials/{their uid}/`. Deleting is server-only so a record and its file cannot drift apart.
 **Deploying rules now deploys Storage rules too** — `npm run deploy:rules` covers both.
+
+
+### Coach verification is switched OFF (2026-11-16)
+Firebase Storage was never provisioned on `sportbridge-4861e`, and since 3 February 2026 Cloud Storage
+for Firebase requires the paid Blaze plan. The client is not ready to subscribe, so coaches cannot
+upload anything, which means they cannot complete verification.
+
+With the gate on, that left **every coach unable to contact anybody, with no way to fix it themselves** —
+the credentials page asked for an upload that could not happen. Both switches in
+`packages/shared/src/coachVerification.ts` are therefore `false`:
+- `CONNECTION_REQUIRES_VERIFICATION` — coaches can request connections again, as before Phase 5.
+- `CREDENTIAL_UPLOADS_ENABLED` — the page asks for nothing, submission is refused server-side, and the
+  copy says plainly that checks are not open yet.
+
+No badge is shown to anyone while this is off, so nothing false is claimed about any coach. The
+alternative — accepting text-only submissions and keeping the gate — was rejected: it would have kept
+the badge while quietly making it mean less than the page claims, which is the one thing a safeguarding
+feature must never do.
+
+**To turn it back on:** provision Storage, then set both constants to `true`. Nothing else changes —
+the review queue, decision flow, notifications, Firestore rules and Storage rules are all already
+written and tested. The switched-on behaviour of the page is kept under test in
+`apps/web/src/__tests__/coachCredentialsPage.uploads.test.tsx`, and the gate's logic is tested in both
+settings in `packages/shared/src/coachVerification.test.ts`, so flipping it is a one-line change with
+proof behind it rather than an untested path months later.
+
+**Also pending:** transfer the Firebase project to the client's Google account *before* anyone upgrades
+to Blaze, so their billing account is attached from the start rather than Calvin's.
 
 ### Open question for the client
 Nothing blocking, but worth asking: with the gate on, how fast can they turn reviews around? If it is going to
@@ -220,7 +248,7 @@ The client wants real schools, clubs and coaches on the platform instead of an e
 - Unclaimed organisations cannot post (no owner) and show a notice on their directory profile. The organisation dashboard offers a claim card to self-registered, unverified organisations.
 - Organisation dashboard now shows **real** counts of live/draft opportunities and programmes and applications waiting (the "coming in the next release" text was stale).
 - **To make a staff account:** `npm run grant-admin -w apps/api -- person@example.com` (needs the service account key in the environment; the person signs out and in again).
-- Rules: 85 tests (11 new for Phase 5 — messaging, coach verification and Storage; run on your Mac). API: 113 tests. Web: 214 tests. Shared: 107 tests.
+- Rules: 88 tests (15 new for Phase 5 — messaging, coach verification and Storage; run on your Mac). API: 114 tests. Web: 218 tests. Shared: 111 tests.
 - Decisions pending from the client: where the school/coach lists come from; coach vetting for those connecting with children; who the admin users are; POPIA sign-off for listing coaches.
 - Step B (CSV import with preview, duplicate detection and undo) and step C (coaches) follow.
 

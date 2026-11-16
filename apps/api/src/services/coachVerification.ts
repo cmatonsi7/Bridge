@@ -1,6 +1,7 @@
 import {
   canSubmit,
   credentialDecisionSchema,
+  CREDENTIAL_UPLOADS_ENABLED,
   credentialStoragePath,
   registerCredentialDocSchema,
   CREDENTIAL_MAX_DOCS,
@@ -177,7 +178,13 @@ export async function removeDocument(
   await repo.deleteFile(removed.storagePath).catch(() => undefined);
 }
 
-export async function submitForReview(repo: CoachVerificationRepoPort, c: Caller, now = new Date()) {
+export async function submitForReview(
+  repo: CoachVerificationRepoPort,
+  c: Caller,
+  now = new Date(),
+  /** Defaults to the switch; a parameter so both settings stay testable. */
+  uploadsEnabled = CREDENTIAL_UPLOADS_ENABLED,
+) {
   requireCoach(c);
   const verification = await getVerification(repo, c, now);
   const [docs, qualificationCount] = await Promise.all([
@@ -190,11 +197,13 @@ export async function submitForReview(repo: CoachVerificationRepoPort, c: Caller
   if (verification.status === 'submitted') {
     throw new HttpError(409, 'ALREADY_SUBMITTED', 'Your documents are already being reviewed');
   }
-  if (!canSubmit(verification.status, qualificationCount, docs.length)) {
+  if (!canSubmit(verification.status, qualificationCount, docs.length, uploadsEnabled)) {
     throw new HttpError(
       400,
       'NOTHING_TO_REVIEW',
-      'Add at least one qualification and upload a document proving it',
+      uploadsEnabled
+        ? 'Add at least one qualification and upload a document proving it'
+        : 'Credential reviews are not open yet',
     );
   }
   const ts = now.toISOString();
