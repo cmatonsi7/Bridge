@@ -1225,3 +1225,49 @@ describe('sponsorship (Phase 3d)', () => {
     await assertFails(deleteDoc(doc(as('bob', { role: 'coach' }), 'sponsorshipOffers/open1_bob')));
   });
 });
+
+describe('calendar entries (Phase 3d)', () => {
+  const entry = (over: Record<string, unknown> = {}) => ({
+    title: 'Morning training',
+    date: '2026-12-01',
+    endDate: null,
+    note: null,
+    createdAt: now,
+    updatedAt: now,
+    ...over,
+  });
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users/alice/calendarEntries/e1'), entry());
+    });
+  });
+
+  it('the owner manages their own entries; nobody else can read or write them', async () => {
+    await assertSucceeds(getDoc(doc(as('alice'), 'users/alice/calendarEntries/e1')));
+    await assertFails(getDoc(doc(as('bob'), 'users/alice/calendarEntries/e1')));
+    await assertSucceeds(
+      setDoc(doc(as('alice'), 'users/alice/calendarEntries/e2'), entry({ title: 'Trials' })),
+    );
+    await assertFails(setDoc(doc(as('bob'), 'users/alice/calendarEntries/e3'), entry()));
+    await assertSucceeds(
+      updateDoc(doc(as('alice'), 'users/alice/calendarEntries/e1'), {
+        title: 'Evening training',
+        updatedAt: now,
+      }),
+    );
+    await assertFails(updateDoc(doc(as('bob'), 'users/alice/calendarEntries/e1'), { title: 'Hijacked' }));
+    await assertSucceeds(deleteDoc(doc(as('alice'), 'users/alice/calendarEntries/e1')));
+    await assertFails(deleteDoc(doc(as('bob'), 'users/alice/calendarEntries/e2')));
+  });
+
+  it('rejects a bad title, a bad date, and unknown fields', async () => {
+    await assertFails(setDoc(doc(as('alice'), 'users/alice/calendarEntries/bad1'), entry({ title: '' })));
+    await assertFails(setDoc(doc(as('alice'), 'users/alice/calendarEntries/bad2'), entry({ date: 'soon' })));
+    await assertFails(
+      setDoc(doc(as('alice'), 'users/alice/calendarEntries/bad3'), entry({ endDate: 'soon' })),
+    );
+    await assertFails(
+      setDoc(doc(as('alice'), 'users/alice/calendarEntries/bad4'), { ...entry(), extra: 'nope' }),
+    );
+  });
+});

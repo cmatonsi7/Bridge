@@ -12,3 +12,4 @@ export * from './onboarding.js';
 export * from './csv.js';
 export * from './importer.js';
 export * from './sponsorship.js';
+export * from './calendar.js';

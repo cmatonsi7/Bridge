@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  documentId,
   limit,
   onSnapshot,
   query,
@@ -185,4 +186,15 @@ export async function saveListing(uid: string, l: ListingWithId) {
 
 export async function unsaveListing(uid: string, listingId: string) {
   await deleteDoc(doc(requireDb(), COLLECTIONS.users, uid, SAVED, listingId));
+}
+
+/** The listings behind a set of accepted applications, for the Calendar (Firestore's `in` caps at 30). */
+export function useListingsByIds(ids: string[]): Loadable<ListingWithId[]> {
+  const key = Array.from(new Set(ids)).sort().join(',');
+  return useQueryList<ListingDoc>(
+    key
+      ? () => query(collection(requireDb(), LISTINGS), where(documentId(), 'in', key.split(',').slice(0, 30)))
+      : null,
+    [key],
+  );
 }

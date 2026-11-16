@@ -191,6 +191,7 @@ export const ROLE_SECTIONS: Record<Role, AppSection[]> = {
     'directory',
     'applications',
     'connections',
+    'calendar',
     'settings',
   ],
   // Coaches connect with athletes and may offer sponsorship; they do not apply to listings.
