@@ -14,6 +14,14 @@ export const MESSAGE_ENTRIES = 'entries';
 const CONNECTIONS = 'connections';
 const APPLICATIONS = 'applications';
 
+/** Firestore allows at most 30 values in an `in` query, so long lists are asked for in batches. */
+const IN_LIMIT = 30;
+const chunk = <T>(items: T[]): T[][] => {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += IN_LIMIT) out.push(items.slice(i, i + IN_LIMIT));
+  return out;
+};
+
 export function firestoreMessagesRepo(db: Firestore): MessagesRepoPort {
   const threads = db.collection(MESSAGE_THREADS);
   const writeOutbox = (tx: Transaction, outbox: Outbox) => {
@@ -97,6 +105,40 @@ export function firestoreMessagesRepo(db: Firestore): MessagesRepoPort {
     async getApplication(id) {
       const s = await db.collection(APPLICATIONS).doc(id).get();
       return s.exists ? (s.data() as ApplicationDoc) : null;
+    },
+
+    async childrenOf(uid) {
+      const s = await db
+        .collection(COLLECTIONS.users)
+        .where('guardianUids', 'array-contains', uid)
+        .get();
+      return s.docs.map((d) => d.id);
+    },
+
+    async acceptedConnectionIds(uids) {
+      if (uids.length === 0) return [];
+      // Firestore has no OR across fields, so each side is asked for separately.
+      const results = await Promise.all(
+        chunk(uids).flatMap((batch) =>
+          (['coachUid', 'athleteUid'] as const).map((field) =>
+            db.collection(CONNECTIONS).where('status', '==', 'accepted').where(field, 'in', batch).get(),
+          ),
+        ),
+      );
+      return [...new Set(results.flatMap((r) => r.docs).map((d) => d.id))];
+    },
+
+    async liveApplicationIds(uids) {
+      if (uids.length === 0) return [];
+      const live = ['shortlisted', 'accepted'];
+      const results = await Promise.all(
+        chunk(uids).flatMap((batch) =>
+          (['applicantUid', 'ownerUid'] as const).map((field) =>
+            db.collection(APPLICATIONS).where('status', 'in', live).where(field, 'in', batch).get(),
+          ),
+        ),
+      );
+      return [...new Set(results.flatMap((r) => r.docs).map((d) => d.id))];
     },
   };
 }

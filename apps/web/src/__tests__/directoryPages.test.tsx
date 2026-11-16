@@ -216,6 +216,18 @@ describe('ConnectionsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
     await waitFor(() => expect(ds.acceptConnection).toHaveBeenCalledWith('c1_kid'));
   });
+  it('offers a way into the conversation once a connection is accepted', () => {
+    st.athleteConns = [conn({ id: 'c1_a1', status: 'accepted' })];
+    at('/', <ConnectionsPage />);
+    const link = screen.getByRole('link', { name: 'Message' });
+    expect(link.getAttribute('href')).toBe('/app/messages');
+    expect(screen.getByRole('button', { name: 'End connection' })).toBeTruthy();
+  });
+  it('offers no conversation on a request nobody has accepted', () => {
+    st.athleteConns = [conn({ id: 'c1_a1' })];
+    at('/', <ConnectionsPage />);
+    expect(screen.queryByRole('link', { name: 'Message' })).toBeNull();
+  });
   it('a coach sees requests they sent but cannot answer them', () => {
     st.role = 'coach';
     st.uid = 'c1';

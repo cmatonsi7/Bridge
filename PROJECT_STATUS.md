@@ -74,6 +74,15 @@ Built 2026-11-16. Two halves, shipped together because the second one gates the 
   threads cannot do the job this design gives them.
 - **Server-written only.** `messageThreads/{id}` and its `entries` are `allow write: if false`; everyone in
   `participantUids` may read. Staff can read a thread but can never write into one.
+- **The list repairs itself (added 2026-11-16, after live testing).** Threads are opened when a
+  connection is accepted or an application is shortlisted — which left out every relationship formed
+  *before* messaging shipped. Found on production: Test FC had a shortlisted applicant from 5 November
+  and an empty Messages page. `GET /messages/threads` now creates any thread the caller should have and
+  does not, including a parent's route into their child's conversation (a guardian's uid is on neither
+  the connection nor the application, so they are found through their children). It is idempotent, costs
+  no writes once everything exists, and a failed repair still shows what the person already has.
+- **"Message" buttons** on an accepted connection and on a shortlisted or accepted applicant, so a
+  conversation is reachable from where the relationship lives rather than only from the Messages page.
 
 ### Coach credential verification (5b)
 - **Verification is a gate, not just a badge.** An unverified coach **cannot request a connection** with any
@@ -248,7 +257,7 @@ The client wants real schools, clubs and coaches on the platform instead of an e
 - Unclaimed organisations cannot post (no owner) and show a notice on their directory profile. The organisation dashboard offers a claim card to self-registered, unverified organisations.
 - Organisation dashboard now shows **real** counts of live/draft opportunities and programmes and applications waiting (the "coming in the next release" text was stale).
 - **To make a staff account:** `npm run grant-admin -w apps/api -- person@example.com` (needs the service account key in the environment; the person signs out and in again).
-- Rules: 88 tests (15 new for Phase 5 — messaging, coach verification and Storage; run on your Mac). API: 114 tests. Web: 218 tests. Shared: 111 tests.
+- Rules: 88 tests (15 new for Phase 5 — messaging, coach verification and Storage; run on your Mac). API: 120 tests. Web: 222 tests. Shared: 111 tests.
 - Decisions pending from the client: where the school/coach lists come from; coach vetting for those connecting with children; who the admin users are; POPIA sign-off for listing coaches.
 - Step B (CSV import with preview, duplicate detection and undo) and step C (coaches) follow.
 

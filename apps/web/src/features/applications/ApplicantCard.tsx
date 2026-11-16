@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ORG_TRANSITIONS, type ApplicationStatus } from '@sportbridge/shared';
 import { ApiError } from '../../lib/apiClient';
 import { setApplicationStatus, type ApplicationWithId } from './applicationsService';
@@ -84,6 +85,14 @@ export function ApplicantCard({ app }: { app: ApplicationWithId }) {
           </>
         )}
       </p>
+      {/* Shortlisting or accepting opens a conversation; this is the way into it from here. */}
+      {(app.status === 'shortlisted' || app.status === 'accepted') && (
+        <div className="sb-form-actions" style={{ justifyContent: 'flex-start', marginTop: 10 }}>
+          <Link className="sb-btn" to="/app/messages">
+            Message applicant
+          </Link>
+        </div>
+      )}
       {next.length > 0 && (
         <>
           <div className="sb-field full" style={{ marginTop: 10 }}>

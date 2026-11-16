@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { ConnectionStatus } from '@sportbridge/shared';
 import { useSignedInUser } from '../../../features/account/useSignedInUser';
 import { useMyChildren } from '../../../features/guardian/guardianService';
@@ -94,9 +94,15 @@ function Row({
           </>
         )}
         {c.status === 'accepted' && (
-          <button type="button" className="sb-btn" disabled={!!busy} onClick={() => void run('end')}>
-            {busy === 'end' ? 'Ending…' : 'End connection'}
-          </button>
+          <>
+            {/* The conversation lives on the Messages page; this is the obvious way in from here. */}
+            <Link className="sb-btn primary" to="/app/messages">
+              Message
+            </Link>
+            <button type="button" className="sb-btn" disabled={!!busy} onClick={() => void run('end')}>
+              {busy === 'end' ? 'Ending…' : 'End connection'}
+            </button>
+          </>
         )}
       </div>
     </div>

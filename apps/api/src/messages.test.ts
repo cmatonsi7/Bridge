@@ -67,6 +67,27 @@ function fakeStore() {
     async getApplication(id) {
       return applications.get(id) ?? null;
     },
+    async childrenOf(uid) {
+      return [...Object.entries(PEOPLE)]
+        .filter(([, p]) => p.guardianUids.includes(uid))
+        .map(([id]) => id);
+    },
+    async acceptedConnectionIds(uids) {
+      return [...connections.entries()]
+        .filter(
+          ([, c]) => c.status === 'accepted' && (uids.includes(c.coachUid) || uids.includes(c.athleteUid)),
+        )
+        .map(([id]) => id);
+    },
+    async liveApplicationIds(uids) {
+      return [...applications.entries()]
+        .filter(
+          ([, a]) =>
+            ['shortlisted', 'accepted'].includes(a.status) &&
+            (uids.includes(a.applicantUid) || uids.includes(a.ownerUid)),
+        )
+        .map(([id]) => id);
+    },
   };
   return { threads, entries, connections, applications, sent, audits, repo };
 }
@@ -340,6 +361,69 @@ describe('messaging', () => {
         'application_l1_adult',
         'connection_coach_adult',
       ]);
+    });
+  });
+
+  describe('conversations that should already exist', () => {
+    it('opens a thread for a connection accepted before messaging existed', async () => {
+      // The relationship is there; no thread was ever created for it.
+      s.connections.set('coach_adult', connection());
+      expect(s.threads.size).toBe(0);
+
+      const res = await request(app).get('/api/messages/threads').set(as('coach'));
+      expect(res.status).toBe(200);
+      expect(res.body.threads.map((t: ThreadDoc) => t.id)).toEqual([
+        threadIdFor('connection', 'coach_adult'),
+      ]);
+    });
+
+    it('opens one for an application shortlisted before messaging existed', async () => {
+      s.applications.set('l1_adult', application({ status: 'shortlisted' }));
+      const res = await request(app).get('/api/messages/threads').set(as('org'));
+      expect(res.body.threads).toHaveLength(1);
+      expect(res.body.threads[0].subject).toBe('Provincial trials');
+    });
+
+    it("lets a parent reach their child's conversation, which names neither of them on it", async () => {
+      // The guardian's uid is on neither the connection nor the application, so they are found
+      // through their child. A parent who cannot reach this is the whole point of the design failing.
+      s.connections.set(
+        'coach_kid',
+        connection({ athleteUid: 'kid', athleteName: 'Young Athlete', athleteIsMinor: true }),
+      );
+      const res = await request(app).get('/api/messages/threads').set(as('mum'));
+      expect(res.status).toBe(200);
+      expect(res.body.threads).toHaveLength(1);
+      expect(res.body.threads[0].participantUids).toContain('mum');
+      expect(res.body.threads[0].hasMinor).toBe(true);
+    });
+
+    it('leaves relationships that have not earned a conversation alone', async () => {
+      s.connections.set('coach_adult', connection({ status: 'pending' }));
+      s.applications.set('l1_adult', application({ status: 'submitted' }));
+      const res = await request(app).get('/api/messages/threads').set(as('coach'));
+      expect(res.body.threads).toEqual([]);
+      expect(s.threads.size).toBe(0);
+    });
+
+    it('creates nothing on a second visit, and never duplicates a thread', async () => {
+      s.connections.set('coach_adult', connection());
+      await request(app).get('/api/messages/threads').set(as('coach'));
+      const after = s.threads.size;
+      await request(app).get('/api/messages/threads').set(as('coach'));
+      await request(app).get('/api/messages/threads').set(as('adult'));
+      expect(s.threads.size).toBe(after);
+      expect(after).toBe(1);
+    });
+
+    it('still shows what it has when the repair itself fails', async () => {
+      s.threads.set('connection_coach_adult', openThread());
+      s.repo.acceptedConnectionIds = async () => {
+        throw new Error('firestore down');
+      };
+      const res = await request(app).get('/api/messages/threads').set(as('coach'));
+      expect(res.status).toBe(200);
+      expect(res.body.threads).toHaveLength(1);
     });
   });
 });

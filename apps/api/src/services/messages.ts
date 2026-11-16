@@ -44,6 +44,12 @@ export interface MessagesRepoPort {
   updateThread(id: string, changes: Partial<ThreadDoc>, audit: Audit): Promise<void>;
   getConnection(id: string): Promise<ConnectionDoc | null>;
   getApplication(id: string): Promise<ApplicationDoc | null>;
+  /** Athletes this person is a verified parent or guardian of. Empty for everyone else. */
+  childrenOf(uid: string): Promise<string[]>;
+  /** Ids of accepted connections involving any of these people. */
+  acceptedConnectionIds(uids: string[]): Promise<string[]>;
+  /** Ids of shortlisted or accepted applications involving any of these people. */
+  liveApplicationIds(uids: string[]): Promise<string[]>;
 }
 
 export interface Caller {
@@ -161,9 +167,50 @@ export async function closeThreadFor(
   );
 }
 
+/**
+ * Creates any thread this person should have but does not.
+ *
+ * Threads are normally opened the moment a connection is accepted or an application is shortlisted.
+ * That leaves out every relationship formed *before* messaging existed, and anything that slipped
+ * through a failed write — those people would otherwise see an empty Messages page forever, with the
+ * conversation they are entitled to unreachable. So the list repairs itself on read.
+ *
+ * A parent is included through their children, because a guardian's uid is not on the connection or
+ * the application itself — and a parent who cannot reach their child's conversation is exactly the
+ * person this design most needs to reach it.
+ */
+async function backfillThreads(repo: MessagesRepoPort, c: Caller, have: Set<string>, now: Date) {
+  const subjects = [c.uid, ...(await repo.childrenOf(c.uid))];
+  const [connectionIds, applicationIds] = await Promise.all([
+    repo.acceptedConnectionIds(subjects),
+    repo.liveApplicationIds(subjects),
+  ]);
+  const missing: { kind: ThreadKind; id: string }[] = [
+    ...connectionIds.map((id) => ({ kind: 'connection' as ThreadKind, id })),
+    ...applicationIds.map((id) => ({ kind: 'application' as ThreadKind, id })),
+  ].filter((m) => !have.has(threadIdFor(m.kind, m.id)));
+  if (missing.length === 0) return false;
+
+  // One bad relationship must not stop the others appearing, so each is attempted on its own.
+  await Promise.all(
+    missing.map((m) =>
+      (m.kind === 'connection'
+        ? threadForConnection(repo, m.id, now)
+        : threadForApplication(repo, m.id, now)
+      ).catch(() => undefined),
+    ),
+  );
+  return true;
+}
+
 /** Every thread this person can see, newest activity first. */
-export async function listThreads(repo: MessagesRepoPort, c: Caller) {
-  const threads = await repo.threadsFor(c.uid);
+export async function listThreads(repo: MessagesRepoPort, c: Caller, now = new Date()) {
+  let threads = await repo.threadsFor(c.uid);
+  const created = await backfillThreads(repo, c, new Set(threads.map((t) => t.id)), now).catch(
+    // A backfill that fails must never take the page down: the person still sees what they already have.
+    () => false,
+  );
+  if (created) threads = await repo.threadsFor(c.uid);
   return threads.sort((a, b) =>
     (b.lastMessageAt ?? b.createdAt).localeCompare(a.lastMessageAt ?? a.createdAt),
   );
