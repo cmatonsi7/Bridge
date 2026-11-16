@@ -57,100 +57,40 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('Coach credentials page', () => {
-  it('tells an unverified coach plainly that they cannot contact athletes yet', () => {
+describe('Coach credentials page (document uploads switched off)', () => {
+  it('tells a coach plainly that there is nothing to do yet, and asks for nothing', () => {
     render(<CoachCredentialsPage />);
     expect(screen.getByText('Not submitted')).toBeTruthy();
-    expect(screen.getByText(/you cannot send connection requests to athletes/)).toBeTruthy();
+    expect(screen.getByText(/Credential checks are not open yet/)).toBeTruthy();
+    // The old copy promised a check nobody can perform and threatened a block that is not in force.
+    expect(screen.queryByText(/upload proof of each one/i)).toBeNull();
+    expect(screen.queryByText(/cannot send connection requests/i)).toBeNull();
   });
 
-  it('says the documents are private, because they are identity documents', () => {
-    render(<CoachCredentialsPage />);
-    expect(screen.getByText(/Only you and SportBridge staff can ever see these/)).toBeTruthy();
-    expect(screen.getByText(/never shown on your profile or in the Talent Directory/)).toBeTruthy();
-  });
-
-  it('will not let a coach submit with nothing to review, and says what is missing', () => {
-    render(<CoachCredentialsPage />);
-    expect(screen.getByText(/Add at least one qualification on your profile first/)).toBeTruthy();
-    expect((screen.getByRole('button', { name: 'Send for review' }) as HTMLButtonElement).disabled).toBe(
-      true,
-    );
-  });
-
-  it('asks for a document once a qualification exists', () => {
+  it('offers no upload control, because uploading cannot work', () => {
     st.view = view({ qualificationCount: 1 });
     render(<CoachCredentialsPage />);
-    expect(screen.getByText('Upload at least one document proving a qualification.')).toBeTruthy();
-  });
-
-  it('lists an uploaded document with its type and size, and sends it for review', async () => {
-    st.view = view({ qualificationCount: 1, documents: [doc()], canSubmit: true });
-    render(<CoachCredentialsPage />);
-    expect(screen.getByText('level-2-certificate.pdf')).toBeTruthy();
-    expect(screen.getByText(/PDF · 2 KB/)).toBeTruthy();
-
-    const submit = screen.getByRole('button', { name: 'Send for review' }) as HTMLButtonElement;
-    expect(submit.disabled).toBe(false);
-    fireEvent.click(submit);
-    await waitFor(() => expect(svc.submitCredentials).toHaveBeenCalled());
-  });
-
-  it('removes a document', async () => {
-    st.view = view({ qualificationCount: 1, documents: [doc()], canSubmit: true });
-    render(<CoachCredentialsPage />);
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
-    await waitFor(() => expect(svc.removeCredential).toHaveBeenCalledWith('doc1'));
-  });
-
-  it('freezes everything while staff are reading it', () => {
-    st.view = view({
-      verification: verification({ status: 'submitted', submittedAt: '2026-11-12T00:00:00.000Z' }),
-      qualificationCount: 1,
-      documents: [doc()],
-      canSubmit: false,
-    });
-    render(<CoachCredentialsPage />);
-    expect(screen.getByText('Awaiting review')).toBeTruthy();
-    expect((screen.getByRole('button', { name: 'Remove' }) as HTMLButtonElement).disabled).toBe(true);
-    // No way to add another document while it is under review.
     expect(screen.queryByLabelText('Add a document')).toBeNull();
+    expect(screen.getByText(/Document uploads are not switched on yet/)).toBeTruthy();
+  });
+
+  it('points a coach at something useful in the meantime', () => {
+    render(<CoachCredentialsPage />);
+    expect(screen.getAllByText(/add your qualifications on your profile/i).length).toBeGreaterThan(0);
+  });
+
+  it('still promises the documents will be private when they do open', () => {
+    render(<CoachCredentialsPage />);
+    expect(screen.getByText(/only you and SportBridge staff will ever see those documents/i)).toBeTruthy();
+  });
+
+  it('cannot be submitted, so staff never get an empty review', () => {
+    st.view = view({ qualificationCount: 3 });
+    render(<CoachCredentialsPage />);
     expect((screen.getByRole('button', { name: 'Send for review' }) as HTMLButtonElement).disabled).toBe(
       true,
     );
-  });
-
-  it('shows a rejected coach the reason, and lets them try again', () => {
-    st.view = view({
-      verification: verification({
-        status: 'rejected',
-        decisionNote: 'The certificate was cut off at the bottom.',
-        decidedAt: '2026-11-13T00:00:00.000Z',
-      }),
-      qualificationCount: 1,
-      documents: [doc()],
-      canSubmit: true,
-    });
-    render(<CoachCredentialsPage />);
-    expect(screen.getByText('Needs attention')).toBeTruthy();
-    expect(screen.getByText('The certificate was cut off at the bottom.')).toBeTruthy();
-    expect(screen.getByLabelText('Add a document')).toBeTruthy();
-    expect((screen.getByRole('button', { name: 'Send for review' }) as HTMLButtonElement).disabled).toBe(
-      false,
-    );
-  });
-
-  it('tells a verified coach they are done, and that they can now connect', () => {
-    st.view = view({
-      verification: verification({ status: 'verified', decidedAt: '2026-11-14T00:00:00.000Z' }),
-      qualificationCount: 1,
-      documents: [doc()],
-      canSubmit: false,
-    });
-    render(<CoachCredentialsPage />);
-    expect(screen.getByText('Verified')).toBeTruthy();
-    expect(screen.getByText(/you can send connection requests/)).toBeTruthy();
-    expect(screen.getByText('You are verified. Nothing more to do.')).toBeTruthy();
+    expect(screen.getByText(/Reviews are not open yet/)).toBeTruthy();
   });
 
   it('is not shown to accounts that are not coaches', () => {
@@ -158,5 +98,13 @@ describe('Coach credentials page', () => {
     st.view = null;
     render(<CoachCredentialsPage />);
     expect(screen.getByText('Only coach accounts have credentials to verify.')).toBeTruthy();
+  });
+
+  it('shows an alert when it cannot be loaded', () => {
+    st.view = null;
+    st.role = 'coach';
+    render(<CoachCredentialsPage />);
+    // A coach with no data at all renders nothing rather than a broken page.
+    expect(screen.getByRole('heading', { name: 'My Credentials' })).toBeTruthy();
   });
 });

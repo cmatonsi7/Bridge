@@ -10,10 +10,27 @@ import { z } from 'zod';
  * Verification is also a gate, not only a badge: an unverified coach cannot request a connection with
  * an athlete. That is a deliberate trade — it slows coach sign-ups down to the speed of the review
  * queue — and it is one switch (`CONNECTION_REQUIRES_VERIFICATION`) if the client wants it opened up.
+ *
+ * ---- Both switches are OFF right now (2026-11-16) ----
+ * Firebase Storage is not provisioned on the project: since 3 February 2026 Cloud Storage requires the
+ * paid Blaze plan, and the client is not ready to subscribe. So a coach cannot upload anything, which
+ * means they cannot complete verification, which — with the gate on — would leave every coach unable to
+ * contact anybody with no way to fix it themselves.
+ *
+ * Blocking everyone is worse than postponing the check, so the gate is open. The alternative considered
+ * and rejected was to accept text-only submissions and keep the gate: that would keep the badge while
+ * quietly making it mean less than the page claims, which is the one thing a safeguarding feature must
+ * never do. No badge is shown to anyone while this is off, so nothing false is said about any coach.
+ *
+ * To turn the feature back on once Storage exists: set both constants below to true. Nothing else
+ * changes — the review queue, the decision flow, the notifications and the rules are all already live.
  */
 
-/** Flip to false to let unverified coaches request connections again. Checked in one place, server-side. */
-export const CONNECTION_REQUIRES_VERIFICATION = true;
+/** Whether an unverified coach is blocked from requesting connections. See the note above. */
+export const CONNECTION_REQUIRES_VERIFICATION = false;
+
+/** Whether coaches can upload credential documents. Requires Firebase Storage (Blaze). See above. */
+export const CREDENTIAL_UPLOADS_ENABLED = false;
 
 export const CREDENTIAL_STATUSES = ['draft', 'submitted', 'verified', 'rejected'] as const;
 export type CredentialStatus = (typeof CREDENTIAL_STATUSES)[number];
@@ -25,14 +42,25 @@ export const CREDENTIAL_STATUS_LABELS: Record<CredentialStatus, string> = {
   rejected: 'Needs attention',
 };
 
-/** What the coach is told at each stage. Written for the coach, not for staff. */
+/**
+ * What the coach is told at each stage. Written for the coach, not for staff.
+ *
+ * These depend on the switches above, because a message that promises a check nobody can perform — or
+ * threatens a block that is not in force — is worse than no message at all.
+ */
 export const CREDENTIAL_STATUS_MESSAGES: Record<CredentialStatus, string> = {
-  draft:
-    'Add your qualifications and upload proof of each one, then send them to SportBridge for review. Until you are verified you cannot send connection requests to athletes.',
+  draft: CREDENTIAL_UPLOADS_ENABLED
+    ? `Add your qualifications and upload proof of each one, then send them to SportBridge for review.${
+        CONNECTION_REQUIRES_VERIFICATION
+          ? ' Until you are verified you cannot send connection requests to athletes.'
+          : ''
+      }`
+    : 'Credential checks are not open yet. You can add your qualifications on your profile now, and SportBridge will ask for proof of them when document uploads are switched on.',
   submitted:
     'SportBridge is reviewing your documents. We will let you know as soon as a decision is made.',
-  verified:
-    'SportBridge has checked your documents. Your profile shows the Verified coach badge and you can send connection requests.',
+  verified: `SportBridge has checked your documents. Your profile shows the Verified coach badge${
+    CONNECTION_REQUIRES_VERIFICATION ? ' and you can send connection requests' : ''
+  }.`,
   rejected: 'SportBridge could not verify your documents. Read the note below and send them again.',
 };
 
@@ -138,12 +166,28 @@ export type RegisterCredentialDocInput = z.input<typeof registerCredentialDocSch
 
 export const credentialStoragePath = (uid: string, docId: string) => `coachCredentials/${uid}/${docId}`;
 
-/** A coach may submit once they have at least one qualification and one document proving something. */
-export function canSubmit(status: CredentialStatus, qualificationCount: number, docCount: number) {
+/**
+ * A coach may submit once they have at least one qualification and one document proving something.
+ * With uploads switched off nobody can reach that state, which is deliberate: an empty submission
+ * would put a coach in the review queue with nothing for staff to actually check.
+ */
+export function canSubmit(
+  status: CredentialStatus,
+  qualificationCount: number,
+  docCount: number,
+  uploadsEnabled = CREDENTIAL_UPLOADS_ENABLED,
+) {
+  if (!uploadsEnabled) return false;
   if (status === 'submitted' || status === 'verified') return false;
   return qualificationCount > 0 && docCount > 0;
 }
 
-/** Whether this coach is allowed to send connection requests. */
-export const coachCanConnect = (status: CredentialStatus | undefined) =>
-  !CONNECTION_REQUIRES_VERIFICATION || status === 'verified';
+/**
+ * Whether this coach is allowed to send connection requests.
+ * `required` defaults to the switch above; it is a parameter so the gate's behaviour can be tested
+ * in both settings, not only whichever one happens to be configured today.
+ */
+export const coachCanConnect = (
+  status: CredentialStatus | undefined,
+  required = CONNECTION_REQUIRES_VERIFICATION,
+) => !required || status === 'verified';

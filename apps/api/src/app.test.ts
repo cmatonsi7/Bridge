@@ -1,7 +1,12 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import request from 'supertest';
 import type { DecodedIdToken } from 'firebase-admin/auth';
-import { PENDING_STATUSES, type MembershipDoc, type UserDoc } from '@sportbridge/shared';
+import {
+  CONNECTION_REQUIRES_VERIFICATION,
+  PENDING_STATUSES,
+  type MembershipDoc,
+  type UserDoc,
+} from '@sportbridge/shared';
 import { createApp } from './app.js';
 import type { AuthPort, OnboardingWrite, UserRepoPort } from './services/ports.js';
 import type { GuardianRepoPort } from './services/guardian.js';
@@ -1100,19 +1105,13 @@ describe('directory and connections', () => {
     expect((await post('/api/connections', 't-coach', { athleteUid: 'adult' })).status).toBe(409);
   });
 
-  it('stops a coach nobody has verified from reaching any athlete (Phase 5b)', async () => {
-    for (const status of ['draft', 'submitted', 'rejected'] as const) {
-      f.coachStatuses.set('coach1', status);
-      const res = await post('/api/connections', 't-coach', { athleteUid: 'adult' });
-      expect(res.status).toBe(403);
-      expect(res.body.error.code).toBe('NOT_VERIFIED_COACH');
-    }
-    // A coach who has never started the process at all is no different.
+  it('lets any coach request a connection while the verification gate is open (Phase 5b)', async () => {
+    // The gate is off because Firebase Storage is not provisioned, so no coach can finish verification.
+    // Blocking every coach from a process they cannot complete would be worse than postponing the check.
+    // When CONNECTION_REQUIRES_VERIFICATION goes back to true, this test flips to expect 403 — the
+    // gate's own logic is covered in both settings in packages/shared/src/coachVerification.test.ts.
+    expect(CONNECTION_REQUIRES_VERIFICATION).toBe(false);
     f.coachStatuses.set('coach1', null);
-    expect((await post('/api/connections', 't-coach', { athleteUid: 'adult' })).status).toBe(403);
-
-    // Verified, and the same request goes through.
-    f.coachStatuses.set('coach1', 'verified');
     expect((await post('/api/connections', 't-coach', { athleteUid: 'adult' })).status).toBe(201);
   });
 

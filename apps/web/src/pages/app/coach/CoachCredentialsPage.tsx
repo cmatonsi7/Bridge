@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import {
   CREDENTIAL_MAX_DOCS,
   CREDENTIAL_STATUS_LABELS,
+  CREDENTIAL_UPLOADS_ENABLED,
   CREDENTIAL_STATUS_MESSAGES,
   credentialTypeLabel,
   type CredentialDocRecord,
@@ -120,16 +121,31 @@ function Body({ view, onChanged }: { view: CredentialsView; onChanged: () => voi
 
       <div className="sb-card" style={{ padding: 18 }}>
         <h2 style={{ marginTop: 0 }}>Documents</h2>
-        <p className="sb-meta">
-          Upload proof of each qualification — a certificate, a licence or a letter. PDF, JPEG or PNG, up
-          to 5 MB each, {CREDENTIAL_MAX_DOCS} documents at most.
-        </p>
-        <p className="sb-field-hint">
-          Only you and SportBridge staff can ever see these. They are never shown on your profile or in
-          the Talent Directory.
-        </p>
+        {!CREDENTIAL_UPLOADS_ENABLED ? (
+          <>
+            <p className="sb-meta">
+              Document uploads are not switched on yet. Nothing is needed from you for now.
+            </p>
+            <p className="sb-field-hint">
+              In the meantime you can add your qualifications on your profile. When uploads open,
+              SportBridge will ask you for proof of each one, and only you and SportBridge staff will
+              ever see those documents.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="sb-meta">
+              Upload proof of each qualification — a certificate, a licence or a letter. PDF, JPEG or
+              PNG, up to 5 MB each, {CREDENTIAL_MAX_DOCS} documents at most.
+            </p>
+            <p className="sb-field-hint">
+              Only you and SportBridge staff can ever see these. They are never shown on your profile or
+              in the Talent Directory.
+            </p>
+          </>
+        )}
 
-        {documents.length === 0 ? (
+        {!CREDENTIAL_UPLOADS_ENABLED ? null : documents.length === 0 ? (
           <p className="sb-meta" style={{ marginTop: 12 }}>
             Nothing uploaded yet.
           </p>
@@ -146,7 +162,7 @@ function Body({ view, onChanged }: { view: CredentialsView; onChanged: () => voi
           </ul>
         )}
 
-        {!locked && documents.length < CREDENTIAL_MAX_DOCS && (
+        {CREDENTIAL_UPLOADS_ENABLED && !locked && documents.length < CREDENTIAL_MAX_DOCS && (
           <UploadControl
             busy={busy}
             onPick={(file) => act(() => uploadCredential(file, null), `Uploaded ${file.name}.`)}
@@ -156,12 +172,18 @@ function Body({ view, onChanged }: { view: CredentialsView; onChanged: () => voi
 
       <div className="sb-card" style={{ padding: 18 }}>
         <h2 style={{ marginTop: 0 }}>Send for review</h2>
-        {qualificationCount === 0 && (
+        {!CREDENTIAL_UPLOADS_ENABLED && (
+          <p className="sb-meta">
+            Reviews are not open yet. SportBridge will let you know when you can send your
+            qualifications in — there is nothing to do until then.
+          </p>
+        )}
+        {CREDENTIAL_UPLOADS_ENABLED && qualificationCount === 0 && (
           <p className="sb-meta">
             Add at least one qualification on your profile first, then upload a document proving it.
           </p>
         )}
-        {qualificationCount > 0 && documents.length === 0 && (
+        {CREDENTIAL_UPLOADS_ENABLED && qualificationCount > 0 && documents.length === 0 && (
           <p className="sb-meta">Upload at least one document proving a qualification.</p>
         )}
         {canSubmit && (

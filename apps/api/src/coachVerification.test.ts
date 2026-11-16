@@ -8,7 +8,11 @@ import {
   type CredentialDocRecord,
 } from '@sportbridge/shared';
 import { createApp, type AppDeps } from './app.js';
-import type { CoachVerificationRepoPort, Outbox } from './services/coachVerification.js';
+import {
+  submitForReview,
+  type CoachVerificationRepoPort,
+  type Outbox,
+} from './services/coachVerification.js';
 
 const NAMES: Record<string, string> = { coach: 'Coach Carter', coach2: 'Coach Two' };
 
@@ -161,17 +165,32 @@ describe('coach credential verification', () => {
     expect(res.body.error.code).toBe('NOTHING_TO_REVIEW');
   });
 
-  it('accepts a submission once there is a qualification and a document', async () => {
+  it('takes no submission while uploads are switched off, so staff never get an empty review', async () => {
     s.qualifications.set('coach', 1);
     await view('coach');
     await addDoc('coach', goodDoc());
-    expect((await view('coach')).body.canSubmit).toBe(true);
+    expect((await view('coach')).body.canSubmit).toBe(false);
 
-    expect((await submit('coach')).status).toBe(200);
+    const res = await submit('coach');
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('NOTHING_TO_REVIEW');
+    expect(res.body.error.message).toBe('Credential reviews are not open yet');
+    expect(s.records.get('coach')!.status).toBe('draft');
+  });
+
+  it('accepts a submission once uploads are on and there is a qualification and a document', async () => {
+    // Exercised directly, because the switch is off in this build. This is the path that comes back
+    // the day Firebase Storage exists, so it stays covered rather than untested until then.
+    s.qualifications.set('coach', 1);
+    await view('coach');
+    await addDoc('coach', goodDoc());
+
+    const caller = { uid: 'coach', role: 'coach', admin: false, emailVerified: true };
+    await submitForReview(s.repo, caller, new Date(), true);
     expect(s.records.get('coach')).toMatchObject({ status: 'submitted', docCount: 1 });
 
     // Nothing may change while staff are reading it.
-    expect((await submit('coach')).status).toBe(409);
+    await expect(submitForReview(s.repo, caller, new Date(), true)).rejects.toThrow();
     expect((await addDoc('coach', goodDoc('doc2'))).status).toBe(409);
     expect(
       (await request(app).delete('/api/coach/credentials/documents/doc1').set(as('coach'))).status,
@@ -200,10 +219,17 @@ describe('coach credential verification', () => {
 
   describe('staff review', () => {
     beforeEach(async () => {
+      // Seeded rather than submitted: submission is switched off in this build, but staff still have a
+      // queue to work the moment it is turned on, and this is exactly the state they would see.
       s.qualifications.set('coach', 1);
       await view('coach');
       await addDoc('coach', goodDoc());
-      await submit('coach');
+      s.records.set('coach', {
+        ...s.records.get('coach')!,
+        status: 'submitted',
+        submittedAt: '2026-11-12T00:00:00.000Z',
+        docCount: 1,
+      });
     });
 
     it('is staff-only, both to read and to decide', async () => {
@@ -251,10 +277,15 @@ describe('coach credential verification', () => {
       expect(s.sent.at(-1)!.notification.body).toBe('The certificate was cut off at the bottom.');
     });
 
-    it('lets a rejected coach fix things and send them in again', async () => {
+    it('lets a rejected coach fix things and send them in again (once uploads are on)', async () => {
       await decide('admin', 'coach', { verified: false, decisionNote: 'Unreadable scan.' });
       expect((await addDoc('coach', goodDoc('doc2'))).status).toBe(201);
-      expect((await submit('coach')).status).toBe(200);
+      await submitForReview(
+        s.repo,
+        { uid: 'coach', role: 'coach', admin: false, emailVerified: true },
+        new Date(),
+        true,
+      );
       expect(s.records.get('coach')).toMatchObject({ status: 'submitted', decisionNote: null });
     });
 

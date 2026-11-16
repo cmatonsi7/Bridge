@@ -7,31 +7,68 @@ import {
   credentialTypeLabel,
   registerCredentialDocSchema,
   CREDENTIAL_MAX_BYTES,
+  CREDENTIAL_STATUS_MESSAGES,
+  CREDENTIAL_UPLOADS_ENABLED,
+  CONNECTION_REQUIRES_VERIFICATION,
 } from './coachVerification.js';
 
 describe('the connection gate', () => {
-  it('lets a verified coach connect and stops everyone else', () => {
-    expect(coachCanConnect('verified')).toBe(true);
-    expect(coachCanConnect('submitted')).toBe(false);
-    expect(coachCanConnect('draft')).toBe(false);
-    expect(coachCanConnect('rejected')).toBe(false);
+  it('lets a verified coach connect and stops everyone else, when the gate is on', () => {
+    const gated = (s: Parameters<typeof coachCanConnect>[0]) => coachCanConnect(s, true);
+    expect(gated('verified')).toBe(true);
+    expect(gated('submitted')).toBe(false);
+    expect(gated('draft')).toBe(false);
+    expect(gated('rejected')).toBe(false);
     // A coach who has never started the process at all.
-    expect(coachCanConnect(undefined)).toBe(false);
+    expect(gated(undefined)).toBe(false);
+  });
+
+  it('lets everyone connect when the gate is off, whatever their status', () => {
+    for (const s of ['verified', 'submitted', 'draft', 'rejected', undefined] as const) {
+      expect(coachCanConnect(s, false)).toBe(true);
+    }
+  });
+
+  it('is currently OFF, because Storage is not provisioned and nobody can complete verification', () => {
+    // Blocking every coach from a process they cannot finish would be worse than postponing the check.
+    // This flips to true in the same commit that turns CREDENTIAL_UPLOADS_ENABLED on.
+    expect(CONNECTION_REQUIRES_VERIFICATION).toBe(false);
+    expect(coachCanConnect(undefined)).toBe(true);
   });
 });
 
 describe('when a coach may send their documents in', () => {
+  const withUploads = (s: Parameters<typeof canSubmit>[0], q: number, d: number) =>
+    canSubmit(s, q, d, true);
+
   it('needs at least one qualification and one document', () => {
-    expect(canSubmit('draft', 0, 0)).toBe(false);
-    expect(canSubmit('draft', 1, 0)).toBe(false);
-    expect(canSubmit('draft', 0, 1)).toBe(false);
-    expect(canSubmit('draft', 1, 1)).toBe(true);
+    expect(withUploads('draft', 0, 0)).toBe(false);
+    expect(withUploads('draft', 1, 0)).toBe(false);
+    expect(withUploads('draft', 0, 1)).toBe(false);
+    expect(withUploads('draft', 1, 1)).toBe(true);
   });
 
   it('lets a rejected coach try again but will not take a second submission or re-verify', () => {
-    expect(canSubmit('rejected', 1, 1)).toBe(true);
-    expect(canSubmit('submitted', 1, 1)).toBe(false);
-    expect(canSubmit('verified', 1, 1)).toBe(false);
+    expect(withUploads('rejected', 1, 1)).toBe(true);
+    expect(withUploads('submitted', 1, 1)).toBe(false);
+    expect(withUploads('verified', 1, 1)).toBe(false);
+  });
+
+  it('takes no submission at all while uploads are off, so staff never get an empty review', () => {
+    expect(CREDENTIAL_UPLOADS_ENABLED).toBe(false);
+    expect(canSubmit('draft', 1, 1)).toBe(false);
+    expect(canSubmit('draft', 5, 5, false)).toBe(false);
+  });
+});
+
+describe('what the coach is told', () => {
+  it('promises no check that cannot happen, and threatens no block that is not in force', () => {
+    // With uploads off, the draft message must not ask for documents or mention being blocked.
+    expect(CREDENTIAL_STATUS_MESSAGES.draft).not.toMatch(/upload proof/i);
+    expect(CREDENTIAL_STATUS_MESSAGES.draft).not.toMatch(/cannot send connection requests/i);
+    expect(CREDENTIAL_STATUS_MESSAGES.draft).toMatch(/not open yet/i);
+    // And the verified message must not claim the badge unlocks something it does not.
+    expect(CREDENTIAL_STATUS_MESSAGES.verified).not.toMatch(/you can send connection requests/i);
   });
 });
 
