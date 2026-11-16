@@ -13,18 +13,10 @@ import {
   Zap,
 } from 'lucide-react';
 import { useState } from 'react';
+// Membership pricing lives in the shared package so this page, the Membership page and the server agree.
+import { PLANS } from '@sportbridge/shared';
 import { PublicListingsGrid } from '../../features/listings/PublicListingsGrid';
 import { useLegacyActions } from '../../features/marketing/useLegacyActions';
-
-/**
- * Membership pricing, confirmed by the client on 2026-11-11.
- * Annual is two months free, so it is ten times the monthly price.
- */
-const PLANS = {
-  starter: { monthly: 'R0', annual: 'R0' },
-  pro: { monthly: 'R149', annual: 'R1 490' },
-  organisation: { monthly: 'R499', annual: 'R4 990' },
-} as const;
 
 export default function HomePage() {
   const a = useLegacyActions();

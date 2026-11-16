@@ -13,11 +13,13 @@ import {
   type ListingDoc,
   type NotificationDoc,
   type PrivateDetailsDoc,
+  type MembershipDoc,
   type StatusChangeInput,
   type UserDoc,
 } from '@sportbridge/shared';
 import { applySchema, statusChangeSchema, type ApplyInput } from '@sportbridge/shared';
 import { HttpError } from '../middleware/errors.js';
+import { assertWithinApplicationLimit } from './membership.js';
 
 export interface ApplicantRecords {
   user: UserDoc;
@@ -31,6 +33,10 @@ export type Outbox = { uid: string; notification: NotificationDoc }[];
 export interface ApplicationsRepoPort {
   getListing(id: string): Promise<ListingDoc | null>;
   getApplicant(uid: string): Promise<ApplicantRecords | null>;
+  /** The applicant's membership record, for the plan's application limit (Phase 4). Null if they have none yet. */
+  getMembership(uid: string): Promise<MembershipDoc | null>;
+  /** How many of this applicant's applications are still waiting on somebody else. */
+  countPendingApplications(uid: string): Promise<number>;
   /** Creates the application atomically; throws Error('ALREADY_APPLIED') if it exists. */
   createApplication(
     id: string,
@@ -128,6 +134,13 @@ export async function apply(repo: ApplicationsRepoPort, c: Caller, raw: ApplyInp
       `This ${listing.kind} is for ages ${listing.ageMin}–${listing.ageMax}`,
     );
   }
+
+  // Everything about this application is in order; the last question is whether their plan allows another one.
+  const [membership, pending] = await Promise.all([
+    repo.getMembership(c.uid),
+    repo.countPendingApplications(c.uid),
+  ]);
+  assertWithinApplicationLimit(membership, pending, now);
 
   const ts = now.toISOString();
   const id = applicationId(input.listingId, c.uid);

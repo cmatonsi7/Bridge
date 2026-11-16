@@ -1,13 +1,16 @@
 import {
   COLLECTIONS,
+  PENDING_STATUSES,
   type ApplicationDoc,
   type AthleteProfileDoc,
   type ListingDoc,
+  type MembershipDoc,
   type PrivateDetailsDoc,
   type UserDoc,
 } from '@sportbridge/shared';
 import type { Firestore, Transaction } from 'firebase-admin/firestore';
 import type { ApplicationsRepoPort, Outbox } from './applications.js';
+import { MEMBERSHIPS } from './firebaseMembershipRepo.js';
 
 const APPLICATIONS = 'applications';
 const LISTINGS = 'listings';
@@ -37,6 +40,19 @@ export function firestoreApplicationsRepo(db: Firestore): ApplicationsRepoPort {
         profile: p.exists ? (p.data() as AthleteProfileDoc) : null,
         details: d.exists ? (d.data() as PrivateDetailsDoc) : null,
       };
+    },
+    async getMembership(uid) {
+      const s = await db.collection(MEMBERSHIPS).doc(uid).get();
+      return s.exists ? (s.data() as MembershipDoc) : null;
+    },
+    async countPendingApplications(uid) {
+      const s = await db
+        .collection(APPLICATIONS)
+        .where('applicantUid', '==', uid)
+        .where('status', 'in', PENDING_STATUSES)
+        .count()
+        .get();
+      return s.data().count;
     },
     async createApplication(id, doc, outbox, audit) {
       await db.runTransaction(async (tx) => {

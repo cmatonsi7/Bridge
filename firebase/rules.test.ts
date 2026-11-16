@@ -1271,3 +1271,44 @@ describe('calendar entries (Phase 3d)', () => {
     );
   });
 });
+
+describe('membership (Phase 4)', () => {
+  const record = (over: Record<string, unknown> = {}) => ({
+    uid: 'alice',
+    plan: 'starter',
+    status: 'free',
+    billingPeriod: null,
+    trialEndsAt: null,
+    interest: null,
+    createdAt: now,
+    updatedAt: now,
+    ...over,
+  });
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'memberships/alice'), record());
+    });
+  });
+
+  it('a member reads their own membership; staff read any; other people read none', async () => {
+    await assertSucceeds(getDoc(doc(as('alice'), 'memberships/alice')));
+    await assertSucceeds(getDoc(doc(as('staff', { role: 'admin', admin: true }), 'memberships/alice')));
+    await assertFails(getDoc(doc(as('bob'), 'memberships/alice')));
+    await assertFails(getDoc(doc(anon(), 'memberships/alice')));
+  });
+
+  it('nobody can give themselves a plan, extend a trial or write a membership from the browser', async () => {
+    await assertFails(
+      setDoc(doc(as('alice'), 'memberships/alice'), record({ plan: 'pro', status: 'active' })),
+    );
+    await assertFails(updateDoc(doc(as('alice'), 'memberships/alice'), { status: 'active' }));
+    await assertFails(
+      updateDoc(doc(as('alice'), 'memberships/alice'), { trialEndsAt: '2030-01-01T00:00:00.000Z' }),
+    );
+    await assertFails(deleteDoc(doc(as('alice'), 'memberships/alice')));
+    // Staff cannot either: only the server may.
+    const staff = as('staff', { role: 'admin', admin: true });
+    await assertFails(updateDoc(doc(staff, 'memberships/alice'), { plan: 'pro' }));
+    await assertFails(setDoc(doc(as('bob'), 'memberships/bob'), record({ uid: 'bob', plan: 'pro' })));
+  });
+});

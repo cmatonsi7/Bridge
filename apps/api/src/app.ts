@@ -11,7 +11,9 @@ import { directoryRouter } from './routes/directory.js';
 import { orgOnboardingRouter } from './routes/orgOnboarding.js';
 import { orgImportRouter } from './routes/orgImport.js';
 import { sponsorshipRouter } from './routes/sponsorship.js';
+import { membershipRouter } from './routes/membership.js';
 import type { SponsorshipRepoPort } from './services/sponsorship.js';
+import type { MembershipRepoPort } from './services/membership.js';
 import type { OrgImportRepoPort } from './services/orgImport.js';
 import type { OrgOnboardingRepoPort } from './services/orgOnboarding.js';
 import type { DirectoryRepoPort } from './services/directory.js';
@@ -28,6 +30,7 @@ export interface AppDeps {
   orgOnboarding: OrgOnboardingRepoPort;
   orgImport: OrgImportRepoPort;
   sponsorship?: SponsorshipRepoPort;
+  membership?: MembershipRepoPort;
   webDistDir?: string;
   trustProxyHops?: number;
 }
@@ -93,6 +96,7 @@ export function createApp(deps: AppDeps) {
   api.use(orgOnboardingRouter(deps));
   api.use(orgImportRouter(deps));
   if (deps.sponsorship) api.use(sponsorshipRouter({ auth: deps.auth, sponsorship: deps.sponsorship }));
+  if (deps.membership) api.use(membershipRouter({ auth: deps.auth, membership: deps.membership }));
   api.use(notFound);
   app.use('/api', api);
 
