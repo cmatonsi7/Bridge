@@ -63,6 +63,7 @@ _Last updated: 2026-11-12 · Phases 1–3 accepted. Admin Dashboard and onboardi
 - **An organisation's calendar** shows its own published listings (start date, or the closing date if there's no start) alongside anything it adds itself.
 - A coach's calendar is personal entries only — coaches have nothing dated of their own on SportBridge yet.
 - Firestore rules changed: new `users/{uid}/calendarEntries` subcollection, writable only by its owner, validated the same way the saved-listings shortlist is (not sent through the API, since it's one person's own data). Run `npm run test:rules` before deploying.
+- **Fix after first live check:** the page hung on "Loading your calendar…" forever for every role except a parent's own entries. Cause: `useApplicationEvents`/`useMyListingEvents` call Firestore hooks that never leave `'loading'` when given no id at all — correct for a role that briefly hasn't loaded its own id yet, wrong for a role (an organisation has no applications; an athlete has no listings) that simply has none of that kind, permanently. Fixed in `calendarService.ts` to resolve to `ready`/empty immediately in that case, with a regression test (`calendarService.test.ts`) pinning it down.
 
 ## Sponsorship (Phase 3d), branch `sponsorship`
 - **Who can ask:** adult athletes, for themselves. Their request goes live at once for 30 days, showing first name and surname initial, age band, sport and province only. One open request at a time; they can close it sooner.

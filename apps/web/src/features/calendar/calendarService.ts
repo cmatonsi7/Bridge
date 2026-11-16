@@ -85,6 +85,9 @@ export function useApplicationEvents(applicantUid: string | undefined): Loadable
     [apps],
   );
   const listings = useListingsByIds(accepted.map((a) => a.listingId));
+  // No uid means this role has nothing of this kind (not "still loading" — that would wait forever,
+  // since the underlying Firestore hooks never resolve out of 'loading' when passed no id at all).
+  if (!applicantUid) return { status: 'ready', data: [] };
   if (apps.status === 'loading' || (accepted.length > 0 && listings.status === 'loading'))
     return { status: 'loading' };
   if (apps.status === 'error') return apps;
@@ -112,6 +115,9 @@ export function useApplicationEvents(applicantUid: string | undefined): Loadable
 /** An organisation's own published listings, as calendar events. */
 export function useMyListingEvents(ownerUid: string | undefined): Loadable<CalendarItem[]> {
   const listings = useMyListings(ownerUid);
+  // Same reasoning as useApplicationEvents: no uid means "not an organisation", permanently — not a
+  // transient gap to wait out.
+  if (!ownerUid) return { status: 'ready', data: [] };
   if (listings.status !== 'ready') return listings;
   const items: CalendarItem[] = listings.data
     .filter((l) => l.status === 'published')
