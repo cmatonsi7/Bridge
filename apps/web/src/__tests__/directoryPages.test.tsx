@@ -52,6 +52,7 @@ vi.mock('../features/account/useSignedInUser', () => ({
     email: 'x@example.com',
     user: { uid: st.uid, role: st.role, status: 'active', isMinor: st.isMinor, displayName: 'Me' },
   }),
+  useSignedInRole: () => ({ uid: st.uid, role: st.role }),
 }));
 vi.mock('../features/guardian/guardianService', () => ({
   useMyChildren: () => ({ status: 'ready', data: [{ id: 'l1', athleteUid: 'kid', athleteName: 'Thabo M' }] }),
