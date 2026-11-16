@@ -16,6 +16,7 @@ describe('each role’s sidebar shows only what applies to it', () => {
   it('a parent sees their children’s things, not a personal profile, progress, saved items or sponsorship', () => {
     expect([...sections('guardian')].sort()).toEqual([
       'applications',
+      'calendar',
       'connections',
       'dashboard',
       'directory',
@@ -25,6 +26,7 @@ describe('each role’s sidebar shows only what applies to it', () => {
     ]);
     expect(labels('guardian')).toContain('Children’s applications');
     expect(labels('guardian')).toContain('Coach requests');
+    expect(canAccess('guardian', 'calendar')).toBe(true);
     for (const s of ['profile', 'progress', 'saved', 'sponsorship', 'messages', 'membership'] as const)
       expect(canAccess('guardian', s)).toBe(false);
   });

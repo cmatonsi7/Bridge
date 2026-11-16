@@ -46,6 +46,21 @@ service cloud.firestore {
         allow update: if false;
       }
 
+      // A member's own personal calendar entries (Phase 3d). Entries derived from applications and
+      // listings are computed by the app, not stored; only entries the member typed themselves live here.
+      match /calendarEntries/{entryId} {
+        allow read, delete: if isSelf(uid);
+        allow create, update: if isSelf(uid)
+          && request.resource.data.keys().hasOnly(['title', 'date', 'endDate', 'note', 'createdAt', 'updatedAt'])
+          && isShortString(request.resource.data.title, 80)
+          && isoDate(request.resource.data.date)
+          && optIsoDate(request.resource.data, 'endDate')
+          && (!('note' in request.resource.data) || request.resource.data.note == null
+              || isShortString(request.resource.data.note, 300))
+          && request.resource.data.createdAt is string
+          && request.resource.data.updatedAt is string;
+      }
+
       // Date of birth and mobile. Never public. Changing DOB would change minor status, so it is server-only.
       match /private/{docId} {
         allow read: if isSelf(uid) || isAdmin();

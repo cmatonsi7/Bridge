@@ -13,7 +13,7 @@ _Last updated: 2026-11-12 · Phases 1–3 accepted. Admin Dashboard and onboardi
 | 3a Listings (opportunities, programmes, saved) | Accepted |
 | 3b Applications | Accepted |
 | 3c Directory & connections | Code complete, awaiting review (branch `phase-3-directory`) |
-| 3d Sponsorship & calendar | Sponsorship built (branch `sponsorship`); calendar not started |
+| 3d Sponsorship & calendar | Both built (branch `calendar`) |
 | 4 Membership & payments | Blocked on client pricing |
 | 5 Messaging & admin dashboard | Not started |
 | 6 Production readiness | Not started |
@@ -54,6 +54,15 @@ _Last updated: 2026-11-12 · Phases 1–3 accepted. Admin Dashboard and onboardi
 5. Applications: optional note plus a profile snapshot; applicants can withdraw; organisations see applicants only for their own listings.
 6. Notifications: in-app only.
 7. Sponsorship: request and offer only; SportBridge handles no money. Built 2026-11-16 (see below). Requests for children are switched off until legal question 6 is answered.
+
+## Calendar (Phase 3d), branch `calendar`
+- **Two kinds of entry, merged into one list:** entries derived from things already on SportBridge (an accepted application's dates for the athlete, and for the parent on their verified child's behalf; an organisation's own published listings), and personal entries a member types in themselves (title, date, optional end date, optional note).
+- **Automatic entries are never stored** — they're computed from the existing applications and listings each time the page loads, so they can't drift out of sync, and disappear on their own if an application is withdrawn or a listing closes.
+- **Personal entries** are private to whoever added them, kept in `users/{uid}/calendarEntries`, and can be edited or removed any time; a derived entry cannot be edited (there's nothing to edit — it is what it is on the listing or application).
+- **A parent's calendar** shows their own personal entries, plus each verified child's upcoming dates in its own section (name and all) — never the child's personal entries, which stay the child's own.
+- **An organisation's calendar** shows its own published listings (start date, or the closing date if there's no start) alongside anything it adds itself.
+- A coach's calendar is personal entries only — coaches have nothing dated of their own on SportBridge yet.
+- Firestore rules changed: new `users/{uid}/calendarEntries` subcollection, writable only by its owner, validated the same way the saved-listings shortlist is (not sent through the API, since it's one person's own data). Run `npm run test:rules` before deploying.
 
 ## Sponsorship (Phase 3d), branch `sponsorship`
 - **Who can ask:** adult athletes, for themselves. Their request goes live at once for 30 days, showing first name and surname initial, age band, sport and province only. One open request at a time; they can close it sooner.
@@ -131,7 +140,7 @@ The client wants real schools, clubs and coaches on the platform instead of an e
 - Unclaimed organisations cannot post (no owner) and show a notice on their directory profile. The organisation dashboard offers a claim card to self-registered, unverified organisations.
 - Organisation dashboard now shows **real** counts of live/draft opportunities and programmes and applications waiting (the "coming in the next release" text was stale).
 - **To make a staff account:** `npm run grant-admin -w apps/api -- person@example.com` (needs the service account key in the environment; the person signs out and in again).
-- Rules: 70 tests (4 new for sponsorship, run on your Mac). API: 73 tests. Web: 180 tests. Shared: 72 tests.
+- Rules: 72 tests (2 new for calendar, run on your Mac). API: 73 tests. Web: 186 tests. Shared: 77 tests.
 - Decisions pending from the client: where the school/coach lists come from; coach vetting for those connecting with children; who the admin users are; POPIA sign-off for listing coaches.
 - Step B (CSV import with preview, duplicate detection and undo) and step C (coaches) follow.
 
