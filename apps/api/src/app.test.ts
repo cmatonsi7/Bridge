@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import request from 'supertest';
 import type { DecodedIdToken } from 'firebase-admin/auth';
-import type { UserDoc } from '@sportbridge/shared';
+import { PENDING_STATUSES, type MembershipDoc, type UserDoc } from '@sportbridge/shared';
 import { createApp } from './app.js';
 import type { AuthPort, OnboardingWrite, UserRepoPort } from './services/ports.js';
 import type { GuardianRepoPort } from './services/guardian.js';
@@ -65,12 +65,20 @@ function fakes() {
   const applicants = new Map<string, ApplicantRecords>();
   const apps = new Map<string, ApplicationDoc>();
   const sent: Outbox = [];
+  const memberships = new Map<string, MembershipDoc>();
   const applications: ApplicationsRepoPort = {
     async getListing(id) {
       return listings.get(id) ?? null;
     },
     async getApplicant(uid) {
       return applicants.get(uid) ?? null;
+    },
+    async getMembership(uid) {
+      return memberships.get(uid) ?? null;
+    },
+    async countPendingApplications(uid) {
+      return [...apps.values()].filter((a) => a.applicantUid === uid && PENDING_STATUSES.includes(a.status))
+        .length;
     },
     async createApplication(id, doc, outbox, audit) {
       if (apps.has(id)) throw new Error('ALREADY_APPLIED');
@@ -270,6 +278,7 @@ function fakes() {
     entries,
     connections,
     listings,
+    memberships,
     applicants,
     apps,
     sent,
@@ -809,6 +818,31 @@ describe('applications', () => {
       'AGE_OUT_OF_RANGE',
     );
     expect(f.apps.size).toBe(0);
+  });
+
+  it("stops a Starter athlete at their plan's limit, counting only applications still waiting", async () => {
+    f.memberships.set('adult', {
+      uid: 'adult',
+      plan: 'starter',
+      status: 'free',
+      billingPeriod: null,
+      trialEndsAt: null,
+      interest: null,
+      createdAt: 't',
+      updatedAt: 't',
+    });
+    for (const id of ['L2', 'L3', 'L4', 'L5']) f.listings.set(id, { ...listing });
+    expect((await post('/api/applications', 't-adult', { listingId: 'L1' })).status).toBe(201);
+    expect((await post('/api/applications', 't-adult', { listingId: 'L2' })).status).toBe(201);
+    expect((await post('/api/applications', 't-adult', { listingId: 'L3' })).status).toBe(201);
+
+    const blocked = await post('/api/applications', 't-adult', { listingId: 'L4' });
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.error.code).toBe('PLAN_LIMIT_REACHED');
+
+    // An answered application is finished and frees the slot again.
+    f.apps.set('L1_adult', { ...f.apps.get('L1_adult')!, status: 'declined' });
+    expect((await post('/api/applications', 't-adult', { listingId: 'L5' })).status).toBe(201);
   });
 
   it('allows one application per person per listing', async () => {

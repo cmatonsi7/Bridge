@@ -1,6 +1,6 @@
 # PROJECT_STATUS — SportBridge
 
-_Last updated: 2026-11-12 · Phases 1–3 accepted. Admin Dashboard and onboarding step A (schools and organisations) code complete on `phase-4-onboarding`, awaiting review. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
+_Last updated: 2026-11-16 · Phases 1–3d accepted and live. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
 
 ## Phase progress
 | Phase | Status |
@@ -12,10 +12,10 @@ _Last updated: 2026-11-12 · Phases 1–3 accepted. Admin Dashboard and onboardi
 | 2d Organisation dashboard | Accepted |
 | 3a Listings (opportunities, programmes, saved) | Accepted |
 | 3b Applications | Accepted |
-| 3c Directory & connections | Code complete, awaiting review (branch `phase-3-directory`) |
-| 3d Sponsorship & calendar | Both built (branch `calendar`) |
-| 4 Membership & payments | Blocked on client pricing |
-| 5 Messaging & admin dashboard | Not started |
+| 3c Directory & connections | Accepted, live (verified 2026-11-16: Talent Directory and Connections both work on production) |
+| 3d Sponsorship & calendar | Accepted, live (verified 2026-11-16 end-to-end on production) |
+| 4 Membership & payments | Infrastructure built (branch `membership`); no payment provider yet — "I'm interested" is the seam |
+| 5 Messaging & coach credential verification | Starting next |
 | 6 Production readiness | Not started |
 
 ## Key decisions
@@ -54,6 +54,36 @@ _Last updated: 2026-11-12 · Phases 1–3 accepted. Admin Dashboard and onboardi
 5. Applications: optional note plus a profile snapshot; applicants can withdraw; organisations see applicants only for their own listings.
 6. Notifications: in-app only.
 7. Sponsorship: request and offer only; SportBridge handles no money. Built 2026-11-16 (see below). Requests for children are switched off until legal question 6 is answered.
+
+## Membership (Phase 4), branch `membership`
+Built 2026-11-16. **SportBridge still takes no money**: the client has confirmed the prices but not a payment
+provider, so this is the whole machinery around a subscription with the checkout left as a clearly marked seam.
+- **One record per account, `memberships/{uid}`, written only by the server.** Plan, status, billing period,
+  trial end and the last plan the member asked about. Firestore rules let a member read their own (and staff read
+  any) but let *nobody* write one — you cannot give yourself a plan or extend your own trial from a browser.
+- **The organisation trial starts itself.** The record is created the first time an account asks for it, which is
+  also how every organisation that signed up before Phase 4 gets its 30 days. When the 30 days run out the record
+  is corrected to `lapsed` and the account simply returns to the free limits: **nothing is ever charged**, as the
+  client asked.
+- **"I'm interested" is the payment seam.** It records the plan and billing period the member wants, writes an
+  audit entry, grants nothing and takes nothing. The page says so in as many words. When the client picks a
+  provider, `POST /api/membership/interest` is the one route that changes.
+- **Prices now live in `packages/shared/src/membership.ts`** (`PLANS`), so the home page, the Membership page and
+  the server cannot drift apart. The home page's own copy is gone.
+- **Limits live in one constant** (`PLAN_LIMITS`) for the client to set: change the numbers, touch nothing else.
+- **What is actually enforced:** the application limit, on the server, inside `apply()` — a Starter account may
+  have 3 applications *waiting for an answer* at a time; answered and withdrawn ones are finished and free the
+  slot again. Organisations, paid Pro accounts and accounts with no record yet are not limited.
+- **What is NOT enforced yet, and why:** `liveListings` and `savedListings`. Listings and saved items are written
+  straight from the browser under Firestore rules, and Firestore rules cannot count documents, so enforcing either
+  means moving listing creation (and saving) to the API first. Until then the app deliberately does not claim
+  either limit is in force — the Membership page shows only the application limit.
+- **Open for the client:** the split itself. The pricing is confirmed but not what each tier gates. The defaults
+  above (3 applications for Starter, 1 live listing for a lapsed organisation) were chosen on 2026-11-16 so the
+  machinery could be built and tested; the application cap was already the plan of record. Change `PLAN_LIMITS`
+  when the client decides.
+- Membership is on the athlete, coach and organisation sidebars (as it already was); a parent's account has no
+  membership of its own, which is the existing navigation decision, left alone.
 
 ## Calendar (Phase 3d), branch `calendar`
 - **Two kinds of entry, merged into one list:** entries derived from things already on SportBridge (an accepted application's dates for the athlete, and for the parent on their verified child's behalf; an organisation's own published listings), and personal entries a member types in themselves (title, date, optional end date, optional note).
@@ -141,7 +171,7 @@ The client wants real schools, clubs and coaches on the platform instead of an e
 - Unclaimed organisations cannot post (no owner) and show a notice on their directory profile. The organisation dashboard offers a claim card to self-registered, unverified organisations.
 - Organisation dashboard now shows **real** counts of live/draft opportunities and programmes and applications waiting (the "coming in the next release" text was stale).
 - **To make a staff account:** `npm run grant-admin -w apps/api -- person@example.com` (needs the service account key in the environment; the person signs out and in again).
-- Rules: 72 tests (2 new for calendar, run on your Mac). API: 73 tests. Web: 186 tests. Shared: 77 tests.
+- Rules: 74 tests (2 new for membership, run on your Mac). API: 82 tests. Web: 194 tests. Shared: 83 tests.
 - Decisions pending from the client: where the school/coach lists come from; coach vetting for those connecting with children; who the admin users are; POPIA sign-off for listing coaches.
 - Step B (CSV import with preview, duplicate detection and undo) and step C (coaches) follow.
 

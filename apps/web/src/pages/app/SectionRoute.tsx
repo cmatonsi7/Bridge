@@ -33,6 +33,7 @@ const DirectoryPage = lazy(() => import('./directory/DirectoryPage'));
 const ConnectionsPage = lazy(() => import('./directory/ConnectionsPage'));
 const SponsorshipPage = lazy(() => import('./sponsorship/SponsorshipPage'));
 const CalendarPage = lazy(() => import('./calendar/CalendarPage'));
+const MembershipPage = lazy(() => import('./membership/MembershipPage'));
 const AdminDashboard = lazy(() => import('./admin/AdminDashboard'));
 
 /** Browsing and saving listings are the same for every member role. */
@@ -54,6 +55,7 @@ const BUILT: Partial<Record<Role, Partial<Record<AppSection, ComponentType>>>> =
     settings: AthleteSettingsPage,
     sponsorship: SponsorshipPage,
     calendar: CalendarPage,
+    membership: MembershipPage,
   },
   guardian: {
     ...MEMBER_LISTINGS,
@@ -68,6 +70,7 @@ const BUILT: Partial<Record<Role, Partial<Record<AppSection, ComponentType>>>> =
     settings: CoachSettingsPage,
     sponsorship: SponsorshipPage,
     calendar: CalendarPage,
+    membership: MembershipPage,
   },
   organisation: {
     directory: DirectoryPage,
@@ -79,6 +82,7 @@ const BUILT: Partial<Record<Role, Partial<Record<AppSection, ComponentType>>>> =
     settings: OrgSettingsPage,
     sponsorship: SponsorshipPage,
     calendar: CalendarPage,
+    membership: MembershipPage,
   },
 };
 

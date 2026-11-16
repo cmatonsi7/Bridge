@@ -30,6 +30,12 @@ export const ORG_TRANSITIONS: Record<ApplicationStatus, readonly ApplicationStat
 /** The applicant (or their parent) may withdraw while the application is still live. */
 export const WITHDRAWABLE: readonly ApplicationStatus[] = ['submitted', 'shortlisted', 'accepted'];
 
+/**
+ * Applications still waiting on somebody else, which is what a membership limit counts (Phase 4).
+ * An accepted, declined or withdrawn application is finished and never holds a slot.
+ */
+export const PENDING_STATUSES: readonly ApplicationStatus[] = ['submitted', 'shortlisted'];
+
 export const applySchema = z.object({
   listingId: z.string().regex(/^[A-Za-z0-9]{1,64}$/, 'Invalid listing'),
   note: z

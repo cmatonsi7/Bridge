@@ -13,3 +13,4 @@ export * from './csv.js';
 export * from './importer.js';
 export * from './sponsorship.js';
 export * from './calendar.js';
+export * from './membership.js';
