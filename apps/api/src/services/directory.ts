@@ -1,8 +1,10 @@
 import {
+  coachCanConnect,
   connectRequestSchema,
   connectionId,
   isAnswerable,
   isEndable,
+  type CredentialStatus,
   type AthleteProfileDoc,
   type CoachProfileDoc,
   type ConnectRequestInput,
@@ -28,6 +30,11 @@ export interface DirectoryRepoPort {
   putEntry(uid: string, entry: DirectoryEntryDoc): Promise<void>;
   removeEntry(uid: string): Promise<void>;
   getConnection(id: string): Promise<ConnectionDoc | null>;
+  /**
+   * This coach's credential-verification status (Phase 5b), or undefined if they have never started.
+   * Only verified coaches may request a connection — see coachCanConnect.
+   */
+  coachVerificationStatus(uid: string): Promise<CredentialStatus | undefined>;
   createConnection(
     id: string,
     doc: ConnectionDoc,
@@ -166,6 +173,15 @@ export async function requestConnection(
   if (c.role !== 'coach') throw new HttpError(403, 'NOT_COACH', 'Only coaches can send connection requests');
   if (!c.emailVerified) throw new HttpError(403, 'EMAIL_NOT_VERIFIED', 'Verify your email address first');
   if (input.athleteUid === c.uid) throw new HttpError(400, 'SELF', 'You cannot connect with yourself');
+  // Phase 5b: a coach reaches an athlete only once staff have read their documents. A parent should
+  // never field a request from somebody nobody has checked.
+  if (!coachCanConnect(await repo.coachVerificationStatus(c.uid))) {
+    throw new HttpError(
+      403,
+      'NOT_VERIFIED_COACH',
+      'SportBridge verifies coaching credentials before you can contact athletes. Upload your qualifications for review first.',
+    );
+  }
 
   const [coach, athlete] = await Promise.all([repo.getSubject(c.uid), repo.getSubject(input.athleteUid)]);
   if (!coach) throw new HttpError(404, 'NO_PROFILE', 'Finish setting up your account first');
@@ -284,6 +300,8 @@ export async function answerConnection(
       audit: { type: `connection.${status}`, connectionId: id, by: c.uid, as: who, at: ts },
     };
   });
+  // Told to the caller so the route can open the pair's message thread (Phase 5a).
+  return { accepted: accept };
 }
 
 /** The coach, the adult athlete, or a child's parent may end an accepted connection. */

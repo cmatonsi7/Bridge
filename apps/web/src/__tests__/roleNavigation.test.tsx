@@ -20,6 +20,7 @@ describe('each role’s sidebar shows only what applies to it', () => {
       'connections',
       'dashboard',
       'directory',
+      'messages',
       'opportunities',
       'programmes',
       'settings',
@@ -27,8 +28,10 @@ describe('each role’s sidebar shows only what applies to it', () => {
     expect(labels('guardian')).toContain('Children’s applications');
     expect(labels('guardian')).toContain('Coach requests');
     expect(canAccess('guardian', 'calendar')).toBe(true);
-    for (const s of ['profile', 'progress', 'saved', 'sponsorship', 'messages', 'membership'] as const)
+    for (const s of ['profile', 'progress', 'saved', 'sponsorship', 'membership'] as const)
       expect(canAccess('guardian', s)).toBe(false);
+    // A parent is in every conversation their child is in (Phase 5a), so they must be able to read them.
+    expect(canAccess('guardian', 'messages')).toBe(true);
   });
 
   it('a coach does not get applications, but keeps connections and a profile, and can support athletes', () => {
@@ -37,6 +40,10 @@ describe('each role’s sidebar shows only what applies to it', () => {
     expect(labels('coach')).toContain('Support athletes');
     expect(canAccess('coach', 'connections')).toBe(true);
     expect(canAccess('coach', 'profile')).toBe(true);
+    // Credentials are a coach page only — nobody else uploads documents (Phase 5b).
+    expect(canAccess('coach', 'credentials')).toBe(true);
+    for (const r of ['athlete', 'guardian', 'organisation'] as const)
+      expect(canAccess(r, 'credentials')).toBe(false);
   });
 
   it('an organisation reviews “Applications” and can support athletes, with no coach connections or saved items', () => {

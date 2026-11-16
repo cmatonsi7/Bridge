@@ -34,6 +34,8 @@ const ConnectionsPage = lazy(() => import('./directory/ConnectionsPage'));
 const SponsorshipPage = lazy(() => import('./sponsorship/SponsorshipPage'));
 const CalendarPage = lazy(() => import('./calendar/CalendarPage'));
 const MembershipPage = lazy(() => import('./membership/MembershipPage'));
+const MessagesPage = lazy(() => import('./messages/MessagesPage'));
+const CoachCredentialsPage = lazy(() => import('./coach/CoachCredentialsPage'));
 const AdminDashboard = lazy(() => import('./admin/AdminDashboard'));
 
 /** Browsing and saving listings are the same for every member role. */
@@ -43,6 +45,8 @@ const MEMBER_LISTINGS = {
   saved: SavedPage,
   directory: DirectoryPage,
   connections: ConnectionsPage,
+  // Every member role can hold a conversation — including a parent, who is in their child's threads.
+  messages: MessagesPage,
 };
 
 /** Pages that are built for a role. Anything not listed falls back to the "not available yet" placeholder. */
@@ -71,9 +75,11 @@ const BUILT: Partial<Record<Role, Partial<Record<AppSection, ComponentType>>>> =
     sponsorship: SponsorshipPage,
     calendar: CalendarPage,
     membership: MembershipPage,
+    credentials: CoachCredentialsPage,
   },
   organisation: {
     directory: DirectoryPage,
+    messages: MessagesPage,
     opportunities: OrgOpportunitiesPage,
     programmes: OrgProgrammesPage,
     saved: SavedPage,

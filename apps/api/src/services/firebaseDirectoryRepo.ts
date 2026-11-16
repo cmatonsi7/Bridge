@@ -2,6 +2,7 @@ import {
   COLLECTIONS,
   type AthleteProfileDoc,
   type CoachProfileDoc,
+  type CoachVerificationDoc,
   type ConnectionDoc,
   type DirectoryEntryDoc,
   type OrganisationFullDoc,
@@ -10,6 +11,7 @@ import {
 import type { Firestore, Transaction } from 'firebase-admin/firestore';
 import type { Outbox } from './applications.js';
 import type { DirectoryRepoPort } from './directory.js';
+import { COACH_VERIFICATIONS } from './firebaseCoachVerificationRepo.js';
 
 const DIRECTORY = 'directoryProfiles';
 const CONNECTIONS = 'connections';
@@ -65,6 +67,10 @@ export function firestoreDirectoryRepo(db: Firestore): DirectoryRepoPort {
         writeOutbox(tx, outbox);
         tx.create(db.collection(COLLECTIONS.auditLogs).doc(), audit);
       });
+    },
+    async coachVerificationStatus(uid) {
+      const s = await db.collection(COACH_VERIFICATIONS).doc(uid).get();
+      return s.exists ? (s.data() as CoachVerificationDoc).status : undefined;
     },
     async mutateConnection(id, decide) {
       await db.runTransaction(async (tx) => {

@@ -13,6 +13,7 @@ export type AppSection =
   | 'settings'
   | 'directory'
   | 'connections'
+  | 'credentials'
   | 'applications'
   | 'sponsorship'
   | 'admin';
@@ -140,6 +141,15 @@ export const NAV_ITEMS: NavItem[] = [
     description: 'Coach and athlete connections.',
   },
   {
+    section: 'credentials',
+    label: 'My Credentials',
+    icon: 'badge-check',
+    phase: 5,
+    eyebrow: 'VERIFICATION',
+    title: 'My Credentials',
+    description: 'Your coaching qualifications, and the documents that prove them.',
+  },
+  {
     section: 'applications',
     label: 'My Applications',
     icon: 'clipboard-check',
@@ -184,10 +194,13 @@ const COMMON: AppSection[] = [
 export const ROLE_SECTIONS: Record<Role, AppSection[]> = {
   athlete: [...COMMON, 'progress', 'calendar', 'directory', 'applications', 'sponsorship'],
   // A parent's account is about their children: no personal profile, progress, saved items or sponsorship.
+  // They do get Messages: every conversation involving their child includes them (Phase 5a), and a
+  // parent who cannot read those cannot do the job the design gives them.
   guardian: [
     'dashboard',
     'opportunities',
     'programmes',
+    'messages',
     'directory',
     'applications',
     'connections',
@@ -195,7 +208,8 @@ export const ROLE_SECTIONS: Record<Role, AppSection[]> = {
     'settings',
   ],
   // Coaches connect with athletes and may offer sponsorship; they do not apply to listings.
-  coach: [...COMMON, 'calendar', 'directory', 'sponsorship'],
+  // Credentials are theirs alone: until staff verify them, they cannot request a connection (Phase 5b).
+  coach: [...COMMON, 'calendar', 'directory', 'credentials', 'sponsorship'],
   // Organisations review applications they receive and may offer sponsorship; no coach connections or saved items.
   organisation: [
     'dashboard',

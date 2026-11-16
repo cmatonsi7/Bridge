@@ -11,8 +11,18 @@ import {
 } from '../services/directory.js';
 import { requireAuth } from '../middleware/auth.js';
 import { HttpError } from '../middleware/errors.js';
+import {
+  closeThreadFor,
+  threadForConnection,
+  type MessagesRepoPort,
+} from '../services/messages.js';
 
-export function directoryRouter(deps: { auth: AuthPort; directory: DirectoryRepoPort }) {
+export function directoryRouter(deps: {
+  auth: AuthPort;
+  directory: DirectoryRepoPort;
+  /** Optional so the directory keeps working if messaging is not wired up. */
+  messages?: MessagesRepoPort;
+}) {
   const r = Router();
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -50,7 +60,13 @@ export function directoryRouter(deps: { auth: AuthPort; directory: DirectoryRepo
   ] as const) {
     r.post(`/connections/:id/${path}`, limiter, requireAuth(deps.auth), async (req, res, next) => {
       try {
-        await answerConnection(deps.directory, caller(req), connId(req.params.id), accept);
+        const id = connId(req.params.id);
+        await answerConnection(deps.directory, caller(req), id, accept);
+        // Accepting is what opens the pair's conversation. A failure here must not undo the acceptance,
+        // which has already been written — the thread is created again on the next Messages visit.
+        if (accept && deps.messages) {
+          await threadForConnection(deps.messages, id).catch(() => undefined);
+        }
         res.json({ ok: true });
       } catch (err) {
         next(err);
@@ -59,7 +75,12 @@ export function directoryRouter(deps: { auth: AuthPort; directory: DirectoryRepo
   }
   r.post('/connections/:id/end', limiter, requireAuth(deps.auth), async (req, res, next) => {
     try {
-      await endConnection(deps.directory, caller(req), connId(req.params.id));
+      const id = connId(req.params.id);
+      await endConnection(deps.directory, caller(req), id);
+      // The conversation goes read-only with the connection: the history stays, the door shuts.
+      if (deps.messages) {
+        await closeThreadFor(deps.messages, 'connection', id, 'connection_ended').catch(() => undefined);
+      }
       res.json({ ok: true });
     } catch (err) {
       next(err);

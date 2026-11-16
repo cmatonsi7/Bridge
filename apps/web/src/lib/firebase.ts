@@ -1,6 +1,7 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth, type Auth } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase/firestore';
+import { connectStorageEmulator, getStorage, type FirebaseStorage } from 'firebase/storage';
 
 /**
  * Firebase web configuration. These values identify the project and are safe to ship to browsers;
@@ -21,6 +22,7 @@ export const firebaseConfigured = Boolean(config.apiKey && config.projectId && c
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let db: Firestore | undefined;
+let storage: FirebaseStorage | undefined;
 
 if (firebaseConfigured) {
   app = initializeApp(
@@ -28,9 +30,11 @@ if (firebaseConfigured) {
   );
   auth = getAuth(app);
   db = getFirestore(app);
+  storage = getStorage(app);
   if (useEmulators) {
     connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
     connectFirestoreEmulator(db, '127.0.0.1', 8081);
+    connectStorageEmulator(storage, '127.0.0.1', 9199);
   }
 }
 
@@ -41,4 +45,9 @@ export function requireAuth(): Auth {
 export function requireDb(): Firestore {
   if (!db) throw new Error('FIREBASE_NOT_CONFIGURED');
   return db;
+}
+/** Storage holds coach credential documents (Phase 5b) — the only uploads on the platform. */
+export function requireStorage(): FirebaseStorage {
+  if (!storage) throw new Error('FIREBASE_NOT_CONFIGURED');
+  return storage;
 }

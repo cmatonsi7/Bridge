@@ -25,6 +25,7 @@ vi.mock('../features/admin/adminService', async () => {
     useOverview: () => ({ status: 'ready', data: st.overview }),
     useActivity: () => ({ status: 'ready', data: st.activity }),
     useVerificationQueue: () => ({ status: 'ready', data: { awaiting: [], verified: [] } }),
+    useCoachVerifications: () => ({ state: { status: 'ready', data: [] }, reload: vi.fn() }),
   };
 });
 vi.mock('../features/onboarding/onboardingService', () => ({
@@ -93,6 +94,7 @@ describe('AdminDashboard', () => {
       'Schools & organisations',
       'Import',
       'Verification',
+      'Coach credentials',
       'Sponsorship',
       'Activity log',
     ]);

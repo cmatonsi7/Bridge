@@ -25,7 +25,7 @@ import {
   limit,
   getCountFromServer,
 } from 'firebase/firestore';
-import { ref, uploadString } from 'firebase/storage';
+import { deleteObject, getMetadata, ref, uploadString } from 'firebase/storage';
 
 let env: RulesTestEnvironment;
 
@@ -178,9 +178,44 @@ describe('guardian links, audit log, unknown collections', () => {
 });
 
 describe('storage', () => {
-  it('denies all uploads in Phase 1', async () => {
+  const pdf = { contentType: 'application/pdf' };
+
+  it('denies uploads to any path that is not a coach credential', async () => {
     const s = env.authenticatedContext('alice').storage();
     await assertFails(uploadString(ref(s, 'users/alice/avatar.png'), 'x'));
+    await assertFails(uploadString(ref(s, 'anything/else.pdf'), 'x', 'raw', pdf));
+  });
+
+  it('lets a coach upload their own credential document (Phase 5b)', async () => {
+    const s = env.authenticatedContext('bob').storage();
+    await assertSucceeds(uploadString(ref(s, 'coachCredentials/bob/doc1'), 'x', 'raw', pdf));
+    await assertSucceeds(
+      uploadString(ref(s, 'coachCredentials/bob/doc2'), 'x', 'raw', { contentType: 'image/png' }),
+    );
+  });
+
+  it('refuses a file type nobody can review, and anything over 5 MB', async () => {
+    const s = env.authenticatedContext('bob').storage();
+    await assertFails(
+      uploadString(ref(s, 'coachCredentials/bob/bad'), 'x', 'raw', { contentType: 'application/zip' }),
+    );
+    // uploadString sends text/plain by default, which is not on the list either.
+    await assertFails(uploadString(ref(s, 'coachCredentials/bob/plain'), 'x'));
+    const big = 'x'.repeat(5 * 1024 * 1024 + 10);
+    await assertFails(uploadString(ref(s, 'coachCredentials/bob/big'), big, 'raw', pdf));
+  });
+
+  it('keeps one coach out of another coach’s documents entirely', async () => {
+    const other = env.authenticatedContext('alice').storage();
+    await assertFails(uploadString(ref(other, 'coachCredentials/bob/doc1'), 'x', 'raw', pdf));
+    await assertFails(getMetadata(ref(other, 'coachCredentials/bob/doc1')));
+    await assertFails(getMetadata(ref(env.unauthenticatedContext().storage(), 'coachCredentials/bob/doc1')));
+  });
+
+  it('never lets anyone delete a credential file from the browser', async () => {
+    const s = env.authenticatedContext('bob').storage();
+    await uploadString(ref(s, 'coachCredentials/bob/doc1'), 'x', 'raw', pdf);
+    await assertFails(deleteObject(ref(s, 'coachCredentials/bob/doc1')));
   });
 });
 
@@ -1310,5 +1345,205 @@ describe('membership (Phase 4)', () => {
     const staff = as('staff', { role: 'admin', admin: true });
     await assertFails(updateDoc(doc(staff, 'memberships/alice'), { plan: 'pro' }));
     await assertFails(setDoc(doc(as('bob'), 'memberships/bob'), record({ uid: 'bob', plan: 'pro' })));
+  });
+});
+
+describe('message threads (Phase 5a)', () => {
+  const thread = (over: Record<string, unknown> = {}) => ({
+    id: 'connection_bob_alice',
+    kind: 'connection',
+    sourceId: 'bob_alice',
+    status: 'open',
+    closedReason: null,
+    subject: 'A B and A B',
+    participants: [
+      { uid: 'bob', displayName: 'A B', role: 'coach' },
+      { uid: 'alice', displayName: 'A B', role: 'athlete' },
+    ],
+    participantUids: ['bob', 'alice'],
+    writerUids: ['bob', 'alice'],
+    guardianUids: [],
+    hasMinor: false,
+    lastMessageAt: null,
+    lastMessagePreview: null,
+    lastMessageBy: null,
+    createdAt: now,
+    updatedAt: now,
+    ...over,
+  });
+  const entry = {
+    id: 'm1',
+    threadId: 'connection_bob_alice',
+    senderUid: 'bob',
+    senderName: 'A B',
+    onBehalfOfUid: null,
+    body: 'Hello',
+    sentAt: now,
+  };
+
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'messageThreads/connection_bob_alice'), thread());
+      await setDoc(doc(db, 'messageThreads/connection_bob_alice/entries/m1'), entry);
+      // A child's thread, with the parent listed as a participant.
+      await setDoc(
+        doc(db, 'messageThreads/connection_bob_teen'),
+        thread({
+          id: 'connection_bob_teen',
+          sourceId: 'bob_teen',
+          participantUids: ['bob', 'teen', 'mum'],
+          writerUids: ['bob', 'teen', 'mum'],
+          guardianUids: ['mum'],
+          hasMinor: true,
+        }),
+      );
+      await setDoc(doc(db, 'messageThreads/connection_bob_teen/entries/m2'), {
+        ...entry,
+        id: 'm2',
+        threadId: 'connection_bob_teen',
+      });
+    });
+  });
+
+  it('lets the two people in a thread read it, and keeps everyone else out', async () => {
+    await assertSucceeds(getDoc(doc(as('bob'), 'messageThreads/connection_bob_alice')));
+    await assertSucceeds(getDoc(doc(as('alice'), 'messageThreads/connection_bob_alice')));
+    await assertFails(getDoc(doc(as('carol'), 'messageThreads/connection_bob_alice')));
+    await assertFails(getDoc(doc(anon(), 'messageThreads/connection_bob_alice')));
+  });
+
+  it('lets a parent read their child’s thread and every message in it', async () => {
+    await assertSucceeds(getDoc(doc(as('mum'), 'messageThreads/connection_bob_teen')));
+    await assertSucceeds(getDoc(doc(as('mum'), 'messageThreads/connection_bob_teen/entries/m2')));
+    // But not a thread they are not part of.
+    await assertFails(getDoc(doc(as('mum'), 'messageThreads/connection_bob_alice')));
+  });
+
+  it('decides message access from the thread, so an outsider cannot read a message directly', async () => {
+    await assertSucceeds(getDoc(doc(as('alice'), 'messageThreads/connection_bob_alice/entries/m1')));
+    await assertFails(getDoc(doc(as('carol'), 'messageThreads/connection_bob_alice/entries/m1')));
+    await assertFails(getDoc(doc(anon(), 'messageThreads/connection_bob_alice/entries/m1')));
+  });
+
+  it('lets staff read any conversation', async () => {
+    const staff = as('staff', { role: 'admin', admin: true });
+    await assertSucceeds(getDoc(doc(staff, 'messageThreads/connection_bob_alice')));
+    await assertSucceeds(getDoc(doc(staff, 'messageThreads/connection_bob_alice/entries/m1')));
+  });
+
+  it('never lets anyone write a message or change a thread from the browser', async () => {
+    // Not a participant writing a message...
+    await assertFails(
+      setDoc(doc(as('alice'), 'messageThreads/connection_bob_alice/entries/m9'), {
+        ...entry,
+        id: 'm9',
+        senderUid: 'alice',
+      }),
+    );
+    // ...not editing somebody else's words...
+    await assertFails(
+      updateDoc(doc(as('bob'), 'messageThreads/connection_bob_alice/entries/m1'), { body: 'changed' }),
+    );
+    await assertFails(deleteDoc(doc(as('bob'), 'messageThreads/connection_bob_alice/entries/m1')));
+    // ...not re-opening a closed thread or adding themselves to one...
+    await assertFails(
+      updateDoc(doc(as('alice'), 'messageThreads/connection_bob_alice'), { status: 'closed' }),
+    );
+    await assertFails(
+      updateDoc(doc(as('carol'), 'messageThreads/connection_bob_alice'), {
+        participantUids: ['bob', 'alice', 'carol'],
+      }),
+    );
+    // ...and not staff either.
+    const staff = as('staff', { role: 'admin', admin: true });
+    await assertFails(updateDoc(doc(staff, 'messageThreads/connection_bob_alice'), { status: 'closed' }));
+  });
+
+  it('lets someone list only the threads they are in', async () => {
+    const mine = query(
+      collection(as('alice'), 'messageThreads'),
+      where('participantUids', 'array-contains', 'alice'),
+    );
+    await assertSucceeds(getDocs(mine));
+    // Asking for everything, or for somebody else's threads, is refused.
+    await assertFails(getDocs(query(collection(as('alice'), 'messageThreads'))));
+    await assertFails(
+      getDocs(
+        query(collection(as('alice'), 'messageThreads'), where('participantUids', 'array-contains', 'bob')),
+      ),
+    );
+  });
+});
+
+describe('coach credential verification (Phase 5b)', () => {
+  const record = {
+    uid: 'bob',
+    displayName: 'A B',
+    status: 'submitted',
+    decisionNote: null,
+    submittedAt: now,
+    decidedAt: null,
+    decidedByUid: null,
+    docCount: 1,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const credential = {
+    id: 'doc1',
+    qualificationId: null,
+    fileName: 'cert.pdf',
+    contentType: 'application/pdf',
+    sizeBytes: 1024,
+    storagePath: 'coachCredentials/bob/doc1',
+    uploadedAt: now,
+  };
+
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'coachVerifications/bob'), record);
+      await setDoc(doc(db, 'coachVerificationNotes/bob'), {
+        uid: 'bob',
+        internalNote: 'Looks like a photocopy.',
+        decidedByUid: 'staff',
+        decidedAt: now,
+      });
+      await setDoc(doc(db, 'coachProfiles/bob/credentialDocs/doc1'), credential);
+    });
+  });
+
+  it('lets a coach read their own verification and documents; nobody else can', async () => {
+    await assertSucceeds(getDoc(doc(as('bob'), 'coachVerifications/bob')));
+    await assertSucceeds(getDoc(doc(as('bob'), 'coachProfiles/bob/credentialDocs/doc1')));
+    await assertFails(getDoc(doc(as('alice'), 'coachVerifications/bob')));
+    await assertFails(getDoc(doc(as('alice'), 'coachProfiles/bob/credentialDocs/doc1')));
+    await assertFails(getDoc(doc(anon(), 'coachProfiles/bob/credentialDocs/doc1')));
+  });
+
+  it('keeps the staff-only note away from the coach it is about', async () => {
+    await assertFails(getDoc(doc(as('bob'), 'coachVerificationNotes/bob')));
+    await assertSucceeds(
+      getDoc(doc(as('staff', { role: 'admin', admin: true }), 'coachVerificationNotes/bob')),
+    );
+  });
+
+  it('lets staff read a coach’s verification and documents', async () => {
+    const staff = as('staff', { role: 'admin', admin: true });
+    await assertSucceeds(getDoc(doc(staff, 'coachVerifications/bob')));
+    await assertSucceeds(getDoc(doc(staff, 'coachProfiles/bob/credentialDocs/doc1')));
+  });
+
+  it('never lets a coach verify themselves or forge a document record', async () => {
+    await assertFails(updateDoc(doc(as('bob'), 'coachVerifications/bob'), { status: 'verified' }));
+    await assertFails(setDoc(doc(as('bob'), 'coachVerifications/bob'), { ...record, status: 'verified' }));
+    await assertFails(deleteDoc(doc(as('bob'), 'coachVerifications/bob')));
+    await assertFails(
+      setDoc(doc(as('bob'), 'coachProfiles/bob/credentialDocs/doc2'), { ...credential, id: 'doc2' }),
+    );
+    await assertFails(deleteDoc(doc(as('bob'), 'coachProfiles/bob/credentialDocs/doc1')));
+    // Staff cannot write these either — only the server.
+    const staff = as('staff', { role: 'admin', admin: true });
+    await assertFails(updateDoc(doc(staff, 'coachVerifications/bob'), { status: 'verified' }));
   });
 });

@@ -11,7 +11,7 @@ import type { OrgOnboardingRepoPort } from './services/orgOnboarding.js';
 import type { OrgImportRepoPort } from './services/orgImport.js';
 import type { ImportBatchDoc } from '@sportbridge/shared';
 import type { ClaimDoc, OrganisationFullDoc } from '@sportbridge/shared';
-import type { ConnectionDoc, DirectoryEntryDoc } from '@sportbridge/shared';
+import type { ConnectionDoc, CredentialStatus, DirectoryEntryDoc } from '@sportbridge/shared';
 import type { ApplicationDoc, GuardianLinkDoc, ListingDoc } from '@sportbridge/shared';
 
 type Token = Partial<DecodedIdToken> & { uid: string; role?: string; admin?: boolean };
@@ -98,9 +98,21 @@ function fakes() {
   const subjects = new Map<string, DirectorySubject>();
   const entries = new Map<string, DirectoryEntryDoc>();
   const connections = new Map<string, ConnectionDoc>();
+  /**
+   * Coach credential status (Phase 5b). Coaches in these tests are verified unless a test says
+   * otherwise, so the connection tests keep testing connections rather than the gate.
+   */
+  const coachStatuses = new Map<string, CredentialStatus | null>();
   const directory: DirectoryRepoPort = {
     async getSubject(uid) {
       return subjects.get(uid) ?? null;
+    },
+    async coachVerificationStatus(uid) {
+      // Unset means "verified" so the connection tests test connections; null means a coach who has
+      // never started the process at all.
+      const v = coachStatuses.get(uid);
+      if (v === undefined) return 'verified';
+      return v ?? undefined;
     },
     async putEntry(uid, entry) {
       entries.set(uid, entry);
@@ -277,6 +289,7 @@ function fakes() {
     subjects,
     entries,
     connections,
+    coachStatuses,
     listings,
     memberships,
     applicants,
@@ -1085,6 +1098,22 @@ describe('directory and connections', () => {
     );
     await post('/api/connections', 't-coach', { athleteUid: 'adult' });
     expect((await post('/api/connections', 't-coach', { athleteUid: 'adult' })).status).toBe(409);
+  });
+
+  it('stops a coach nobody has verified from reaching any athlete (Phase 5b)', async () => {
+    for (const status of ['draft', 'submitted', 'rejected'] as const) {
+      f.coachStatuses.set('coach1', status);
+      const res = await post('/api/connections', 't-coach', { athleteUid: 'adult' });
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('NOT_VERIFIED_COACH');
+    }
+    // A coach who has never started the process at all is no different.
+    f.coachStatuses.set('coach1', null);
+    expect((await post('/api/connections', 't-coach', { athleteUid: 'adult' })).status).toBe(403);
+
+    // Verified, and the same request goes through.
+    f.coachStatuses.set('coach1', 'verified');
+    expect((await post('/api/connections', 't-coach', { athleteUid: 'adult' })).status).toBe(201);
   });
 
   it("a parent can end their child's connection; a stranger cannot", async () => {

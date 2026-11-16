@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   collection,
   doc,
@@ -15,6 +15,8 @@ import {
 import {
   COLLECTIONS,
   isOpen,
+  type CoachVerificationDoc,
+  type CredentialDocRecord,
   type ListingDoc,
   type OrganisationFullDoc,
   type UserDoc,
@@ -298,4 +300,45 @@ export const removeVerification = (id: string, note: string) =>
   apiFetch<{ ok: true; name: string }>(`/admin/organisations/${id}/unverify`, {
     method: 'POST',
     json: { note },
+  });
+
+// ---- Coach credential verification (Phase 5b) ----
+
+/** One coach in the staff queue, with a short-lived link per uploaded document. */
+export interface CoachQueueItem extends CoachVerificationDoc {
+  documents: (CredentialDocRecord & { url: string | null })[];
+}
+
+/**
+ * The coach review queue. Read through the API rather than Firestore, because each document needs a
+ * signed URL that only the server can mint — these files are never publicly readable.
+ */
+export function useCoachVerifications() {
+  const [state, setState] = useState<Loadable<CoachQueueItem[]>>({ status: 'loading' });
+  const load = useCallback(async () => {
+    try {
+      const { items } = await apiFetch<{ items: CoachQueueItem[] }>('/admin/coach-verifications');
+      setState({ status: 'ready', data: items });
+    } catch {
+      setState({
+        status: 'error',
+        message: 'We couldn’t load coach verifications. Check your connection and refresh.',
+      });
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  return { state, reload: load };
+}
+
+export const decideCoachCredentials = (
+  uid: string,
+  verified: boolean,
+  decisionNote: string,
+  internalNote: string,
+) =>
+  apiFetch<{ ok: true }>(`/admin/coach-verifications/${uid}/decide`, {
+    method: 'POST',
+    json: { verified, decisionNote, internalNote },
   });

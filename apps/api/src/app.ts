@@ -12,8 +12,12 @@ import { orgOnboardingRouter } from './routes/orgOnboarding.js';
 import { orgImportRouter } from './routes/orgImport.js';
 import { sponsorshipRouter } from './routes/sponsorship.js';
 import { membershipRouter } from './routes/membership.js';
+import { messagesRouter } from './routes/messages.js';
+import { coachVerificationRouter } from './routes/coachVerification.js';
 import type { SponsorshipRepoPort } from './services/sponsorship.js';
 import type { MembershipRepoPort } from './services/membership.js';
+import type { MessagesRepoPort } from './services/messages.js';
+import type { CoachVerificationRepoPort } from './services/coachVerification.js';
 import type { OrgImportRepoPort } from './services/orgImport.js';
 import type { OrgOnboardingRepoPort } from './services/orgOnboarding.js';
 import type { DirectoryRepoPort } from './services/directory.js';
@@ -31,6 +35,8 @@ export interface AppDeps {
   orgImport: OrgImportRepoPort;
   sponsorship?: SponsorshipRepoPort;
   membership?: MembershipRepoPort;
+  messages?: MessagesRepoPort;
+  coachVerification?: CoachVerificationRepoPort;
   webDistDir?: string;
   trustProxyHops?: number;
 }
@@ -97,6 +103,9 @@ export function createApp(deps: AppDeps) {
   api.use(orgImportRouter(deps));
   if (deps.sponsorship) api.use(sponsorshipRouter({ auth: deps.auth, sponsorship: deps.sponsorship }));
   if (deps.membership) api.use(membershipRouter({ auth: deps.auth, membership: deps.membership }));
+  if (deps.messages) api.use(messagesRouter({ auth: deps.auth, messages: deps.messages }));
+  if (deps.coachVerification)
+    api.use(coachVerificationRouter({ auth: deps.auth, coachVerification: deps.coachVerification }));
   api.use(notFound);
   app.use('/api', api);
 

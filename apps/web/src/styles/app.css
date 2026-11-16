@@ -523,3 +523,93 @@ button.sb-switch {
   text-decoration: none;
   color: inherit;
 }
+
+/* ---- Phase 5a: messages ---- */
+/* Thread list beside the conversation on a desktop; stacked on a phone, list first. */
+.sb-messages-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .sb-messages-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.sb-messages-layout > * {
+  min-width: 0;
+}
+.sb-thread-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid rgb(228, 234, 230);
+  padding: 12px 14px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.sb-thread-row:hover {
+  background: rgb(246, 249, 247);
+}
+.sb-thread-row.is-open {
+  background: rgb(237, 246, 240);
+}
+.sb-thread-row:focus-visible {
+  outline: 2px solid rgb(0, 107, 53);
+  outline-offset: -2px;
+}
+/* One line of preview; a long message must not push the row open. */
+.sb-thread-preview {
+  margin-top: 2px;
+  font-size: 0.85rem;
+  color: rgb(102, 115, 108);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb-thread-messages {
+  display: grid;
+  gap: 10px;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+.sb-message {
+  border: 1px solid rgb(228, 234, 230);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  max-width: 85%;
+}
+/* Your own messages sit to the right, so a conversation reads at a glance. */
+.sb-message.mine {
+  margin-left: auto;
+  background: rgb(237, 246, 240);
+  border-color: rgb(205, 230, 215);
+}
+
+/* ---- Phase 5b: coach credential documents ---- */
+.sb-doc-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.sb-doc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgb(228, 234, 230);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+}
+.sb-doc-row > :last-child {
+  flex: 0 0 auto;
+}
