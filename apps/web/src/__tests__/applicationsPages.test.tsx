@@ -182,6 +182,22 @@ describe('OrgApplicationsPage', () => {
     expect(screen.queryByRole('button', { name: 'Shortlist' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Accept' })).toBeTruthy();
   });
+
+  it('offers a way into the conversation once an applicant is shortlisted or accepted', () => {
+    for (const status of ['shortlisted', 'accepted'] as const) {
+      st.received = [app({ id: `L1_${status}`, status })];
+      const { unmount } = r(<OrgApplicationsPage />);
+      const link = screen.getByRole('link', { name: 'Message applicant' });
+      expect(link.getAttribute('href')).toBe('/app/messages');
+      unmount();
+    }
+  });
+
+  it('offers no conversation before the organisation has shown any interest', () => {
+    st.received = [app({ id: 'L1_new', status: 'submitted' })];
+    r(<OrgApplicationsPage />);
+    expect(screen.queryByRole('link', { name: 'Message applicant' })).toBeNull();
+  });
 });
 
 describe('NotificationsBell', () => {
