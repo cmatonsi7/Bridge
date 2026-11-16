@@ -1,6 +1,6 @@
 # PROJECT_STATUS — SportBridge
 
-_Last updated: 2026-11-16 · Phases 1–3d accepted and live. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
+_Last updated: 2026-11-16 · Phases 1–4 accepted and live. Live at https://bridge-ekz6.onrender.com (Render, `main` branch)._
 
 ## Phase progress
 | Phase | Status |
@@ -14,8 +14,8 @@ _Last updated: 2026-11-16 · Phases 1–3d accepted and live. Live at https://br
 | 3b Applications | Accepted |
 | 3c Directory & connections | Accepted, live (verified 2026-11-16: Talent Directory and Connections both work on production) |
 | 3d Sponsorship & calendar | Accepted, live (verified 2026-11-16 end-to-end on production) |
-| 4 Membership & payments | Infrastructure built (branch `membership`); no payment provider yet — "I'm interested" is the seam |
-| 5 Messaging & coach credential verification | Starting next |
+| 4 Membership & payments | Accepted, live (verified 2026-11-16 on production: athlete Starter, organisation trial, interest recorded end-to-end). No payment provider yet — "I'm interested" is the seam |
+| 5 Messaging & coach credential verification | Built (branch `messaging`); awaiting your test run and review |
 | 6 Production readiness | Not started |
 
 ## Key decisions
@@ -54,6 +54,55 @@ _Last updated: 2026-11-16 · Phases 1–3d accepted and live. Live at https://br
 5. Applications: optional note plus a profile snapshot; applicants can withdraw; organisations see applicants only for their own listings.
 6. Notifications: in-app only.
 7. Sponsorship: request and offer only; SportBridge handles no money. Built 2026-11-16 (see below). Requests for children are switched off until legal question 6 is answered.
+
+## Messaging & coach verification (Phase 5), branch `messaging`
+Built 2026-11-16. Two halves, shipped together because the second one gates the first.
+
+### Messaging (5a)
+- **There is no open inbox.** A thread exists only because of a relationship that already exists — an
+  accepted coach/athlete connection, or an application an organisation has **shortlisted or accepted**. An
+  organisation cannot cold-message everyone who applies, and nobody can start a conversation with a stranger.
+- **A thread's id is derived from the thing that created it** (`connection_<id>`, `application_<id>`), so the
+  same thread cannot be created twice and closing one is a direct lookup when the relationship changes.
+- **Relationships that end close the thread, they do not delete it.** End a connection, withdraw or decline an
+  application, and the conversation goes read-only with a line saying why. The history stays readable.
+- **Child safety — option (a), as you chose.** Every thread involving an under-18 athlete includes their
+  guardians as *readers and writers*. The child keeps their own voice; the parent reads every word and can end
+  the connection. Both sides see a plain notice saying the parent is in the conversation, and when a parent
+  writes they are named as the parent, never hidden behind the child's name.
+- **Guardians now have Messages in their sidebar.** They did not before; a parent who cannot read those
+  threads cannot do the job this design gives them.
+- **Server-written only.** `messageThreads/{id}` and its `entries` are `allow write: if false`; everyone in
+  `participantUids` may read. Staff can read a thread but can never write into one.
+
+### Coach credential verification (5b)
+- **Verification is a gate, not just a badge.** An unverified coach **cannot request a connection** with any
+  athlete. This is the stricter option you picked: it means nobody can use the coach side of the platform
+  until someone is working the review queue. It is one constant to loosen —
+  `CONNECTION_REQUIRES_VERIFICATION` in `packages/shared/src/coachVerification.ts`, checked in one place.
+- **Coaches upload documents.** PDF, JPEG or PNG, 5 MB each, 10 at most. The file goes straight from the
+  browser to Firebase Storage; the server hands out the id and path first, so a record can never be pointed at
+  somebody else's file. Type and size are checked in the browser, in Storage rules *and* in the API.
+- **The documents are private, permanently.** Readable only by that coach and staff. Never on a profile, never
+  in the Talent Directory. Staff read them through **15-minute signed URLs** the server mints — there is no
+  blanket read access and no public link.
+- **No badge until a human has looked.** A coach who has submitted shows nothing on their profile; "pending"
+  would read to a parent like SportBridge vouching for someone nobody has checked.
+- **Saying no requires a reason.** Rejecting without a note is a 400. The coach is told the reason and can fix
+  it and resubmit. The **staff-only note lives in a separate document** (`coachVerificationNotes/{uid}`,
+  admin-only) because the coach can read their own verification record — "internal" has to mean internal.
+- **Staff review it in the existing Admin dashboard**, under a new "Coach credentials" tab.
+
+### Storage is now in use for the first time
+`firebase.json` already pointed at `firebase/storage.rules`, and the test harness and `deploy:rules` already
+covered Storage — but the rules denied everything. They now allow exactly one thing: a coach writing into
+`coachCredentials/{their uid}/`. Deleting is server-only so a record and its file cannot drift apart.
+**Deploying rules now deploys Storage rules too** — `npm run deploy:rules` covers both.
+
+### Open question for the client
+Nothing blocking, but worth asking: with the gate on, how fast can they turn reviews around? If it is going to
+be slow, the honest options are to open the gate (one constant) or to tell coaches an expected wait on the
+credentials page.
 
 ## Membership (Phase 4), branch `membership`
 Built 2026-11-16. **SportBridge still takes no money**: the client has confirmed the prices but not a payment
@@ -171,7 +220,7 @@ The client wants real schools, clubs and coaches on the platform instead of an e
 - Unclaimed organisations cannot post (no owner) and show a notice on their directory profile. The organisation dashboard offers a claim card to self-registered, unverified organisations.
 - Organisation dashboard now shows **real** counts of live/draft opportunities and programmes and applications waiting (the "coming in the next release" text was stale).
 - **To make a staff account:** `npm run grant-admin -w apps/api -- person@example.com` (needs the service account key in the environment; the person signs out and in again).
-- Rules: 74 tests (2 new for membership, run on your Mac). API: 82 tests. Web: 194 tests. Shared: 83 tests.
+- Rules: 85 tests (11 new for Phase 5 — messaging, coach verification and Storage; run on your Mac). API: 113 tests. Web: 214 tests. Shared: 107 tests.
 - Decisions pending from the client: where the school/coach lists come from; coach vetting for those connecting with children; who the admin users are; POPIA sign-off for listing coaches.
 - Step B (CSV import with preview, duplicate detection and undo) and step C (coaches) follow.
 

@@ -6,6 +6,7 @@ import AdminOverview from './AdminOverview';
 const AdminSchoolsSection = lazy(() => import('./AdminSchoolsSection'));
 const AdminImport = lazy(() => import('./AdminImport'));
 const AdminVerification = lazy(() => import('./AdminVerification'));
+const AdminCoachVerification = lazy(() => import('./AdminCoachVerification'));
 const AdminSponsorship = lazy(() => import('./AdminSponsorship'));
 const AdminActivity = lazy(() => import('./AdminActivity'));
 
@@ -15,6 +16,7 @@ const TABS = [
   { key: 'schools', label: 'Schools & organisations' },
   { key: 'import', label: 'Import' },
   { key: 'verification', label: 'Verification' },
+  { key: 'coaches', label: 'Coach credentials' },
   { key: 'sponsorship', label: 'Sponsorship' },
   { key: 'activity', label: 'Activity log' },
 ] as const;
@@ -63,6 +65,7 @@ export default function AdminDashboard() {
         {tab === 'schools' && <AdminSchoolsSection />}
         {tab === 'import' && <AdminImport />}
         {tab === 'verification' && <AdminVerification />}
+        {tab === 'coaches' && <AdminCoachVerification />}
         {tab === 'sponsorship' && <AdminSponsorship />}
         {tab === 'activity' && <AdminActivity />}
       </Suspense>

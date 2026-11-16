@@ -115,7 +115,9 @@ export type NotificationType =
   | 'organisation.verification'
   | 'sponsorship.offer'
   | 'sponsorship.response'
-  | 'sponsorship.reviewed';
+  | 'sponsorship.reviewed'
+  | 'message.received'
+  | 'coach.verification';
 
 /** users/{uid}/notifications/{id}. Written by the server; the owner may only mark it read or delete it. */
 export interface NotificationDoc {

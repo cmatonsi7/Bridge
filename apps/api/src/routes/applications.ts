@@ -10,8 +10,14 @@ import {
 } from '../services/applications.js';
 import { requireAuth } from '../middleware/auth.js';
 import { HttpError } from '../middleware/errors.js';
+import { closeThreadFor, threadForApplication, type MessagesRepoPort } from '../services/messages.js';
 
-export function applicationsRouter(deps: { auth: AuthPort; applications: ApplicationsRepoPort }) {
+export function applicationsRouter(deps: {
+  auth: AuthPort;
+  applications: ApplicationsRepoPort;
+  /** Optional so applications keep working if messaging is not wired up. */
+  messages?: MessagesRepoPort;
+}) {
   const r = Router();
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -38,7 +44,19 @@ export function applicationsRouter(deps: { auth: AuthPort; applications: Applica
   });
   r.post('/applications/:id/status', limiter, requireAuth(deps.auth), async (req, res, next) => {
     try {
-      await changeStatus(deps.applications, caller(req), appId(req.params.id), req.body);
+      const id = appId(req.params.id);
+      await changeStatus(deps.applications, caller(req), id, req.body);
+      if (deps.messages) {
+        const status = (req.body ?? {}).status;
+        // Shortlisting or accepting is what earns the applicant a conversation; declining ends it.
+        if (status === 'shortlisted' || status === 'accepted') {
+          await threadForApplication(deps.messages, id).catch(() => undefined);
+        } else if (status === 'declined') {
+          await closeThreadFor(deps.messages, 'application', id, 'application_finished').catch(
+            () => undefined,
+          );
+        }
+      }
       res.json({ ok: true });
     } catch (err) {
       next(err);
@@ -46,7 +64,13 @@ export function applicationsRouter(deps: { auth: AuthPort; applications: Applica
   });
   r.post('/applications/:id/withdraw', limiter, requireAuth(deps.auth), async (req, res, next) => {
     try {
-      await withdraw(deps.applications, caller(req), appId(req.params.id));
+      const id = appId(req.params.id);
+      await withdraw(deps.applications, caller(req), id);
+      if (deps.messages) {
+        await closeThreadFor(deps.messages, 'application', id, 'application_finished').catch(
+          () => undefined,
+        );
+      }
       res.json({ ok: true });
     } catch (err) {
       next(err);

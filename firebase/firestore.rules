@@ -187,6 +187,14 @@ service cloud.firestore {
           && request.resource.data.createdAt == resource.data.createdAt;
         allow delete: if isSelf(uid);
       }
+
+      // ---- Uploaded credential documents (Phase 5b). These are identity documents: only the coach
+      // who owns them and SportBridge staff may ever see the record, and only the server writes it,
+      // so a coach cannot point a record at somebody else's file or fake a document count.
+      match /credentialDocs/{docId} {
+        allow read: if isSelf(uid) || isAdmin();
+        allow write: if false;
+      }
     }
     match /guardianProfiles/{uid} {
       allow read: if isSelf(uid) || isAdmin();
@@ -256,6 +264,42 @@ service cloud.firestore {
     match /memberships/{uid} {
       allow read: if isSelf(uid) || isAdmin();
       allow write: if false;
+    }
+
+    // ---- Coach credential verification (Phase 5b). The coach reads their own status and the note
+    // written for them; staff read all. Server-written only — a coach cannot verify themselves.
+    match /coachVerifications/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    // The staff-only note about a coach lives apart from the record the coach can read, so "internal"
+    // means it, exactly as for organisations above.
+    match /coachVerificationNotes/{uid} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ---- Message threads (Phase 5a). A thread exists only because of a relationship elsewhere.
+    // Everyone in participantUids may read — which includes a minor athlete's guardians, by design,
+    // so no adult can ever message a child unseen. Nobody writes from a browser: every message goes
+    // through the API, which is what keeps the writer list and the closed state honest.
+    match /messageThreads/{threadId} {
+      function inThread() {
+        return signedIn() && request.auth.uid in resource.data.participantUids;
+      }
+      allow read: if inThread() || isAdmin();
+      allow write: if false;
+
+      match /entries/{entryId} {
+        // The parent thread decides who may read a message; a message carries no access of its own.
+        function threadDoc() {
+          return get(/databases/$(database)/documents/messageThreads/$(threadId)).data;
+        }
+        allow read: if isAdmin()
+          || (signedIn() && request.auth.uid in threadDoc().participantUids);
+        allow write: if false;
+      }
     }
 
     // ---- Verification decisions (Phase 4): staff-only record, with the internal note. Written only by the server;

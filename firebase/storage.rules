@@ -1,8 +1,37 @@
 rules_version = '2';
 
-// Phase 1: no uploads yet. Phase 2 adds profile images and documents with type and size validation.
+// SportBridge Storage rules.
+//
+// Phase 5b adds the only uploads on the platform: a coach's proof of their qualifications. These are
+// identity documents, so the rules here are deliberately narrow — a coach may write only into their
+// own folder, only file types a reviewer can actually open, and only up to 5 MB. Nothing in Storage
+// is public, and nothing is readable by another member: staff read the documents through short-lived
+// signed URLs the API creates, not by being granted blanket read access in the browser.
 service firebase.storage {
   match /b/{bucket}/o {
+
+    function signedIn() { return request.auth != null; }
+    function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+
+    // coachCredentials/{uid}/{docId} — proof of a coaching qualification.
+    match /coachCredentials/{uid}/{docId} {
+      function allowedType() {
+        return request.resource.contentType in ['application/pdf', 'image/jpeg', 'image/png'];
+      }
+      function withinSize() {
+        return request.resource.size > 0 && request.resource.size <= 5 * 1024 * 1024;
+      }
+      // The coach can see what they uploaded; staff can read any of them.
+      allow read: if isSelf(uid) || isAdmin();
+      // Upload and replace are the coach's own; the document record is still written by the server,
+      // so an upload on its own puts nothing into the review queue.
+      allow create, update: if isSelf(uid) && allowedType() && withinSize();
+      // Deleting is left to the server, so a record and its file cannot drift apart.
+      allow delete: if false;
+    }
+
+    // Everything else stays shut.
     match /{allPaths=**} {
       allow read, write: if false;
     }
