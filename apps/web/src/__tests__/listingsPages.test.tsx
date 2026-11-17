@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { ListingDoc, OrganisationFullDoc } from '@sportbridge/shared';
 import * as ls from '../features/listings/listingsService';
@@ -239,5 +240,45 @@ describe('PublicListingsGrid', () => {
     at('/', <PublicListingsGrid kind="programme" />);
     expect(screen.getByRole('button', { name: 'Create Account' })).toBeTruthy();
     expect(screen.getByText(/Create a free account/)).toBeTruthy();
+  });
+});
+
+describe('accessibility', () => {
+  it('BrowseListingsPage with results has no axe violations', async () => {
+    st.published = [L('a', { title: 'Football Trials' })];
+    const { container } = at('/', <BrowseListingsPage kind="opportunity" />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+  it('ListingDetailPage has no axe violations', async () => {
+    st.uid = 'o1';
+    st.one = L('a', { title: 'Football Trials', orgId: 'org1', ownerUid: 'o1' });
+    const { container } = at('/app/listings/a', <ListingDetailPage />, '/app/listings/:listingId');
+    expect(await axe(container)).toHaveNoViolations();
+  });
+  it('SavedPage with a result has no axe violations', async () => {
+    st.published = [L('a', { title: 'Still Here' })];
+    st.saved = [{ id: 'a', listingId: 'a', kind: 'opportunity', title: 'Still Here', savedAt: '2' }];
+    const { container } = at('/', <SavedPage />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+  it('OrgListingsPage with results has no axe violations', async () => {
+    st.uid = 'o1';
+    st.mine = [L('p', { title: 'Live Trial' })];
+    const { container } = at('/', <OrgListingsPage kind="opportunity" />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+  it('ListingEditorPage has no axe violations', async () => {
+    st.uid = 'o1';
+    const { container } = at(
+      '/app/listings/new?kind=opportunity',
+      <ListingEditorPage />,
+      '/app/listings/new',
+    );
+    expect(await axe(container)).toHaveNoViolations();
+  });
+  it('PublicListingsGrid with results has no axe violations', async () => {
+    st.published = [L('a', { title: 'Holiday Camp', kind: 'programme' })];
+    const { container } = at('/', <PublicListingsGrid kind="programme" />);
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

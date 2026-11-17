@@ -31,7 +31,10 @@ export function DirectoryCard({ entry: e }: { entry: DirectoryEntry }) {
           {initials}
         </div>
         <div>
-          <h3 style={{ margin: 0 }}>{e.displayName}</h3>
+          {/* h2, not h3: it's the first heading after the page's h1 (no h2 section title here). Font
+              size is pinned to the browser's default h3 size so promoting the tag doesn't change
+              how it looks. */}
+          <h2 style={{ margin: 0, fontSize: '1.17em' }}>{e.displayName}</h2>
           <p className="sb-meta">
             <Icon className="icon" aria-hidden="true" /> {ROLE_LABEL[e.role]}
             {e.verified === true && e.role === 'organisation' && (

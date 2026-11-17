@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import type { ActivityEntry, Overview } from '../features/admin/adminService';
 import { describeActivity } from '../features/admin/adminService';
@@ -152,6 +153,30 @@ describe('AdminDashboard', () => {
     expect(rows[1]).toContain('Bongiwe N created a new claim code for Camps Bay High');
     expect(rows[2]).toContain('Bongiwe N removed Old School');
     expect(rows[3]).toContain('Thandi M claimed Soweto High School');
+  });
+});
+
+describe('accessibility', () => {
+  it('AdminDashboard Overview has no axe violations', async () => {
+    const { container } = at();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('AdminDashboard Schools & organisations section has no axe violations', async () => {
+    const { container } = at();
+    fireEvent.click(screen.getByRole('button', { name: 'Schools & organisations' }));
+    await screen.findByRole('button', { name: 'Add and create claim code' });
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('AdminDashboard Activity log with entries has no axe violations', async () => {
+    st.activity = [
+      entry({ id: '1' }),
+      entry({ id: '2', type: 'organisation.claim_code_reset', organisationName: 'Camps Bay High' }),
+    ];
+    const { container } = at('/app/admin?tab=activity');
+    await waitFor(() => expect(screen.getByRole('list', { name: 'Activity log' })).toBeTruthy());
+    expect(await axe(container)).toHaveNoViolations();
   });
 });
 

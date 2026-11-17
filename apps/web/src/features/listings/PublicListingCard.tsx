@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Calendar, MapPin } from 'lucide-react';
 import { formatDate, formatPrice } from '@sportbridge/shared';
 import type { ListingWithId } from './listingsService';
@@ -12,17 +12,18 @@ export function PublicListingCard({
   listing: ListingWithId;
   programme?: boolean;
 }) {
-  const navigate = useNavigate();
-  const open = () => navigate(`/listings/${l.id}`);
   return (
-    <article
-      className={programme ? 'programme-card' : 'op-card'}
-      role="link"
-      tabIndex={0}
-      style={{ cursor: 'pointer' }}
-      onClick={open}
-      onKeyDown={(e) => e.key === 'Enter' && open()}
-    >
+    <article className={programme ? 'programme-card' : 'op-card'} style={{ position: 'relative' }}>
+      {/* Stretched link: a real, keyboard- and screen-reader-accessible <a> covering the whole
+          card (so cmd/ctrl-click and "open in new tab" work too), instead of the old
+          role="link" + onClick/onKeyDown hack on the <article> (an invalid ARIA role on that
+          element, and keyboard support for Enter only). The visible content below is
+          unchanged, so nothing here affects layout or styling. */}
+      <Link
+        to={`/listings/${l.id}`}
+        aria-label={`View details for ${l.title}`}
+        style={{ position: 'absolute', inset: 0, zIndex: 1 }}
+      />
       <img src={listingImage(l.sports)} alt="" loading="lazy" />
       <div className="op-body">
         <span className="tag">{l.type.toUpperCase()}</span>

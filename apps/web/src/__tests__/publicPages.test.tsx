@@ -126,8 +126,8 @@ beforeEach(() => {
 
 describe('public Discover page', () => {
   it('shows real organisations, verified first, each saying honestly who vouches for it', () => {
-    discover();
-    const cards = screen.getAllByRole('link').filter((a) => a.classList.contains('discover-card'));
+    const { container } = discover();
+    const cards = Array.from(container.querySelectorAll<HTMLElement>('article.discover-card'));
     expect(cards.map((c) => within(c).getByRole('heading').textContent)).toEqual([
       'Durban Netball Academy',
       'Test FC',
@@ -189,7 +189,7 @@ describe('public Discover page', () => {
 
   it('opens an organisation’s own page from its card', () => {
     discover();
-    fireEvent.click(screen.getByText('Durban Netball Academy').closest('article')!);
+    fireEvent.click(screen.getByRole('link', { name: 'View details for Durban Netball Academy' }));
     expect(screen.getByText('ORG PAGE')).toBeTruthy();
   });
 

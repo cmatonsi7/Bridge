@@ -45,6 +45,9 @@ button, input, select { font: inherit; }
 .role-body h3 { font-size: 15px; margin: 0px 0px 6px; }
 .role-body p { color: rgb(109, 120, 139); font-size: 13px; line-height: 1.45; min-height: 39px; }
 .link { color: var(--green); font-weight: 750; font-size: 13px; cursor: pointer; }
+/* A <button class="link"> (used where "Get started →" etc. triggers navigation, so it needs to
+   be keyboard-operable) should look exactly like the plain text .link above, not like a button. */
+button.link { background: none; border: none; padding: 0; margin: 0; text-align: left; }
 .feature-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
 .op-card, .programme-card { border: 1px solid rgb(227, 232, 239); border-radius: 12px; overflow: hidden; background: rgb(255, 255, 255); box-shadow: rgba(0, 61, 34, 0.035) 0px 2px 8px; }
 .op-card img, .programme-card img { width: 100%; height: 170px; object-fit: cover; }
@@ -921,7 +924,7 @@ body:has(#auth.active) { overflow-x: hidden; }
 .sb-bookmark { position: absolute; right: 9px; top: 9px; width: 28px; height: 28px; border: 0px; border-radius: 7px; background: rgb(255, 255, 255); display: grid; place-items: center; cursor: pointer; }
 .sb-op-body { padding: 13px; }
 .sb-tag { display: inline-block; padding: 4px 7px; border-radius: 5px; background: rgb(232, 244, 236); color: var(--sb-green); font-size: 8px; font-weight: 900; letter-spacing: 0.3px; }
-.sb-op-body h3 { font-size: 13px; margin: 9px 0px 5px; }
+.sb-op-body h2, .sb-op-body h3 { font-size: 13px; margin: 9px 0px 5px; }
 .sb-meta { font-size: 10px; color: rgb(116, 128, 120); line-height: 1.65; }
 .sb-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 9px; }
 .sb-chip { font-size: 8px; padding: 5px 7px; border-radius: 6px; background: rgb(241, 245, 242); color: rgb(79, 96, 87); }
@@ -973,7 +976,7 @@ body:has(#auth.active) { overflow-x: hidden; }
 .sb-verified { display: inline-flex; gap: 4px; align-items: center; color: var(--sb-green); font-size: 9px; font-weight: 800; }
 .sb-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .sb-detail { border: 1px solid var(--sb-line); border-radius: 9px; padding: 14px; }
-.sb-detail h4 { font-size: 10px; margin: 0px 0px 9px; }
+.sb-detail h2, .sb-detail h3, .sb-detail h4 { font-size: 10px; margin: 0px 0px 9px; }
 .sb-detail p { font-size: 10px; line-height: 1.7; color: rgb(97, 112, 105); margin: 0px; }
 .sb-pill-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .sb-pill { font-size: 8px; background: rgb(240, 245, 241); border-radius: 6px; padding: 6px 8px; color: rgb(83, 100, 90); }

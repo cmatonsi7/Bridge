@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import * as svc from '../features/sponsorship/sponsorshipService';
 import SponsorshipPage from '../pages/app/sponsorship/SponsorshipPage';
@@ -204,5 +205,46 @@ describe('Admin sponsorship', () => {
     render(<AdminSponsorship />);
     expect(screen.getByText('No requests are waiting for review.')).toBeTruthy();
     expect(screen.getByText('Nobody has reported a request.')).toBeTruthy();
+  });
+});
+
+describe('accessibility', () => {
+  it('SponsorshipPage with no current request (the ask form) has no axe violations', async () => {
+    const { container } = page();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('SponsorshipPage with a current request, offers and past requests has no axe violations', async () => {
+    st.mine = [
+      request({ requesterUid: 'me', offerCount: 2 }),
+      request({ id: 'r0', requesterUid: 'me', title: 'An earlier ask', status: 'closed' }),
+    ];
+    st.received = [offer()];
+    const { container } = page();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('SponsorshipPage browsing others’ requests has no axe violations', async () => {
+    st.open = [request()];
+    const { container } = page();
+    fireEvent.click(screen.getByRole('button', { name: 'Requests for support' }));
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('SponsorshipPage showing offers made has no axe violations', async () => {
+    st.role = 'organisation';
+    st.made = [offer({ id: 'r1_me', offererUid: 'me' })];
+    const { container } = page();
+    fireEvent.click(screen.getByRole('button', { name: 'Offers I made' }));
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('AdminSponsorship with pending and reported requests has no axe violations', async () => {
+    st.pending = [
+      request({ id: 'kid', forChild: true, displayName: null, ageBand: '13–15', status: 'pending_review' }),
+    ];
+    st.open = [request({ id: 'rep', reportCount: 2, title: 'Reported request' })];
+    const { container } = render(<AdminSponsorship />);
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

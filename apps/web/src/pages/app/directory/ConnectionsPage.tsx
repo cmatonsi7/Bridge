@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ConnectionStatus } from '@sportbridge/shared';
-import { useSignedInUser } from '../../../features/account/useSignedInUser';
+import { useSignedInRole, useSignedInUser } from '../../../features/account/useSignedInUser';
 import { useMyChildren } from '../../../features/guardian/guardianService';
 import {
   acceptConnection,
@@ -53,7 +53,9 @@ function Row({
     <div className="sb-card" style={{ padding: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
         <div>
-          <h3 style={{ margin: 0 }}>{who}</h3>
+          {/* h2, not h3: the first heading after the page's own h1, with no h2 section title in
+              between. Font size pinned to the old h3 default so this doesn't change how it looks. */}
+          <h2 style={{ margin: 0, fontSize: '1.17em' }}>{who}</h2>
           <p className="sb-meta">
             {side === 'coach' ? 'Athlete' : 'Coach'}
             {side === 'guardian' ? ` · for ${c.athleteName}` : ''}
@@ -113,10 +115,16 @@ function Row({
 export default function ConnectionsPage() {
   const navigate = useNavigate();
   const me = useSignedInUser();
-  const role = me?.user.role;
-  const coach = useCoachConnections(role === 'coach' ? me?.uid : undefined);
-  const athlete = useAthleteConnections(role === 'athlete' ? me?.uid : undefined);
-  const children = useMyChildren(role === 'guardian' ? me?.uid : undefined);
+  // Role comes from useSignedInRole, which reads the ID token claim directly and is available
+  // the moment sign-in resolves. `me` also waits on the Firestore profile doc, which this page
+  // doesn't otherwise need — reading the role this way instead lets the queries below start a
+  // full round trip earlier than waiting on `me` would have (the real source of this page's
+  // extra delay for guardians, who need a second query — for their child's connections — once
+  // the first one resolves).
+  const { uid, role } = useSignedInRole();
+  const coach = useCoachConnections(role === 'coach' ? uid : undefined);
+  const athlete = useAthleteConnections(role === 'athlete' ? uid : undefined);
+  const children = useMyChildren(role === 'guardian' ? uid : undefined);
   const firstChild = children.status === 'ready' ? children.data[0] : undefined;
   const childConnections = useAthleteConnections(firstChild?.athleteUid);
 

@@ -91,13 +91,17 @@ export default function ChildProfilePage() {
             {[p?.city, p?.province].filter(Boolean).join(', ') || <Muted>Location not added</Muted>}
           </p>
           <div className="sb-detail" style={{ marginTop: 12 }}>
-            <h4>About</h4>
+            {/* h2, not h4: these are the first headings after the page's own h1, matching the
+                level of the Development/Applications/Achievements sections below. .sb-detail h2
+                is styled the same as .sb-detail h4 in legacy.css / signed-in-scale.css, so the
+                look is unchanged. */}
+            <h2>About</h2>
             <p style={{ whiteSpace: 'pre-line' }}>{p?.bio || <Muted>Nothing written yet.</Muted>}</p>
-            <h4 style={{ marginTop: 14 }}>Club · School</h4>
+            <h2 style={{ marginTop: 14 }}>Club · School</h2>
             <p>{[p?.club, p?.school].filter(Boolean).join(' · ') || <Muted>—</Muted>}</p>
             {p?.skills?.length ? (
               <>
-                <h4 style={{ marginTop: 14 }}>Skills</h4>
+                <h2 style={{ marginTop: 14 }}>Skills</h2>
                 <div className="sb-pill-row">
                   {p.skills.map((s) => (
                     <span className="sb-pill" key={s}>

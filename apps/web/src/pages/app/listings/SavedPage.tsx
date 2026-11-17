@@ -18,7 +18,9 @@ function SavedItem({
   if (listing.status !== 'ready' || !listing.data) {
     return (
       <div className="sb-card" style={{ padding: 16 }}>
-        <h3 style={{ fontSize: 14 }}>{item.title}</h3>
+        {/* h2, matching the heading level ListingCard uses for a still-available saved listing's
+            title, so this list has one consistent heading level either way. */}
+        <h2 style={{ fontSize: 14 }}>{item.title}</h2>
         <p className="sb-meta">No longer available.</p>
         <button
           type="button"

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import HomePage from '../pages/public/HomePage';
 
@@ -131,5 +132,33 @@ describe('Home: no promises about features that do not exist yet', () => {
   it('is honest that the privacy notice is not published yet', () => {
     home();
     expect(screen.getByText(/Privacy & POPIA notice has not been published yet/)).toBeTruthy();
+  });
+});
+
+describe('Home: role-card "Get started" is keyboard-operable', () => {
+  it('is a real button, not a span that only responds to a mouse', () => {
+    home();
+    const buttons = screen.getAllByRole('button', { name: 'Get started →' });
+    expect(buttons).toHaveLength(6);
+    for (const b of buttons) expect(b.tagName).toBe('BUTTON');
+  });
+});
+
+describe('accessibility', () => {
+  it('HomePage with no listings has no axe violations', async () => {
+    const { container } = home();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('HomePage with featured listings has no axe violations', async () => {
+    st.published = { status: 'ready', data: [1, 2, 3, 4].map(listing) };
+    const { container } = home();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('HomePage with an open FAQ answer has no axe violations', async () => {
+    const { container } = home();
+    fireEvent.click(screen.getByRole('button', { name: /Is SportBridge free to use/ }));
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

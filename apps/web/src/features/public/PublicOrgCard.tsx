@@ -1,12 +1,10 @@
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Check, MapPin } from 'lucide-react';
 import { listingImage } from '../listings/listingImage';
 import { orgTypeLabel, type PublicOrg } from './publicDirectory';
 
 /** Discover card (prototype .discover-card) for one listed organisation. Says plainly who vouches for it. */
 export function PublicOrgCard({ org }: { org: PublicOrg }) {
-  const navigate = useNavigate();
-  const open = () => navigate(`/organisations/${org.id}`);
   // The picture follows the organisation's first sport; only one with no sport falls back to its type.
   const image = org.sports.length
     ? listingImage(org.sports)
@@ -15,14 +13,17 @@ export function PublicOrgCard({ org }: { org: PublicOrg }) {
       : '/images/academy.webp';
   const sports = org.sports.slice(0, 3).join(', ');
   return (
-    <article
-      className="discover-card"
-      role="link"
-      tabIndex={0}
-      style={{ cursor: 'pointer' }}
-      onClick={open}
-      onKeyDown={(e) => e.key === 'Enter' && open()}
-    >
+    <article className="discover-card" style={{ position: 'relative' }}>
+      {/* Stretched link: a real, keyboard- and screen-reader-accessible <a> covering the whole
+          card (so cmd/ctrl-click and "open in new tab" work too), instead of the old
+          role="link" + onClick/onKeyDown hack on the <article> (an invalid ARIA role on that
+          element, and keyboard support for Enter only). The visible content below, and its
+          CSS (including the #discover .discover-card > img direct-child rule), is unchanged. */}
+      <Link
+        to={`/organisations/${org.id}`}
+        aria-label={`View details for ${org.displayName}`}
+        style={{ position: 'absolute', inset: 0, zIndex: 1 }}
+      />
       <img src={image} alt="" loading="lazy" />
       <div className="discover-body">
         <div className="discover-top">

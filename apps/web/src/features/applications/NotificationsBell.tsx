@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import {
@@ -24,19 +24,51 @@ export function NotificationsBell({ uid }: { uid: string }) {
   const items = useNotifications(uid);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const list = items.status === 'ready' ? items.data : [];
   const unread = list.filter((n) => !n.read).length;
 
+  function close(returnFocus: boolean) {
+    setOpen(false);
+    if (returnFocus) triggerRef.current?.focus();
+  }
+
   useEffect(() => {
-    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('click', close);
-    document.addEventListener('keydown', esc);
+    const onDocClick = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && close(false);
+    const onKeyDown = (e: KeyboardEvent) => e.key === 'Escape' && close(true);
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onKeyDown);
     return () => {
-      document.removeEventListener('click', close);
-      document.removeEventListener('keydown', esc);
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onKeyDown);
     };
   }, []);
+
+  // Move focus into the panel when it opens, so keyboard and screen-reader users land on its
+  // content instead of staying on a now visually-replaced trigger button.
+  useEffect(() => {
+    if (open) panelRef.current?.focus();
+  }, [open]);
+
+  // A basic focus trap while the panel is open: Tab/Shift+Tab wraps between its first and last
+  // focusable element instead of escaping to the rest of the page, as a "dialog" role implies.
+  function trapTab(e: ReactKeyboardEvent) {
+    if (e.key !== 'Tab' || !panelRef.current) return;
+    const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusables.length === 0) return;
+    const first = focusables[0]!;
+    const last = focusables[focusables.length - 1]!;
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 
   function openItem(n: NotificationWithId) {
     if (!n.read) void markNotificationRead(uid, n.id).catch(() => {});
@@ -47,6 +79,7 @@ export function NotificationsBell({ uid }: { uid: string }) {
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button
+        ref={triggerRef}
         className="sb-icon-btn"
         type="button"
         aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
@@ -62,7 +95,15 @@ export function NotificationsBell({ uid }: { uid: string }) {
         {unread > 0 && <span className="sb-notif-dot" aria-hidden="true" />}
       </button>
       {open && (
-        <div className="sb-card sb-notif-panel" role="dialog" aria-label="Notifications">
+        <div
+          className="sb-card sb-notif-panel"
+          role="dialog"
+          aria-label="Notifications"
+          aria-modal="true"
+          ref={panelRef}
+          tabIndex={-1}
+          onKeyDown={trapTab}
+        >
           <div className="sb-notif-head">
             <b>Notifications</b>
             {unread > 0 && (

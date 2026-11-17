@@ -36,7 +36,10 @@ export function ListingCard({
       </div>
       <div className="sb-op-body">
         <span className="sb-tag">{l.type.toUpperCase()}</span>
-        <h3>{l.title}</h3>
+        {/* h2, not h3: the first heading after the page's own h1, with no h2 section title in
+            between. .sb-op-body h2 is styled the same as .sb-op-body h3 in legacy.css /
+            signed-in-scale.css, so the look is unchanged. */}
+        <h2>{l.title}</h2>
         <div className="sb-meta">
           {l.orgName}
           {!l.orgVerified && (

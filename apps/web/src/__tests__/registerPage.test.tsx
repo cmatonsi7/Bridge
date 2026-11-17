@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import RegisterPage from '../pages/auth/RegisterPage';
 
@@ -98,5 +99,30 @@ describe('sign-up: organisations are not asked for a date of birth', () => {
     fireEvent.click(screen.getByRole('button', { name: /Save & Continue/ }));
     expect(await screen.findByText(/Confirm you are 18 or over/)).toBeTruthy();
     expect(apiFetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('accessibility', () => {
+  it('RegisterPage (finish step) for a person has no axe violations', async () => {
+    const { container } = show();
+    chooseRole('athlete');
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('RegisterPage (finish step) for an organisation has no axe violations', async () => {
+    const { container } = show();
+    chooseRole('organisation');
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('RegisterPage with a validation error shown has no axe violations', async () => {
+    const { container } = show();
+    chooseRole('organisation');
+    type('Organisation name', 'Soweto FC');
+    fireEvent.change(screen.getByLabelText('Organisation type'), { target: { value: 'club' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /I agree to the SportBridge terms/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Save & Continue/ }));
+    await screen.findByText(/Confirm you are 18 or over/);
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

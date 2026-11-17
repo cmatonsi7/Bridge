@@ -108,7 +108,13 @@ function MyRequest({ uid }: { uid: string }) {
             <h2>Earlier requests</h2>
           </div>
           {past.map((r) => (
-            <RequestCard key={r.id} r={r} own offers={offers.filter((o) => o.requestId === r.id)} />
+            <RequestCard
+              key={r.id}
+              r={r}
+              own
+              offers={offers.filter((o) => o.requestId === r.id)}
+              headingLevel="h3"
+            />
           ))}
         </>
       )}
@@ -141,7 +147,9 @@ function RequestForm() {
   };
   return (
     <div className="sb-card sb-form-card">
-      <h3>Ask for support</h3>
+      {/* h2, not h3: this is the first heading after the page's own h1, with no h2 section
+          title in between (there's no conflicting .sb-form-card h3 CSS rule to account for). */}
+      <h2>Ask for support</h2>
       <p className="sb-meta" style={{ lineHeight: 1.6 }}>
         Your request is shown to signed-in members for {SPONSORSHIP_DAYS} days with your first name and
         surname initial, your sport and your province. Your contact details are only shared with someone whose
@@ -219,19 +227,24 @@ function RequestCard({
   r,
   own = false,
   offers = [],
+  headingLevel = 'h2',
 }: {
   r: RequestWithId;
   own?: boolean;
   offers?: OfferWithId[];
+  /** 'h2' when this card is the first heading-level content in its tab (no section title above
+   *  it); 'h3' when it's nested under a visible h2 section title, such as "Earlier requests". */
+  headingLevel?: 'h2' | 'h3';
 }) {
   const live = isLiveRequest(r);
   const status = r.status === 'open' && !live ? 'Expired' : SPONSORSHIP_STATUS_LABELS[r.status];
   const [error, setError] = useState<string | null>(null);
+  const Heading = headingLevel;
   return (
     <article className="sb-card" style={{ padding: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h3 style={{ margin: 0 }}>{r.title}</h3>
+          <Heading style={{ margin: 0 }}>{r.title}</Heading>
           <p className="sb-meta">
             {r.displayName ?? 'Young athlete'} · {r.ageBand} · {r.sport} · {r.province}
           </p>
@@ -446,7 +459,9 @@ function OffersMade({ uid }: { uid: string }) {
     <div style={{ display: 'grid', gap: 12 }}>
       {made.data.map((o) => (
         <div className="sb-card" style={{ padding: 16 }} key={o.id}>
-          <h3 style={{ margin: 0 }}>{o.requestTitle}</h3>
+          {/* h2, not h3: the first heading in this tab, following the page's own h1 with no h2
+              section title in between. */}
+          <h2 style={{ margin: 0 }}>{o.requestTitle}</h2>
           <p style={{ lineHeight: 1.6 }}>“{o.message}”</p>
           {o.status === 'pending' && (
             <>

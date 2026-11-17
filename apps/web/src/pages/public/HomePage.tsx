@@ -68,9 +68,9 @@ export default function HomePage() {
                     <Footprints className="icon" aria-hidden="true" /> Athletes
                   </h3>
                   <p>Showcase your talent and get discovered.</p>
-                  <span className="link" onClick={a.openApp}>
+                  <button type="button" className="link" onClick={a.openApp}>
                     Get started →
-                  </span>
+                  </button>
                 </div>
               </article>
               <article className="role-card">
@@ -80,9 +80,9 @@ export default function HomePage() {
                     <Users className="icon" aria-hidden="true" /> Parents & Guardians
                   </h3>
                   <p>Support your child's sporting journey.</p>
-                  <span className="link" onClick={a.openApp}>
+                  <button type="button" className="link" onClick={a.openApp}>
                     Get started →
-                  </span>
+                  </button>
                 </div>
               </article>
               <article className="role-card">
@@ -92,9 +92,9 @@ export default function HomePage() {
                     <ClipboardList className="icon" aria-hidden="true" /> Coaches
                   </h3>
                   <p>Find and connect with talent.</p>
-                  <span className="link" onClick={a.openApp}>
+                  <button type="button" className="link" onClick={a.openApp}>
                     Get started →
-                  </span>
+                  </button>
                 </div>
               </article>
               <article className="role-card">
@@ -104,9 +104,9 @@ export default function HomePage() {
                     <Building2 className="icon" aria-hidden="true" /> Clubs & Academies
                   </h3>
                   <p>Post opportunities and grow your teams.</p>
-                  <span className="link" onClick={a.go('/opportunities')}>
+                  <button type="button" className="link" onClick={a.go('/opportunities')}>
                     Get started →
-                  </span>
+                  </button>
                 </div>
               </article>
               <article className="role-card">
@@ -116,9 +116,9 @@ export default function HomePage() {
                     <GraduationCap className="icon" aria-hidden="true" /> Schools & Universities
                   </h3>
                   <p>Connect with student-athletes.</p>
-                  <span className="link" onClick={a.go('/opportunities')}>
+                  <button type="button" className="link" onClick={a.go('/opportunities')}>
                     Get started →
-                  </span>
+                  </button>
                 </div>
               </article>
               <article className="role-card">
@@ -128,9 +128,9 @@ export default function HomePage() {
                     <Tent className="icon" aria-hidden="true" /> Programme Providers
                   </h3>
                   <p>List holiday programmes, camps and events.</p>
-                  <span className="link" onClick={a.go('/programmes')}>
+                  <button type="button" className="link" onClick={a.go('/programmes')}>
                     Get started →
-                  </span>
+                  </button>
                 </div>
               </article>
             </div>

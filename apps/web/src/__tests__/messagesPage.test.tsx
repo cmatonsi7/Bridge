@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import MessagesPage from '../pages/app/messages/MessagesPage';
 import { membership as threadMembership, type MessageDoc, type ThreadDoc } from '@sportbridge/shared';
 
@@ -176,5 +177,25 @@ describe('Messages page', () => {
     st.listState = { status: 'error', message: 'We couldn’t load your messages.' };
     render(<MessagesPage />);
     expect(screen.getByRole('alert').textContent).toContain('couldn’t load your messages');
+  });
+});
+
+describe('accessibility', () => {
+  it('MessagesPage with no conversations has no axe violations', async () => {
+    st.threads = [];
+    const { container } = render(<MessagesPage />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('MessagesPage with a conversation list but none open has no axe violations', async () => {
+    const { container } = render(<MessagesPage />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('MessagesPage with an open conversation has no axe violations', async () => {
+    st.threadState = { status: 'ready', data: { thread: thread(), messages: [message()] } };
+    const { container } = render(<MessagesPage />);
+    fireEvent.click(screen.getByRole('button', { name: /Coach Carter/ }));
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

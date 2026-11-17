@@ -93,7 +93,10 @@ export default function DirectoryProfilePage() {
         </p>
         {e.sports.length > 0 && (
           <>
-            <h4 style={{ marginTop: 14 }}>Sports</h4>
+            {/* h2, not h4: these are the first headings after the page's own h1, with no h2/h3
+                section title in between. Font size pinned to the old h4 default so promoting the
+                tag doesn't change how it looks. */}
+            <h2 style={{ marginTop: 14, fontSize: '1em' }}>Sports</h2>
             <div className="sb-pill-row">
               {e.sports.map((s) => (
                 <span className="sb-pill" key={s}>
@@ -105,9 +108,9 @@ export default function DirectoryProfilePage() {
         )}
         {e.tags.length > 0 && (
           <>
-            <h4 style={{ marginTop: 14 }}>
+            <h2 style={{ marginTop: 14, fontSize: '1em' }}>
               {e.role === 'athlete' ? 'Skills' : e.role === 'coach' ? 'Specialisations' : 'What they offer'}
-            </h4>
+            </h2>
             <div className="sb-pill-row">
               {e.tags.map((t) => (
                 <span className="sb-pill" key={t}>
@@ -143,7 +146,7 @@ export default function DirectoryProfilePage() {
 
         {e.role === 'organisation' && e.claimed !== false && (
           <div style={{ marginTop: 18 }}>
-            <h4>Open opportunities and programmes</h4>
+            <h2 style={{ fontSize: '1em' }}>Open opportunities and programmes</h2>
             {orgListings.status === 'loading' ? (
               <p className="sb-meta">Loading…</p>
             ) : orgListings.status === 'error' ? (

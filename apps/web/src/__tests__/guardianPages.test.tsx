@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { GuardianLinkDoc } from '@sportbridge/shared';
 import { fixtures, fullProfile } from './athleteMocks';
@@ -134,5 +135,27 @@ describe('ChildProfilePage', () => {
     expect(screen.getByText(/Football · Midfielder/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Withdraw consent' }));
     await waitFor(() => expect(gs.withdrawConsent).toHaveBeenCalledWith('L1'));
+  });
+});
+
+describe('accessibility', () => {
+  it('GuardianDashboard with a pending request and a child has no axe violations', async () => {
+    g.pending = [link()];
+    g.children = [link({ id: 'L2', status: 'verified', guardianUid: 'mom', athleteUid: 'kid2' })];
+    const { container } = dash();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+  it('ChildProfilePage has no axe violations', async () => {
+    g.children = [link({ status: 'verified', guardianUid: 'mom' })];
+    fixtures.profile = fullProfile;
+    const { container } = render(
+      <MemoryRouter initialEntries={['/app/children/kid']}>
+        <Routes>
+          <Route path="/app/children/:childUid" element={<ChildProfilePage />} />
+          <Route path="/app" element={<div>dashboard</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

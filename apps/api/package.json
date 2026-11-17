@@ -12,6 +12,7 @@
     "grant-admin": "tsx --env-file=../../.env src/scripts/grantAdmin.ts"
   },
   "dependencies": {
+    "@sentry/node": "^11.13.0",
     "@sportbridge/shared": "0.1.0",
     "express": "4.21.2",
     "express-rate-limit": "7.4.1",

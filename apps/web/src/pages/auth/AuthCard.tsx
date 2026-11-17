@@ -26,11 +26,14 @@ export function AuthCard({ tabs, children }: { tabs?: 'signin' | 'signup'; child
               <span>SportBridge</span>
             </div>
             {tabs && (
-              <div className="auth-switch" role="tablist">
+              // A plain nav, not role="tablist"/"tab": each button navigates to its own page
+              // rather than switching a panel in place, so "tab" semantics (which promise the
+              // latter to assistive tech) would be misleading. aria-current marks the one
+              // that matches the page already showing, the same pattern Header.tsx uses.
+              <nav className="auth-switch" aria-label="Sign in or create account">
                 <button
                   type="button"
-                  role="tab"
-                  aria-selected={tabs === 'signin'}
+                  aria-current={tabs === 'signin' ? 'page' : undefined}
                   className={tabs === 'signin' ? 'active' : ''}
                   onClick={() => navigate('/sign-in')}
                 >
@@ -38,14 +41,13 @@ export function AuthCard({ tabs, children }: { tabs?: 'signin' | 'signup'; child
                 </button>
                 <button
                   type="button"
-                  role="tab"
-                  aria-selected={tabs === 'signup'}
+                  aria-current={tabs === 'signup' ? 'page' : undefined}
                   className={tabs === 'signup' ? 'active' : ''}
                   onClick={() => navigate('/register')}
                 >
                   Create Account
                 </button>
-              </div>
+              </nav>
             )}
             {children}
           </div>

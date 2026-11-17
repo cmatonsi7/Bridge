@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { ConnectionDoc, DirectoryEntryDoc } from '@sportbridge/shared';
 import * as ds from '../features/directory/directoryService';
@@ -370,5 +371,27 @@ describe('what families can do from the directory', () => {
     at('/app/directory/c9', <DirectoryProfilePage />, '/app/directory/:uid');
     expect(screen.getByText(/Coaches reach out to athletes through SportBridge/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Ask to connect' })).toBeNull();
+  });
+});
+
+describe('accessibility', () => {
+  it('DirectoryPage with results has no axe violations', async () => {
+    st.dir = [entry({ uid: '1' }), entry({ uid: '2', displayName: 'Coach One', role: 'coach' })];
+    const { container } = at('/', <DirectoryPage />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+  it('DirectoryProfilePage has no axe violations', async () => {
+    st.role = 'coach';
+    st.dir = [entry({ uid: 'a1' })];
+    const { container } = at('/app/directory/a1', <DirectoryProfilePage />, '/app/directory/:uid');
+    expect(await axe(container)).toHaveNoViolations();
+  });
+  it('ConnectionsPage with pending and accepted requests has no axe violations', async () => {
+    st.athleteConns = [
+      conn({ id: 'c1_a1' }),
+      conn({ id: 'c2_a1', status: 'accepted' }),
+    ];
+    const { container } = at('/', <ConnectionsPage />);
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

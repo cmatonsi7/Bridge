@@ -81,9 +81,22 @@ attention, that was a hole rather than a missing nicety.
   request no longer arrives under the subject "An update on your application".
 
 ### Still to do in Phase 6
-Error monitoring (there is none; Sentry's free tier would cover it), the slow Connections page seen in live
-testing, and an accessibility pass. Render's free tier also sleeps: the first visitor after a quiet period
-waits about 90 seconds, which reads as a broken site.
+An accessibility pass. Render's free tier also sleeps: the first visitor after a quiet period waits about
+90 seconds, which reads as a broken site.
+
+**Error monitoring (Sentry) is wired in, 2026-11-17, but not yet switched on.** Both the API
+(`apps/api/src/config/sentry.ts`) and the web app (`apps/web/src/lib/sentry.ts`) report genuine unhandled
+errors — not the normal 400/404/validation kind — to Sentry if `SENTRY_DSN` / `VITE_SENTRY_DSN` are set, and
+are a complete no-op (nothing initialises, nothing sent, and on the web side the whole SDK is tree-shaken
+out of the bundle) with no DSN, same shape as the email provider. To turn it on: create a free Sentry
+project at sentry.io, and set `SENTRY_DSN` on Render (API) and `VITE_SENTRY_DSN` at web build time.
+
+**The slow Connections page seen in live testing is fixed, 2026-11-17.** The page was waiting on the
+Firestore profile doc just to learn the signed-in role, which it didn't otherwise need — reading the role
+from the ID token claim instead (`useSignedInRole` in `apps/web/src/features/account/useSignedInUser.ts`)
+let the connection queries start a full round trip earlier, closing the extra wait guardians hit (a second
+query, for their child's connections, once the first one resolved). Confirmed live: the page now settles in
+about 1.1 seconds.
 
 ## Messaging & coach verification (Phase 5), branch `messaging`
 Built 2026-11-16. Two halves, shipped together because the second one gates the first.

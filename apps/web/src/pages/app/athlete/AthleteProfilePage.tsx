@@ -132,7 +132,10 @@ export default function AthleteProfilePage() {
               {tab === 'Overview' && (
                 <div className="sb-detail-grid">
                   <div className="sb-detail">
-                    <h4>About Me</h4>
+                    {/* h3, not h4: these follow the h2 profile name with no h3 section title in
+                        between. .sb-detail h3 is styled the same as .sb-detail h4 in legacy.css /
+                        signed-in-scale.css, so the look is unchanged. */}
+                    <h3>About Me</h3>
                     <p>
                       {p?.bio || <Muted>Tell coaches and clubs about yourself — select Edit Profile.</Muted>}
                     </p>
@@ -158,7 +161,7 @@ export default function AthleteProfilePage() {
                     </div>
                   </div>
                   <div className="sb-detail">
-                    <h4>Skills</h4>
+                    <h3>Skills</h3>
                     {p?.skills?.length ? (
                       <div className="sb-pill-row">
                         {p.skills.map((s) => (
@@ -172,7 +175,7 @@ export default function AthleteProfilePage() {
                         <Muted>No skills selected yet.</Muted>
                       </p>
                     )}
-                    <h4 style={{ marginTop: 18 }}>Sporting Interests</h4>
+                    <h3 style={{ marginTop: 18 }}>Sporting Interests</h3>
                     {p?.interests?.length ? (
                       <div className="sb-pill-row">
                         {p.interests.map((s) => (
@@ -192,7 +195,7 @@ export default function AthleteProfilePage() {
 
               {tab === 'About Me' && (
                 <div className="sb-detail">
-                  <h4>About Me</h4>
+                  <h3>About Me</h3>
                   <p style={{ whiteSpace: 'pre-line' }}>{p?.bio || <Muted>Nothing written yet.</Muted>}</p>
                 </div>
               )}

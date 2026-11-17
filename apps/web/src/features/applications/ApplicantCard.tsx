@@ -41,7 +41,9 @@ export function ApplicantCard({ app }: { app: ApplicationWithId }) {
     <div className="sb-card" style={{ padding: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
         <div>
-          <h3 style={{ margin: 0 }}>{s.displayName}</h3>
+          {/* h2, not h3: the first heading after the page's h1, with no h2 section title in
+              between. Font size pinned to the old h3 default so this doesn't change how it looks. */}
+          <h2 style={{ margin: 0, fontSize: '1.17em' }}>{s.displayName}</h2>
           <p className="sb-meta">
             Age {s.age}
             {[s.sport, s.position].filter(Boolean).length

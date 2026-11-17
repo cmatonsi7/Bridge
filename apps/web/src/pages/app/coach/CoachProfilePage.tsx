@@ -131,7 +131,10 @@ export default function CoachProfilePage() {
               {tab === 'Overview' && (
                 <div className="sb-detail-grid">
                   <div className="sb-detail">
-                    <h4>About Me</h4>
+                    {/* h3, not h4: these follow the h2 profile name with no h3 section title in
+                        between. .sb-detail h3 is styled the same as .sb-detail h4 in legacy.css /
+                        signed-in-scale.css, so the look is unchanged. */}
+                    <h3>About Me</h3>
                     <p style={{ whiteSpace: 'pre-line' }}>
                       {p?.bio || <Muted>Tell athletes about your coaching — select Edit Profile.</Muted>}
                     </p>
@@ -153,15 +156,15 @@ export default function CoachProfilePage() {
                     </div>
                   </div>
                   <div className="sb-detail">
-                    <h4>Specialisations</h4>
+                    <h3>Specialisations</h3>
                     <Pills items={p?.specialisations} empty="None selected yet." />
-                    <h4 style={{ marginTop: 18 }}>Services</h4>
+                    <h3 style={{ marginTop: 18 }}>Services</h3>
                     <Pills items={p?.services} empty="None selected yet." />
-                    <h4 style={{ marginTop: 18 }}>Age groups</h4>
+                    <h3 style={{ marginTop: 18 }}>Age groups</h3>
                     <Pills items={p?.ageGroups} empty="None selected yet." />
-                    <h4 style={{ marginTop: 18 }}>
+                    <h3 style={{ marginTop: 18 }}>
                       <Award className="icon" aria-hidden="true" /> Qualifications
-                    </h4>
+                    </h3>
                     <p>
                       {quals.data.length ? (
                         `${quals.data.length} self-declared`

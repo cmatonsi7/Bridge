@@ -4,6 +4,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { loadEnv } from './config/env.js';
 import { initFirebaseAdmin } from './config/firebaseAdmin.js';
+import { initSentry, reportError } from './config/sentry.js';
 import { firebaseAuthPort, firestoreUserRepo } from './services/firebasePorts.js';
 import { firestoreGuardianRepo } from './services/firebaseGuardianRepo.js';
 import { firestoreApplicationsRepo } from './services/firebaseApplicationsRepo.js';
@@ -22,6 +23,13 @@ import { setNotificationDispatcher } from './services/notifier.js';
 import { createApp } from './app.js';
 
 const env = loadEnv();
+initSentry();
+// Catches what the Express error handler never sees — a crash in a fire-and-forget call like
+// the email dispatch below, or anything else outside a request/response cycle. Reported, not
+// fatal: a long-running server shouldn't go down over one bad error.
+process.on('unhandledRejection', reportError);
+process.on('uncaughtException', reportError);
+
 const firebaseApp = initFirebaseAdmin(env);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webDistDir = env.WEB_DIST_DIR ?? path.resolve(here, '../../web/dist');

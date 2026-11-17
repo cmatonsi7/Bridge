@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import { ZodError } from 'zod';
 import { fixtures, fullProfile } from './athleteMocks';
@@ -126,5 +127,40 @@ describe('AthleteSettingsPage', () => {
       showAchievements: false,
       allowEnquiries: false,
     });
+  });
+});
+
+describe('accessibility', () => {
+  it('AthleteProfilePage with a brand-new profile has no axe violations', async () => {
+    const { container } = renderIn(<AthleteProfilePage />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('AthleteProfilePage with a full profile has no axe violations', async () => {
+    fixtures.profile = fullProfile;
+    const { container } = renderIn(<AthleteProfilePage />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('AthleteProgressPage with achievements has no axe violations', async () => {
+    fixtures.profile = fullProfile;
+    fixtures.achievements = [
+      {
+        id: 'a1',
+        title: 'District Champions',
+        year: 2025,
+        organisation: 'Soweto FC',
+        detail: null,
+        createdAt: 'c',
+        updatedAt: 'u',
+      },
+    ];
+    const { container } = renderIn(<AthleteProgressPage />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('AthleteSettingsPage has no axe violations', async () => {
+    const { container } = renderIn(<AthleteSettingsPage />);
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

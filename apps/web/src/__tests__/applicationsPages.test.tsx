@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import type { ApplicationDoc, ListingDoc } from '@sportbridge/shared';
 import * as as from '../features/applications/applicationsService';
@@ -218,5 +219,60 @@ describe('NotificationsBell', () => {
     expect(screen.getByText('Application update')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
     await waitFor(() => expect(as.markAllNotificationsRead).toHaveBeenCalled());
+  });
+
+  it('moves focus into the panel on open, and back to the bell on Escape', () => {
+    st.notes = [
+      {
+        id: 'n1',
+        type: 'application.status',
+        title: 'Application update',
+        body: 'Accepted',
+        link: '/app/applications',
+        read: false,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    r(<NotificationsBell uid="u1" />);
+    const bell = screen.getByRole('button', { name: 'Notifications, 1 unread' });
+    fireEvent.click(bell);
+    expect(document.activeElement).toBe(screen.getByRole('dialog', { name: 'Notifications' }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(bell);
+  });
+});
+
+describe('accessibility', () => {
+  it('ApplyPanel, open with the note field showing, has no axe violations', async () => {
+    const { container } = r(<ApplyPanel listing={listing} uid="u1" isMinor={false} restricted={false} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    expect(await axe(container)).toHaveNoViolations();
+  });
+  it('MyApplicationsPage with a result has no axe violations', async () => {
+    st.mine = [app({ status: 'accepted', orgMessage: 'See you Saturday' })];
+    const { container } = r(<MyApplicationsPage />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+  it('OrgApplicationsPage with a result has no axe violations', async () => {
+    st.received = [app()];
+    const { container } = r(<OrgApplicationsPage />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+  it('NotificationsBell with its panel open has no axe violations', async () => {
+    st.notes = [
+      {
+        id: 'n1',
+        type: 'application.status',
+        title: 'Application update',
+        body: 'Accepted',
+        link: '/app/applications',
+        read: false,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    const { container } = r(<NotificationsBell uid="u1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 unread' }));
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

@@ -132,17 +132,20 @@ export default function OrgProfilePage() {
               {tab === 'Overview' && (
                 <div className="sb-detail-grid">
                   <div className="sb-detail">
-                    <h4>About</h4>
+                    {/* h3, not h4: these follow the h2 org name with no h3 section title in
+                        between. .sb-detail h3 is styled the same as .sb-detail h4 in legacy.css /
+                        signed-in-scale.css, so the look is unchanged. */}
+                    <h3>About</h3>
                     <p style={{ whiteSpace: 'pre-line' }}>
                       {o.description || <Muted>Describe your organisation — select Edit Profile.</Muted>}
                     </p>
-                    <h4 style={{ marginTop: 18 }}>Age groups</h4>
+                    <h3 style={{ marginTop: 18 }}>Age groups</h3>
                     <Pills items={o.ageGroups} empty="None selected yet." />
                   </div>
                   <div className="sb-detail">
-                    <h4>What we offer</h4>
+                    <h3>What we offer</h3>
                     <Pills items={o.offerings} empty="None selected yet." />
-                    <h4 style={{ marginTop: 18 }}>Facilities</h4>
+                    <h3 style={{ marginTop: 18 }}>Facilities</h3>
                     <Pills items={o.facilities} empty="None selected yet." />
                   </div>
                 </div>

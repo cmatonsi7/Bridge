@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import type { OrganisationFullDoc } from '@sportbridge/shared';
 import * as os from '../features/organisation/orgService';
@@ -171,5 +172,31 @@ describe('OrgSettingsPage', () => {
     renderIn(<OrgSettingsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Team' }));
     expect(screen.getByText(/one owner for now/)).toBeTruthy();
+  });
+});
+
+describe('accessibility', () => {
+  it('OrgDashboard with real data has no axe violations', async () => {
+    st.org = fullOrg;
+    const future = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+    dash.listings = [
+      { id: 'a', kind: 'opportunity', status: 'published', deadline: future },
+      { id: 'b', kind: 'programme', status: 'draft', deadline: future },
+    ];
+    dash.apps = [{ id: '1', status: 'submitted' }];
+    const { container } = renderIn(<OrgDashboard />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('OrgProfilePage with a full profile has no axe violations', async () => {
+    st.org = fullOrg;
+    const { container } = renderIn(<OrgProfilePage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Contact' }));
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('OrgSettingsPage has no axe violations', async () => {
+    const { container } = renderIn(<OrgSettingsPage />);
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

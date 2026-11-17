@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { axe } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import type { CoachProfileDoc } from '@sportbridge/shared';
 import * as cs from '../features/coach/coachService';
@@ -157,5 +158,33 @@ describe('CoachDashboard', () => {
     expect(screen.getByText(/1 connected athlete\b/)).toBeTruthy();
     expect(screen.getByText(/1 awaiting a decision/)).toBeTruthy();
     expect(screen.getByText('Calvin Matonsi')).toBeTruthy();
+  });
+});
+
+describe('accessibility', () => {
+  it('CoachProfilePage with a brand-new profile has no axe violations', async () => {
+    const { container } = renderIn(<CoachProfilePage />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('CoachProfilePage with a full profile has no axe violations', async () => {
+    c.profile = fullCoach;
+    const { container } = renderIn(<CoachProfilePage />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('CoachSettingsPage has no axe violations', async () => {
+    const { container } = renderIn(<CoachSettingsPage />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('CoachDashboard with connections has no axe violations', async () => {
+    c.profile = fullCoach;
+    c.connections = [
+      { id: 'c1_a1', status: 'accepted', athleteName: 'Calvin Matonsi', athleteIsMinor: false },
+      { id: 'c1_a2', status: 'pending', athleteName: 'Thabo M', athleteIsMinor: true },
+    ];
+    const { container } = renderIn(<CoachDashboard uid="c1" firstName="Sibusiso" />);
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

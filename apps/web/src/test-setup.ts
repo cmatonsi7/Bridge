@@ -1,5 +1,8 @@
-import { afterEach } from 'vitest';
+import { afterEach, expect } from 'vitest';
 import { cleanup, configure } from '@testing-library/react';
+import { toHaveNoViolations } from 'jest-axe';
+
+expect.extend(toHaveNoViolations);
 
 // With `globals: false`, Testing Library can't register its own cleanup, so renders from one
 // test would leak into the next. Unmount everything after each test.

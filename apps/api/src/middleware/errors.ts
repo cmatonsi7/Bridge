@@ -1,5 +1,6 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { ZodError } from 'zod';
+import { reportError } from '../config/sentry.js';
 
 export class HttpError extends Error {
   constructor(
@@ -45,6 +46,9 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
   console.error('[api] unhandled error', err);
+  // Only this branch — a genuine bug, not an expected 400/404/413 — is worth reporting. The
+  // others are normal client-input rejections and would just burn through the free event quota.
+  reportError(err);
   res
     .status(500)
     .json({ error: { code: 'INTERNAL', message: 'Something went wrong on our side. Try again.' } });

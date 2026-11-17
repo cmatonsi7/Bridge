@@ -71,6 +71,11 @@ export function createApp(deps: AppDeps) {
             'https://*.firebaseio.com',
             'wss://*.firebaseio.com',
             'https://*.firebaseapp.com',
+            // Sentry's error-ingest endpoint. Harmless with no VITE_SENTRY_DSN set — the web
+            // SDK never initialises, so nothing ever calls out to it.
+            'https://*.ingest.sentry.io',
+            'https://*.ingest.us.sentry.io',
+            'https://*.ingest.de.sentry.io',
           ],
           frameSrc: [
             'https://*.firebaseapp.com',

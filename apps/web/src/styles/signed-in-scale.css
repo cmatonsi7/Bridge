@@ -41,7 +41,7 @@
 .sb-section-title h2 { font-size: 17.5px; }
 .sb-section-title a { font-size: 12px; }
 .sb-tag { font-size: 9.5px; }
-.sb-op-body h3 { font-size: 15.5px; }
+.sb-op-body h2, .sb-op-body h3 { font-size: 15.5px; }
 .sb-meta { font-size: 12px; }
 .sb-chip { font-size: 9.5px; }
 .sb-link { font-size: 11px; }
@@ -62,7 +62,7 @@
 .sb-profile-top h2 { font-size: 22px; }
 .sb-profile-top p { font-size: 12px; }
 .sb-verified { font-size: 11px; }
-.sb-detail h4 { font-size: 12px; }
+.sb-detail h2, .sb-detail h3, .sb-detail h4 { font-size: 12px; }
 .sb-detail p { font-size: 12px; }
 .sb-pill { font-size: 9.5px; }
 .sb-chat-search input { font-size: 12px; }
