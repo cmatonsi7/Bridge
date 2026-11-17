@@ -111,6 +111,14 @@ export function firestoreCoachVerificationRepo(db: Firestore, storage?: Storage)
       return url;
     },
 
+    async fileInfo(storagePath) {
+      const file = bucket().file(storagePath);
+      const [exists] = await file.exists();
+      if (!exists) return null;
+      const [meta] = await file.getMetadata();
+      return { size: Number(meta.size ?? 0), contentType: String(meta.contentType ?? '') };
+    },
+
     async deleteFile(storagePath) {
       await bucket().file(storagePath).delete({ ignoreNotFound: true });
     },

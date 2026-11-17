@@ -4,7 +4,9 @@ import {
   CREDENTIAL_UPLOADS_ENABLED,
   credentialStoragePath,
   registerCredentialDocSchema,
+  CREDENTIAL_MAX_BYTES,
   CREDENTIAL_MAX_DOCS,
+  CREDENTIAL_MIME_TYPES,
   type CoachVerificationDoc,
   type CoachVerificationNoteDoc,
   type CredentialDocRecord,
@@ -33,6 +35,8 @@ export interface CoachVerificationRepoPort {
   /** A short-lived link staff can open to read one document. */
   signedUrlFor(storagePath: string, expiresInMs: number): Promise<string>;
   deleteFile(storagePath: string): Promise<void>;
+  /** What Storage actually holds at this path (not what the browser says it uploaded); null if nothing is there. */
+  fileInfo(storagePath: string): Promise<{ size: number; contentType: string } | null>;
 }
 
 export interface Caller {
@@ -124,19 +128,34 @@ export async function registerDocument(
   if (docs.length >= CREDENTIAL_MAX_DOCS) {
     throw new HttpError(409, 'TOO_MANY_DOCS', `You can upload up to ${CREDENTIAL_MAX_DOCS} documents`);
   }
-  const docId = repo.newDocId();
-  // The path is computed here, never taken from the browser: a caller cannot point this record at
-  // somebody else's file.
-  const storagePath = credentialStoragePath(c.uid, docId);
-  if (input.storagePath !== storagePath) {
+  // The browser got its upload path from nextUploadTarget, so the id is read back out of that path.
+  // It must sit inside this coach's own folder and be a plain id: a caller cannot point a record at
+  // somebody else's file, or at a path that is not one of ours.
+  const folder = credentialStoragePath(c.uid, '');
+  const docId = input.storagePath.startsWith(folder) ? input.storagePath.slice(folder.length) : '';
+  if (!/^[A-Za-z0-9]{1,128}$/.test(docId) || input.storagePath !== credentialStoragePath(c.uid, docId)) {
     throw new HttpError(400, 'BAD_PATH', 'That upload could not be matched to your account');
+  }
+  if (docs.some((d) => d.id === docId)) {
+    throw new HttpError(409, 'ALREADY_REGISTERED', 'That document has already been added');
+  }
+  const storagePath = credentialStoragePath(c.uid, docId);
+  // Believe Storage, not the request: the file must really be there, and its real type and size are
+  // what get recorded. A file that breaks the limits is removed so it cannot linger unreferenced.
+  const file = await repo.fileInfo(storagePath);
+  if (!file) {
+    throw new HttpError(400, 'NO_FILE', 'We could not find that upload. Try uploading it again.');
+  }
+  if (!(CREDENTIAL_MIME_TYPES as readonly string[]).includes(file.contentType) || file.size <= 0 || file.size > CREDENTIAL_MAX_BYTES) {
+    await repo.deleteFile(storagePath).catch(() => undefined);
+    throw new HttpError(400, 'BAD_FILE', 'Upload a PDF, JPEG or PNG under 5 MB');
   }
   const record: CredentialDocRecord = {
     id: docId,
     qualificationId: input.qualificationId,
     fileName: input.fileName,
-    contentType: input.contentType,
-    sizeBytes: input.sizeBytes,
+    contentType: file.contentType as CredentialDocRecord['contentType'],
+    sizeBytes: file.size,
     storagePath,
     uploadedAt: now.toISOString(),
   };

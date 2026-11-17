@@ -22,6 +22,8 @@ function fakeStore() {
   const qualifications = new Map<string, number>();
   const internalNotes = new Map<string, string | null>();
   const deletedFiles: string[] = [];
+  /** What Storage actually holds, per path; null means nothing is there. Unlisted paths hold a normal PDF. */
+  const realFiles: Record<string, { size: number; contentType: string } | null> = {};
   const sent: Outbox = [];
   const audits: Record<string, unknown>[] = [];
   let n = 0;
@@ -75,11 +77,15 @@ function fakeStore() {
     async signedUrlFor(path) {
       return `https://signed.example/${path}`;
     },
+    async fileInfo(path) {
+      if (path in realFiles) return realFiles[path] ?? null;
+      return { size: 2048, contentType: 'application/pdf' };
+    },
     async deleteFile(path) {
       deletedFiles.push(path);
     },
   };
-  return { records, docs, qualifications, internalNotes, deletedFiles, sent, audits, repo };
+  return { realFiles, records, docs, qualifications, internalNotes, deletedFiles, sent, audits, repo };
 }
 
 type Token = Partial<DecodedIdToken> & { uid: string; role?: string; admin?: boolean };
@@ -150,6 +156,62 @@ describe('coach credential verification', () => {
     });
     expect(stolen.status).toBe(400);
     expect(stolen.body.error.code).toBe('BAD_PATH');
+  });
+
+  it('registers the document at the path the upload target handed out, whatever the id is', async () => {
+    await view('coach');
+    // Burn some ids first, as production does: the id is random, never the next in a sequence.
+    await request(app).post('/api/coach/credentials/upload-target').set(as('coach')).send({});
+    const target = await request(app).post('/api/coach/credentials/upload-target').set(as('coach')).send({});
+    expect(target.status).toBe(201);
+    const res = await addDoc('coach', { ...goodDoc(), storagePath: target.body.storagePath });
+    expect(res.status).toBe(201);
+    expect(res.body.id).toBe(target.body.docId);
+    // The same upload cannot be registered twice.
+    const again = await addDoc('coach', { ...goodDoc(), storagePath: target.body.storagePath });
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('ALREADY_REGISTERED');
+  });
+
+  it('refuses paths that are not a plain id inside the coach’s own folder', async () => {
+    await view('coach');
+    for (const storagePath of [
+      'coachCredentials/coach/',
+      'coachCredentials/coach/a/b',
+      'coachCredentials/coach/../coach2/doc1',
+      'coachCredentials/coach/doc 1',
+      'elsewhere/coach/doc1',
+    ]) {
+      const res = await addDoc('coach', { ...goodDoc(), storagePath });
+      expect(res.status, storagePath).toBe(400);
+      expect(res.body.error.code).toBe('BAD_PATH');
+    }
+  });
+
+  it('refuses a document whose file was never actually uploaded', async () => {
+    await view('coach');
+    s.realFiles['coachCredentials/coach/ghost'] = null;
+    const res = await addDoc('coach', { ...goodDoc('ghost') });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('NO_FILE');
+    expect(s.docs.get('coach') ?? []).toEqual([]);
+  });
+
+  it('records what Storage holds, and removes a file that is not what the request claimed', async () => {
+    await view('coach');
+    // Claims a small PDF; Storage actually holds a zip.
+    s.realFiles['coachCredentials/coach/liar'] = { size: 100, contentType: 'application/zip' };
+    const bad = await addDoc('coach', { ...goodDoc('liar') });
+    expect(bad.status).toBe(400);
+    expect(bad.body.error.code).toBe('BAD_FILE');
+    expect(s.deletedFiles).toContain('coachCredentials/coach/liar');
+    expect(s.docs.get('coach') ?? []).toEqual([]);
+
+    // Claims 2 KB; Storage holds 4 MB. The real size is the one recorded.
+    s.realFiles['coachCredentials/coach/real'] = { size: 4_000_000, contentType: 'image/png' };
+    const ok = await addDoc('coach', { ...goodDoc('real') });
+    expect(ok.status).toBe(201);
+    expect(ok.body).toMatchObject({ sizeBytes: 4_000_000, contentType: 'image/png' });
   });
 
   it('refuses a file type nobody can read and a file over 5 MB', async () => {

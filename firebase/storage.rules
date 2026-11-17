@@ -24,9 +24,15 @@ service firebase.storage {
       }
       // The coach can see what they uploaded; staff can read any of them.
       allow read: if isSelf(uid) || isAdmin();
-      // Upload and replace are the coach's own; the document record is still written by the server,
-      // so an upload on its own puts nothing into the review queue.
-      allow create, update: if isSelf(uid) && allowedType() && withinSize();
+      // Only a coach can upload, and only to a new file: a document is never overwritten in place, so
+      // a file staff have already reviewed cannot be swapped for another afterwards. Replacing a
+      // document means uploading to a new id and removing the old record through the API.
+      // The document record is still written by the server, so an upload on its own puts nothing
+      // into the review queue.
+      // `resource == null` says outright that nothing is there yet, so an overwrite can never pass as a create.
+      allow create: if resource == null && isSelf(uid) && request.auth.token.role == 'coach'
+        && allowedType() && withinSize();
+      allow update: if false;
       // Deleting is left to the server, so a record and its file cannot drift apart.
       allow delete: if false;
     }

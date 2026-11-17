@@ -203,15 +203,25 @@ describe('storage', () => {
   });
 
   it('lets a coach upload their own credential document (Phase 5b)', async () => {
-    const s = env.authenticatedContext('bob').storage();
+    const s = env.authenticatedContext('bob', { role: 'coach' }).storage();
     await assertSucceeds(uploadString(ref(s, 'coachCredentials/bob/doc1'), 'x', 'raw', pdf));
     await assertSucceeds(
       uploadString(ref(s, 'coachCredentials/bob/doc2'), 'x', 'raw', { contentType: 'image/png' }),
     );
   });
 
+  it('only lets a coach upload, and never overwrites a file already there', async () => {
+    const athlete = env.authenticatedContext('bob', { role: 'athlete' }).storage();
+    await assertFails(uploadString(ref(athlete, 'coachCredentials/bob/doc1'), 'x', 'raw', pdf));
+    const noRole = env.authenticatedContext('bob').storage();
+    await assertFails(uploadString(ref(noRole, 'coachCredentials/bob/doc1'), 'x', 'raw', pdf));
+    const s = env.authenticatedContext('bob', { role: 'coach' }).storage();
+    await assertSucceeds(uploadString(ref(s, 'coachCredentials/bob/once'), 'x', 'raw', pdf));
+    await assertFails(uploadString(ref(s, 'coachCredentials/bob/once'), 'y', 'raw', pdf));
+  });
+
   it('refuses a file type nobody can review, and anything over 5 MB', async () => {
-    const s = env.authenticatedContext('bob').storage();
+    const s = env.authenticatedContext('bob', { role: 'coach' }).storage();
     await assertFails(
       uploadString(ref(s, 'coachCredentials/bob/bad'), 'x', 'raw', { contentType: 'application/zip' }),
     );
@@ -229,9 +239,10 @@ describe('storage', () => {
   });
 
   it('never lets anyone delete a credential file from the browser', async () => {
-    const s = env.authenticatedContext('bob').storage();
-    await uploadString(ref(s, 'coachCredentials/bob/doc1'), 'x', 'raw', pdf);
-    await assertFails(deleteObject(ref(s, 'coachCredentials/bob/doc1')));
+    const s = env.authenticatedContext('bob', { role: 'coach' }).storage();
+    // Its own path: an earlier test has already created doc1, and an existing file can no longer be overwritten.
+    await assertSucceeds(uploadString(ref(s, 'coachCredentials/bob/to-delete'), 'x', 'raw', pdf));
+    await assertFails(deleteObject(ref(s, 'coachCredentials/bob/to-delete')));
   });
 });
 
@@ -333,6 +344,21 @@ describe('guardians (Phase 2b)', () => {
         doc(as('x', { role: 'guardian', email: 'x@example.com', email_verified: true }), 'guardianLinks/l2'),
       ),
     );
+  });
+  it('a guardian may change their display name only, and not to something huge', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'guardianProfiles/dad'), {
+        uid: 'dad',
+        displayName: 'Dad',
+        visibility: 'private',
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+    const d = dad(true);
+    await assertSucceeds(updateDoc(doc(d, 'guardianProfiles/dad'), { displayName: 'Dad B', updatedAt: now }));
+    await assertFails(updateDoc(doc(d, 'guardianProfiles/dad'), { displayName: 'x'.repeat(200), updatedAt: now }));
+    await assertFails(updateDoc(doc(d, 'guardianProfiles/dad'), { verified: true, updatedAt: now }));
   });
   it('a parent cannot answer a request from the browser', async () => {
     await assertFails(
